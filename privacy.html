@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Genie: Desktop Workspace</title>
+  <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(255, 255, 255, 0.04);
+      --border: rgba(255, 255, 255, 0.08);
+      --gold: #f4c375;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px;
+      backdrop-filter: blur(20px);
+    }
+    a.back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--gold);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .meta {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 36px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    h2 {
+      font-size: 1.35rem;
+      margin: 32px 0 12px;
+      color: var(--gold);
+    }
+    p, ul {
+      margin-bottom: 16px;
+      color: #cbd5e1;
+    }
+    ul { padding-left: 24px; }
+    li { margin-bottom: 8px; }
+    code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .highlight-card {
+      background: rgba(244, 195, 117, 0.08);
+      border-left: 4px solid var(--gold);
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back">← Back to Genie</a>
+    <h1>Privacy Policy</h1>
+    <div class="meta">
+      <strong>Product:</strong> Genie - Desktop Workspace (<code>com.nicholasdudek.genie</code>)<br>
+      <strong>Effective Date:</strong> September 3, 2026 • <strong>Developer:</strong> Nicholas M. Dudek
+    </div>
+
+    <div class="highlight-card">
+      <strong>Core Commitment:</strong> Genie is built with a strict <strong>Zero-Telemetry, Privacy-First Architecture</strong>. Genie runs 100% locally on your Mac. It collects, logs, profiles, tracks, transmits, and monetizes <strong>zero user data</strong>.
+    </div>
+
+    <h2>1. Data Collection & Processing</h2>
+    <p>Genie does <strong>NOT</strong> collect:</p>
+    <ul>
+      <li>Names, email addresses, phone numbers, or physical addresses.</li>
+      <li>IP addresses, MAC addresses, hardware serial numbers, or UUID identifiers.</li>
+      <li>Keystrokes, mouse coordinates, screen recordings, or clipboard contents.</li>
+      <li>Application usage frequencies, browsing histories, or launch logs.</li>
+      <li>Diagnostic crash telemetry, performance logs, or behavioral analytics.</li>
+    </ul>
+
+    <h2>2. Local On-Device Execution</h2>
+    <p>All functionality is strictly contained on your local Apple Silicon or Intel Mac:</p>
+    <ul>
+      <li><strong>Application Directory Indexing:</strong> Queries local directories (<code>/Applications</code>) in ephemeral system memory. Never transmitted off your device.</li>
+      <li><strong>Icon Rendering:</strong> Cached in an in-memory <code>NSCache</code>. No visual assets leave your machine.</li>
+      <li><strong>Preference Storage:</strong> Saved to your local sandboxed macOS container via <code>UserDefaults</code>.</li>
+    </ul>
+
+    <h2>3. macOS App Sandbox & Zero Network Access</h2>
+    <p>Genie operates under Apple's strict macOS App Sandbox. The application <strong>omits network client entitlements entirely</strong>. By operating system design, macOS prohibits Genie from initiating outbound socket connections, making HTTP/HTTPS queries, or communicating with remote servers.</p>
+
+    <h2>4. In-App Purchases</h2>
+    <p>Expansion packs and purchases are processed exclusively by Apple via <strong>StoreKit 2</strong>. The developer never receives, stores, or processes your credit card numbers or financial credentials.</p>
+
+    <h2>5. Contact & Inquiries</h2>
+    <p>If you have any questions regarding this policy:</p>
+    <p><strong>Nicholas M. Dudek</strong><br>
+    Email: <a href="mailto:nicholas.dudek@icloud.com" style="color:var(--gold);">nicholas.dudek@icloud.com</a><br>
+    Website: <a href="https://nicholasdudek.com" style="color:var(--gold);">https://nicholasdudek.com</a></p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genie — Next-Generation Spatial Workspace for macOS</title>
+  <meta name="description" content="Genie is a native macOS spatial desktop workspace and application launcher engineered with Swift and Metal.">
+  <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+  
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(255, 255, 255, 0.035);
+      --card-hover: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(244, 195, 117, 0.3);
+      --gold: #f4c375;
+      --purple-glow: rgba(147, 95, 245, 0.4);
+      --blue-glow: rgba(56, 189, 248, 0.3);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(147, 95, 245, 0.15) 0%, transparent 60%),
+        radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.1) 0%, transparent 50%);
+    }
+
+    /* Ambient glow elements */
+    .glow-sphere {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(244, 195, 117, 0.08) 0%, rgba(147, 95, 245, 0.05) 50%, transparent 70%);
+      top: -150px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 36px;
+      background: rgba(7, 9, 14, 0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+    
+    .nav-brand img {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      color: #fff;
+    }
+
+    .btn-download-nav {
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      color: #0c0f17 !important;
+      font-weight: 600 !important;
+      padding: 8px 18px;
+      border-radius: 100px;
+      box-shadow: 0 2px 10px rgba(244, 195, 117, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    }
+
+    .btn-download-nav:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 16px rgba(244, 195, 117, 0.4);
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      z-index: 1;
+      max-width: 1080px;
+      margin: 80px auto 40px;
+      padding: 0 24px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(244, 195, 117, 0.08);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      background: linear-gradient(180deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 40px;
+      font-weight: 400;
+    }
+
+    .cta-group {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 50px;
+    }
+
+    .app-store-badge {
+      display: inline-block;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    .app-store-badge:hover {
+      transform: translateY(-2px);
+      filter: drop-shadow(0 8px 24px rgba(244, 195, 117, 0.3));
+    }
+
+    .app-store-badge svg {
+      height: 54px;
+      border-radius: 10px;
+    }
+
+    /* Video Showreel Container */
+    .preview-container {
+      position: relative;
+      max-width: 980px;
+      margin: 0 auto 100px;
+      padding: 0 20px;
+      z-index: 1;
+    }
+
+    .preview-frame {
+      position: relative;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 
+        0 24px 64px rgba(0, 0, 0, 0.7),
+        0 0 100px rgba(147, 95, 245, 0.2);
+      background: #000;
+    }
+
+    .preview-frame video {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Features Grid */
+    .features {
+      max-width: 1120px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .section-title h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      backdrop-filter: blur(16px);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+
+    .feature-card h3 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+    }
+
+    /* Showcase Carousel / Gallery */
+    .gallery {
+      max-width: 1120px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+      gap: 28px;
+    }
+
+    .gallery-item {
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .gallery-item:hover {
+      transform: scale(1.02);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .gallery-item-desc {
+      padding: 20px 24px;
+    }
+
+    .gallery-item-desc h4 {
+      font-size: 1.15rem;
+      margin-bottom: 6px;
+    }
+
+    .gallery-item-desc p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+    }
+
+    /* Privacy Banner */
+    .privacy-banner {
+      max-width: 900px;
+      margin: 0 auto 120px;
+      padding: 48px;
+      background: linear-gradient(135deg, rgba(244, 195, 117, 0.05) 0%, rgba(147, 95, 245, 0.05) 100%);
+      border: 1px solid var(--border-accent);
+      border-radius: 24px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+    }
+
+    .privacy-banner h3 {
+      font-size: 1.75rem;
+      margin-bottom: 14px;
+      color: var(--gold);
+    }
+
+    .privacy-banner p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 640px;
+      margin: 0 auto 24px;
+    }
+
+    .privacy-banner a {
+      color: var(--gold);
+      text-decoration: underline;
+      font-weight: 500;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 16px;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+      color: #fff;
+    }
+
+    @media (max-width: 768px) {
+      .gallery-grid { grid-template-columns: 1fr; }
+      nav { padding: 14px 20px; }
+      .hero { margin-top: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-sphere"></div>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="#" class="nav-brand">
+      <img src="assets/images/app_icon.png" alt="Genie Logo">
+      <span>Genie</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#showcase">Showcase</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-download-nav">Get on Mac App Store</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-badge">✨ Engineered for macOS Sonoma & Sequoia</div>
+    <h1>Your desktop transformed into a spatial canvas.</h1>
+    <p>Genie reimagines how you launch, organize, and interact with apps on macOS. Powered natively by Swift, Metal shaders, and zero telemetry.</p>
+    
+    <div class="cta-group">
+      <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="app-store-badge">
+        <!-- Official Mac App Store SVG Badge -->
+        <svg viewBox="0 0 170 54" width="170" height="54">
+          <rect width="170" height="54" rx="10" fill="#000" stroke="#444" stroke-width="1.5"/>
+          <path d="M29.5 35.5c-1.3 0-2.4-.4-3.3-1.3-.9-.9-1.3-2-1.3-3.3V19.1c0-1.3.4-2.4 1.3-3.3.9-.9 2-1.3 3.3-1.3h3.5c1.3 0 2.4.4 3.3 1.3.9.9 1.3 2 1.3 3.3v11.8c0 1.3-.4 2.4-1.3 3.3-.9.9-2 1.3-3.3 1.3h-3.5z" fill="none"/>
+          <!-- Apple Logo -->
+          <path fill="#fff" d="M28.8 28.5c-.02-3.1 2.5-4.6 2.6-4.7-1.4-2.1-3.7-2.4-4.5-2.4-1.9-.2-3.8 1.1-4.8 1.1-.9 0-2.5-1.1-4.1-1.1-2.1 0-4.1 1.2-5.1 3.1-2.2 3.8-.6 9.4 1.6 12.4 1 1.5 2.3 3.2 4 3.1 1.6-.1 2.2-1 4.1-1 1.9 0 2.4 1 4.1 1 1.7 0 2.8-1.5 3.9-3 1.2-1.7 1.7-3.4 1.7-3.5-.04-.02-3.3-1.3-3.3-5zm-3.5-9c.9-1.1 1.5-2.5 1.3-4-.13 0-2.7.2-3.7 1.3-.8.9-1.5 2.4-1.3 3.8 1.5.1 2.8-.7 3.7-1.1z"/>
+          <text x="56" y="21" fill="#fff" font-size="9" font-family="-apple-system, sans-serif" font-weight="400" letter-spacing="0.5">Download on the</text>
+          <text x="56" y="37" fill="#fff" font-size="16" font-family="-apple-system, sans-serif" font-weight="700">Mac App Store</text>
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- Video Showreel -->
+  <div class="preview-container">
+    <div class="preview-frame">
+      <video autoplay loop muted playsinline poster="assets/images/1_Applications_Matrix.png">
+        <source src="assets/video/preview.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+
+  <!-- Core Features -->
+  <section id="features" class="features">
+    <div class="section-title">
+      <h2>Crafted with Precision for macOS</h2>
+      <p>Native Swift performance, hardware-accelerated shaders, and zero bloat.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">✨</div>
+        <h3>Spatial Desktop Canvas</h3>
+        <p>Summon your full application matrix instantly with a click or trackpad gesture. Seamlessly glide between focused work and your dynamic launcher.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🎨</div>
+        <h3>Living Metal Shaders</h3>
+        <p>Personalize your workspace with hardware-accelerated shaders: Frosted Aero Glass, Camouflage Mode, Obsidian Velvet, and Cyber Horizons.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📐</div>
+        <h3>Geometric Formations</h3>
+        <p>Break free of rigid grids. Arrange your apps in Fibonacci Galaxy spirals, Bottom Shelf docks, Floating Lotus arrays, or Halfpipe Arcs.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔊</div>
+        <h3>Tactile Audio & Haptics</h3>
+        <p>Experience physical satisfaction on every interaction with optional mechanical switch clicks and crisp Apple Taptic feedback on hover and launch.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">⚡️</div>
+        <h3>Seamless Dock Harmony</h3>
+        <p>Genie complements your macOS Dock. It gracefully dismisses when launching an app and re-surfaces with fluid 120Hz ProMotion animations.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3>100% Offline & Private</h3>
+        <p>Zero telemetry, zero tracking, and zero outbound network calls. Everything stays strictly on your Mac's CPU and GPU.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Showcase Gallery -->
+  <section id="showcase" class="gallery">
+    <div class="section-title">
+      <h2>Visual Exploration</h2>
+      <p>Engineered to be as beautiful as it is productive.</p>
+    </div>
+
+    <div class="gallery-grid">
+      <div class="gallery-item">
+        <img src="assets/images/1_Applications_Matrix.png" alt="Applications Matrix" loading="lazy">
+        <div class="gallery-item-desc">
+          <h4>Application Matrix</h4>
+          <p>Instant visual overview of every installed tool on your Mac.</p>
+        </div>
+      </div>
+
+      <div class="gallery-item">
+        <img src="assets/images/2_Themes_And_Shaders.png" alt="Themes and Shaders" loading="lazy">
+        <div class="gallery-item-desc">
+          <h4>Dynamic Shaders & Materials</h4>
+          <p>Real-time GPU-rendered translucent materials that adapt to your wallpaper.</p>
+        </div>
+      </div>
+
+      <div class="gallery-item">
+        <img src="assets/images/3_MenuBar_Studio_Hub.png" alt="Menu Bar Studio Hub" loading="lazy">
+        <div class="gallery-item-desc">
+          <h4>Studio Hub Controls</h4>
+          <p>Tweak formations, visual effects, and sound profiles right from the menu bar.</p>
+        </div>
+      </div>
+
+      <div class="gallery-item">
+        <img src="assets/images/4_Settings_And_Battery_Styles.png" alt="Settings and Battery Styles" loading="lazy">
+        <div class="gallery-item-desc">
+          <h4>Fine-Tuned Customization</h4>
+          <p>Adjust battery displays, LED status indicators, and keyboard shortcuts.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy Commitment -->
+  <div class="privacy-banner">
+    <h3>Built for Privacy-First Creators</h3>
+    <p>Genie strictly omits network client entitlements. By design, macOS prohibits Genie from making outbound connections. Your apps, files, and workspace stay yours.</p>
+    <a href="privacy.html">Read our Zero-Telemetry Privacy Policy →</a>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-links">
+      <a href="#">Overview</a>
+      <a href="#features">Features</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="mailto:nicholas.dudek@icloud.com">Support</a>
+      <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank">GitHub</a>
+    </div>
+    <p>Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.<br>macOS, Apple Silicon, and App Store are trademarks of Apple Inc.</p>
+  </footer>
+</body>
+</html>
