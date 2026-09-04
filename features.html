@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genie Studio — Interactive Feature Lab & Gestures</title>
+  <meta name="description" content="Explore the mechanics of Genie: iPhone Slide-Over views, hot corners, GPU mouse particle trails, dynamic battery status bar designs, and living Metal shaders.">
+  <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+
+  <style>
+    :root, [data-theme="dark"] {
+      --bg: #07090e;
+      --card-bg: rgba(255, 255, 255, 0.035);
+      --card-hover: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(244, 195, 117, 0.3);
+      --gold: #f4c375;
+      --gold-glow: rgba(244, 195, 117, 0.2);
+      --purple: #935ff5;
+      --purple-glow: rgba(147, 95, 245, 0.35);
+      --blue: #38bdf8;
+      --blue-glow: rgba(56, 189, 248, 0.25);
+      --green: #34d399;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --nav-bg: rgba(7, 9, 14, 0.85);
+      --canvas-bg: #0b0f19;
+      --tag-bg: rgba(255, 255, 255, 0.06);
+      --tag-border: rgba(255, 255, 255, 0.12);
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --card-bg: rgba(255, 255, 255, 0.92);
+      --card-hover: #ffffff;
+      --border: rgba(0, 0, 0, 0.08);
+      --border-accent: rgba(217, 119, 6, 0.4);
+      --gold: #d97706;
+      --gold-glow: rgba(217, 119, 6, 0.15);
+      --purple: #7c3aed;
+      --purple-glow: rgba(124, 58, 237, 0.12);
+      --blue: #0284c7;
+      --blue-glow: rgba(2, 132, 199, 0.1);
+      --green: #059669;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --nav-bg: rgba(255, 255, 255, 0.9);
+      --canvas-bg: #f1f5f9;
+      --tag-bg: rgba(0, 0, 0, 0.04);
+      --tag-border: rgba(0, 0, 0, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      background-image: 
+        radial-gradient(circle at 20% 0%, var(--purple-glow) 0%, transparent 50%),
+        radial-gradient(circle at 80% 15%, var(--gold-glow) 0%, transparent 50%);
+    }
+
+    .glow-sphere {
+      position: absolute;
+      width: 650px;
+      height: 650px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(244, 195, 117, 0.08) 0%, rgba(147, 95, 245, 0.05) 50%, transparent 70%);
+      top: -150px;
+      right: 5%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: var(--nav-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .nav-badge-pill {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--tag-bg);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--gold);
+    }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-toggle-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .theme-toggle-btn:hover {
+      background: var(--card-hover);
+      border-color: var(--border-accent);
+    }
+
+    .btn-back-home {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-back-home:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .btn-download {
+      background: linear-gradient(135deg, #f4c375 0%, #e2a850 100%);
+      color: #1a1500;
+      padding: 8px 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(244, 195, 117, 0.25);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-download:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(244, 195, 117, 0.35);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .studio-hero {
+      text-align: center;
+      padding: 40px 0 50px;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--tag-bg);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      letter-spacing: 0.02em;
+    }
+
+    .studio-hero h1 {
+      font-size: 3rem;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      background: linear-gradient(180deg, var(--text) 40%, var(--text-muted) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .studio-hero p {
+      max-width: 780px;
+      margin: 0 auto 28px;
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      line-height: 1.6;
+    }
+
+    .quick-jump-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .jump-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 0.86rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .jump-chip:hover {
+      background: var(--card-hover);
+      border-color: var(--gold);
+      color: var(--gold);
+      transform: translateY(-2px);
+    }
+
+    .feature-section {
+      margin-top: 70px;
+      padding-top: 20px;
+    }
+
+    .section-header-box {
+      margin-bottom: 30px;
+    }
+
+    .section-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .section-title {
+      font-size: 2rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 820px;
+      line-height: 1.6;
+    }
+
+    .sim-stage-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-top: 28px;
+    }
+
+    .feature-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 28px;
+    }
+
+    .showcase-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+      display: flex;
+      flex-direction: column;
+    }
+    .showcase-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
+    }
+
+    .showcase-media-box {
+      width: 100%;
+      height: 240px;
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .showcase-media-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .showcase-card:hover .showcase-media-box img {
+      transform: scale(1.03);
+    }
+
+    .showcase-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(7, 9, 14, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gold);
+    }
+
+    .showcase-body {
+      padding: 24px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .showcase-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .showcase-desc {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 16px;
+      flex-grow: 1;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .feature-tag {
+      font-size: 0.74rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--tag-bg);
+      border: 1px solid var(--tag-border);
+      color: var(--text-muted);
+    }
+
+    /* Trajectory Simulator */
+    .trajectory-demo-container {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .trajectory-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .traj-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 14px 18px;
+      border-radius: 14px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+    .traj-btn:hover {
+      background: var(--card-hover);
+      border-color: var(--border-accent);
+      transform: translateX(4px);
+    }
+    .traj-btn.active {
+      background: rgba(244, 195, 117, 0.12);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .screen-viewport {
+      width: 100%;
+      height: 380px;
+      background: #0d111a;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      background-image: 
+        radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 20px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mock-desktop-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      background: rgba(20, 24, 35, 0.8);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .mock-genie-overlay {
+      position: absolute;
+      width: 260px;
+      height: 290px;
+      background: rgba(18, 24, 38, 0.9);
+      border: 1px solid rgba(244, 195, 117, 0.4);
+      border-radius: 18px;
+      backdrop-filter: blur(25px);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 10;
+    }
+
+    .mock-genie-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mock-grid-icons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      flex-grow: 1;
+    }
+
+    .mock-icon {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .traj-right { right: 18px; top: 45px; transform: translateX(0); opacity: 1; }
+    .traj-right.animating-out { transform: translateX(120%); opacity: 0; }
+
+    .traj-bottom { bottom: 18px; left: 50%; transform: translateX(-50%) translateY(0); opacity: 1; }
+    .traj-bottom.animating-out { transform: translateX(-50%) translateY(120%); opacity: 0; }
+
+    .traj-left { left: 18px; top: 45px; transform: translateX(0); opacity: 1; }
+    .traj-left.animating-out { transform: translateX(-120%); opacity: 0; }
+
+    .traj-top { top: 38px; left: 50%; transform: translateX(-50%) translateY(0); opacity: 1; }
+    .traj-top.animating-out { transform: translateX(-50%) translateY(-120%); opacity: 0; }
+
+    .traj-center { top: 50%; left: 50%; transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    .traj-center.animating-out { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+
+    /* Canvas Playground */
+    .canvas-card-wrapper {
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--canvas-bg);
+      margin-top: 20px;
+    }
+
+    #particle-canvas {
+      width: 100%;
+      height: 340px;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .canvas-overlay-controls {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(10, 14, 22, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(12px);
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+    }
+
+    .canvas-presets { display: flex; gap: 8px; }
+
+    .canvas-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      padding: 5px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    .canvas-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .canvas-btn.active { background: var(--gold); color: #1a1500; font-weight: 600; border-color: var(--gold); }
+
+    /* Battery Lab */
+    .battery-lab-container {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .battery-preview-board {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .battery-sample-card {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+    .battery-sample-card:hover { border-color: var(--border-accent); background: rgba(255, 255, 255, 0.04); }
+
+    .battery-sample-title {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .batt-liquid-glass {
+      width: 140px;
+      height: 38px;
+      border-radius: 19px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    .batt-liquid-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, #34d399 0%, #10b981 100%);
+      width: 85%;
+      border-radius: 19px 0 0 19px;
+      transition: width 0.3s ease, background 0.3s;
+      z-index: 1;
+    }
+    .batt-liquid-text {
+      position: relative;
+      z-index: 2;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    }
+
+    .batt-cyberpunk {
+      width: 160px;
+      height: 36px;
+      background: #050811;
+      border: 1px solid #38bdf8;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 4px;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .cyber-bar {
+      flex: 1;
+      height: 18px;
+      background: rgba(56, 189, 248, 0.15);
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .cyber-bar.active { background: #38bdf8; box-shadow: 0 0 8px #38bdf8; }
+    .cyber-text { font-family: ui-monospace, monospace; font-size: 0.75rem; color: #38bdf8; font-weight: bold; margin-left: 6px; }
+
+    .batt-monochrome {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 0.84rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .batt-mono-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+    }
+
+    .batt-vertical-column {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .vert-stack {
+      width: 22px;
+      height: 48px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      padding: 2px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 2px;
+      position: relative;
+    }
+    .vert-stack::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 6px;
+      width: 6px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 2px 2px 0 0;
+    }
+    .vert-cell { height: 7px; background: #f4c375; border-radius: 1px; }
+    .vert-text { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+
+    .battery-controls-panel {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .control-row { display: flex; flex-direction: column; gap: 8px; }
+    .control-row label { font-size: 0.86rem; color: var(--text-muted); font-weight: 500; display: flex; justify-content: space-between; }
+
+    .slider-range {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.15);
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+    .slider-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 10px rgba(244, 195, 117, 0.5);
+      cursor: pointer;
+    }
+
+    .btn-toggle-switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .btn-toggle-switch:hover { background: rgba(255, 255, 255, 0.09); }
+
+    /* Audio Switchboard */
+    .sound-switch-row {
+      display: flex;
+      gap: 14px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .sound-key-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 14px 22px;
+      border-radius: 14px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      transition: all 0.15s;
+    }
+    .sound-key-btn:active {
+      transform: scale(0.96) translateY(2px);
+      border-color: var(--gold);
+      box-shadow: 0 1px 3px rgba(244, 195, 117, 0.3);
+    }
+    .sound-key-btn:hover { border-color: var(--border-accent); color: var(--gold); }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      margin-top: 80px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    footer a { color: var(--gold); text-decoration: none; }
+
+    @media (max-width: 900px) {
+      .trajectory-demo-container,
+      .battery-lab-container,
+      .feature-grid-2,
+      .feature-grid-3 { grid-template-columns: 1fr; }
+      .studio-hero h1 { font-size: 2.2rem; }
+      nav { padding: 12px 16px; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-sphere"></div>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="nav-left">
+      <a href="index.html" class="nav-brand">
+        <img src="assets/images/app_icon.png" alt="Genie Logo">
+        <span>Genie</span>
+      </a>
+      <span class="nav-badge-pill">Feature Studio</span>
+    </div>
+
+    <div class="nav-links">
+      <a href="#views">Spatial Views</a>
+      <a href="#gestures">Gestures & Corners</a>
+      <a href="#cursor-fx">Cursor Trails</a>
+      <a href="#battery-designs">Battery HUD</a>
+      <a href="#themes-shaders">Living Themes</a>
+      <a href="#audio-pets">Sound & Pets</a>
+    </div>
+
+    <div class="nav-controls">
+      <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle Appearance">
+        <span id="theme-icon">🌙</span> <span id="theme-text">Theme</span>
+      </button>
+      <a href="index.html" class="btn-back-home">← Back to Overview</a>
+      <a href="https://apps.apple.com/app/id6808165534" class="btn-download" target="_blank" rel="noopener">Get Genie</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <header class="studio-hero">
+      <div class="hero-tag">✨ Genie v1.0.0 (Build 10) Architecture & Mechanics</div>
+      <h1>Every View. Every Swipe. Every Pixel.</h1>
+      <p>A deep interactive laboratory showcasing the customizable entrance trajectories, proven hot corners, real-time GPU cursor particles, and bespoke battery status bar designs engineered into Genie.</p>
+      
+      <div class="quick-jump-row">
+        <a href="#views" class="jump-chip">📱 iPhone Mode & Trajectories</a>
+        <a href="#gestures" class="jump-chip">⚡️ Hot Corners & Swipes</a>
+        <a href="#cursor-fx" class="jump-chip">✨ GPU Cursor Particles</a>
+        <a href="#battery-designs" class="jump-chip">🔋 Battery Status Bar Designs</a>
+        <a href="#themes-shaders" class="jump-chip">🎨 52+ Metal Shaders</a>
+        <a href="#audio-pets" class="jump-chip">🔊 Tactile Audio & Companions</a>
+      </div>
+    </header>
+
+    <!-- SECTION 1 -->
+    <section class="feature-section" id="views">
+      <div class="section-header-box">
+        <span class="section-pill">Spatial Mechanics</span>
+        <h2 class="section-title">Configurable Entrance Trajectories (iPhone Mode 📱)</h2>
+        <p class="section-desc">In Build 10, you decide how Genie glides onto your workspace. Switch between iOS Slide-Over mode, bottom dock trays, sidebar drawers, or central holographic zooms with synchronized spring-damper physics.</p>
+      </div>
+
+      <div class="sim-stage-card">
+        <div class="trajectory-demo-container">
+          <div class="trajectory-btn-group">
+            <button class="traj-btn active" onclick="setTrajectory('right', this)">
+              <span>📱 Slide from Right (iPhone Mode)</span>
+              <span>→</span>
+            </button>
+            <button class="traj-btn" onclick="setTrajectory('bottom', this)">
+              <span>⬆️ Pull Up from Bottom</span>
+              <span>↑</span>
+            </button>
+            <button class="traj-btn" onclick="setTrajectory('left', this)">
+              <span>⬅️ Slide from Left (Sidebar)</span>
+              <span>←</span>
+            </button>
+            <button class="traj-btn" onclick="setTrajectory('top', this)">
+              <span>⬇️ Drop Down from Top (Menu Bar)</span>
+              <span>↓</span>
+            </button>
+            <button class="traj-btn" onclick="setTrajectory('center', this)">
+              <span>✨ Spatial Zoom (Center)</span>
+              <span>⤢</span>
+            </button>
+          </div>
+
+          <div class="screen-viewport" id="viewport-screen">
+            <div class="mock-desktop-bar">
+              <span> Finder &nbsp; File &nbsp; Edit &nbsp; View &nbsp; Window</span>
+              <span style="display:flex; gap:10px; align-items:center;">
+                <span>120 FPS</span>
+                <span>🔋 94%</span>
+                <span>Fri 2:30 AM</span>
+              </span>
+            </div>
+
+            <div class="mock-genie-overlay traj-right" id="mock-genie">
+              <div class="mock-genie-title">
+                <img src="assets/images/app_icon.png" width="16" height="16" style="border-radius:4px;" alt="">
+                <span>Genie Spatial Hub</span>
+              </div>
+              <div class="mock-grid-icons">
+                <div class="mock-icon">🚀</div>
+                <div class="mock-icon">🎨</div>
+                <div class="mock-icon">⚡️</div>
+                <div class="mock-icon">🎵</div>
+                <div class="mock-icon">📁</div>
+                <div class="mock-icon">⚙️</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-grid-2">
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/appstore_screenshots/06_Fibonacci_Galaxy_Spiral.png" alt="Fibonacci Spiral Formation">
+            <span class="showcase-badge">Golden Ratio φ ≈ 1.618</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Fibonacci Spiral Galaxy Formation</h3>
+            <p class="showcase-desc">Apps distribute organically along polar logarithmic curves, dynamically balancing around your focal point for effortless visual discovery.</p>
+            <div class="tag-row">
+              <span class="feature-tag">Logarithmic Curves</span>
+              <span class="feature-tag">Polar Coordinates</span>
+              <span class="feature-tag">Zero Collision</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/appstore_screenshots/05_Geometric_Formations_Lotus.png" alt="Geometric Lotus Formation">
+            <span class="showcase-badge">Trigonometric Architecture</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Floating Lotus & Orbital Arrays</h3>
+            <p class="showcase-desc">Concentric rings and tiered petals create an expansive stage for multi-display setups, keeping high-frequency tools within immediate click range.</p>
+            <div class="tag-row">
+              <span class="feature-tag">Multi-Display</span>
+              <span class="feature-tag">Orbital Rings</span>
+              <span class="feature-tag">120 FPS Metal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2 -->
+    <section class="feature-section" id="gestures">
+      <div class="section-header-box">
+        <span class="section-pill">Tactile Ergonomics</span>
+        <h2 class="section-title">Proven Gestures, Swipes & Hot Corners</h2>
+        <p class="section-desc">Build 10 introduces proven, friction-free activation methods designed to fit your natural muscle memory without conflicting with Finder or everyday apps.</p>
+      </div>
+
+      <div class="feature-grid-3">
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/appstore_screenshots/07_Motion_Physics_And_Gestures.png" alt="Hot Corner & Edge Push">
+            <span class="showcase-badge">Quick Note Style</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Bottom-Right Hot Corner</h3>
+            <p class="showcase-desc">Glide your cursor effortlessly into the bottom-right corner of your screen to instantly reveal or dismiss Genie — identical to Apple's native Quick Note flow.</p>
+            <div class="tag-row">
+              <span class="feature-tag">Zero Misclicks</span>
+              <span class="feature-tag">Instant Reveal</span>
+              <span class="feature-tag">Configurable</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/05_Real_Motion_Physics_And_FX.png" alt="Right Edge Push">
+            <span class="showcase-badge">Border Bump Trigger</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Right-Edge Cursor Push</h3>
+            <p class="showcase-desc">A gentle bump against the right screen boundary unlocks iPhone Mode. Perfectly tuned velocity thresholds ensure it only triggers when intentional.</p>
+            <div class="tag-row">
+              <span class="feature-tag">Edge Detection</span>
+              <span class="feature-tag">Velocity Shield</span>
+              <span class="feature-tag">Slide-Over</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/appstore_screenshots/02_App_Matrix_Navigation.png" alt="Smart App Shielding">
+            <span class="showcase-badge">Shielded Focus</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Smart App Shielding & Finder Double-Click</h3>
+            <p class="showcase-desc">Genie strictly ignores gestures when working in Xcode, Safari, or Slack, and leaves Finder folder double-clicks 100% native and unhindered.</p>
+            <div class="tag-row">
+              <span class="feature-tag">Zero Scroll Glitch</span>
+              <span class="feature-tag">Native Folders</span>
+              <span class="feature-tag">Event Isolation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3 -->
+    <section class="feature-section" id="cursor-fx">
+      <div class="section-header-box">
+        <span class="section-pill">GPU Particle Engine</span>
+        <h2 class="section-title">Interactive Cursor Playground (Move Your Mouse)</h2>
+        <p class="section-desc">Experience real-time Metal particle trails directly inside your browser. Move your mouse across the interactive canvas below to watch particle dynamics react to your velocity.</p>
+      </div>
+
+      <div class="canvas-card-wrapper">
+        <canvas id="particle-canvas"></canvas>
+        <div class="canvas-overlay-controls">
+          <span style="color: var(--text); font-weight:600;">✨ Move your cursor inside this canvas</span>
+          <div class="canvas-presets">
+            <button class="canvas-btn active" onclick="setParticleStyle('stardust', this)">✨ Cosmic Stardust</button>
+            <button class="canvas-btn" onclick="setParticleStyle('neon', this)">⚡️ Tokyo Neon</button>
+            <button class="canvas-btn" onclick="setParticleStyle('liquid', this)">💧 Magnetic Aura</button>
+            <button class="canvas-btn" onclick="setParticleStyle('pulsar', this)">🌊 Quantum Waves</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-grid-2" style="margin-top: 24px;">
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/07_Real_Cursor_Effects.png" alt="Cursor Trails">
+            <span class="showcase-badge">Metal 3 Hardware</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Sub-Millisecond Metal Shading</h3>
+            <p class="showcase-desc">Rendered with Apple Metal Shading Language at 120 FPS ProMotion refresh rates with 0% idle CPU overhead when stationary.</p>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/05_Mouse_And_Trails_FX.png" alt="Mouse and Trails">
+            <span class="showcase-badge">Inertial Fluidics</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Particle Velocity Attenuation</h3>
+            <p class="showcase-desc">Fast cursor sweeps stretch particles into aerodynamic ribbons, which softly decelerate and dissipate based on fluid drag equations.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4 -->
+    <section class="feature-section" id="battery-designs">
+      <div class="section-header-box">
+        <span class="section-pill">Status Bar Customizer</span>
+        <h2 class="section-title">Dynamic Battery Designs & Menu Bar Studio</h2>
+        <p class="section-desc">Replace your static macOS battery icon with fluid living gauges. Drag the percentage slider below to test how each design transforms from full power to low-energy warning.</p>
+      </div>
+
+      <div class="sim-stage-card">
+        <div class="battery-lab-container">
+          <div class="battery-preview-board">
+            
+            <div class="battery-sample-card">
+              <span class="battery-sample-title">1. Apple Liquid Glass Capsule</span>
+              <div class="batt-liquid-glass">
+                <div class="batt-liquid-fill" id="fill-liquid"></div>
+                <span class="batt-liquid-text" id="text-liquid">85%</span>
+              </div>
+            </div>
+
+            <div class="battery-sample-card">
+              <span class="battery-sample-title">2. Cyberpunk Digital HUD</span>
+              <div class="batt-cyberpunk" id="cyber-container">
+                <div class="cyber-bar active"></div>
+                <div class="cyber-bar active"></div>
+                <div class="cyber-bar active"></div>
+                <div class="cyber-bar active"></div>
+                <div class="cyber-bar active"></div>
+                <div class="cyber-bar"></div>
+                <span class="cyber-text" id="text-cyber">85%</span>
+              </div>
+            </div>
+
+            <div class="battery-sample-card">
+              <span class="battery-sample-title">3. Minimalist Monochrome Pill</span>
+              <div class="batt-monochrome">
+                <span class="batt-mono-dot" id="dot-mono"></span>
+                <span id="text-mono">85% Battery</span>
+              </div>
+            </div>
+
+            <div class="battery-sample-card">
+              <span class="battery-sample-title">4. Vertical Energy Column</span>
+              <div class="batt-vertical-column">
+                <div class="vert-stack" id="vert-stack">
+                  <div class="vert-cell"></div>
+                  <div class="vert-cell"></div>
+                  <div class="vert-cell"></div>
+                  <div class="vert-cell"></div>
+                </div>
+                <span class="vert-text" id="text-vert">85% Power</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="battery-controls-panel">
+            <div class="control-row">
+              <label>
+                <span>Battery Level</span>
+                <span id="slider-val" style="color: var(--gold); font-weight:700;">85%</span>
+              </label>
+              <input type="range" min="5" max="100" value="85" class="slider-range" id="battery-slider" oninput="updateBatterySimulator(this.value)">
+            </div>
+
+            <button class="btn-toggle-switch" onclick="toggleChargingState()">
+              <span>⚡️ AC Power (Charging)</span>
+              <span id="charging-status-text" style="color:var(--text-muted);">Unplugged</span>
+            </button>
+
+            <button class="btn-toggle-switch" onclick="toggleLowPowerMode()">
+              <span>🌱 Low Power Mode</span>
+              <span id="lowpower-status-text" style="color:var(--text-muted);">Off</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-grid-2" style="margin-top:24px;">
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/appstore_screenshots/09_Dynamic_Battery_Status_Bar.png" alt="Dynamic Battery Status Bar">
+            <span class="showcase-badge">App Store Feature</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Hardware Telemetry Readouts</h3>
+            <p class="showcase-desc">Instant real-time readings of active discharge rate, wattage draw, charge cycle health, and estimated time remaining.</p>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/08_Real_Status_Bar_Customizer.png" alt="Status Bar Customizer">
+            <span class="showcase-badge">Studio Hub</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Customizable Menu Bar Dropdown</h3>
+            <p class="showcase-desc">Organize battery styles, date formatting, and appearance presets in the sleek Studio Hub dropdown menu.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5 -->
+    <section class="feature-section" id="themes-shaders">
+      <div class="section-header-box">
+        <span class="section-pill">Visual Splendor</span>
+        <h2 class="section-title">52+ Living Themes & Real-Time Camouflage</h2>
+        <p class="section-desc">Genie breaks away from static black and white windows. Every surface is an active Metal 3 shader that responds to light, motion, and your desktop wallpaper.</p>
+      </div>
+
+      <div class="feature-grid-3">
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/appstore_screenshots/03_Studio_Hub_Living_Themes.png" alt="Living Themes">
+            <span class="showcase-badge">Metal 3 Engine</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Frosted Aero & Tokyo Neon</h3>
+            <p class="showcase-desc">High-refraction acrylic glass and electric rain shaders simulate vibrant ambient lighting directly on your GPU without touching your CPU.</p>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/appstore_screenshots/04_Wallpaper_Camouflage_Mode.png" alt="Wallpaper Camouflage Mode">
+            <span class="showcase-badge">Adaptive Optical Blur</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Wallpaper Chameleon Mode</h3>
+            <p class="showcase-desc">Samples your macOS wallpaper in real-time to dissolve the window boundary, blending your apps directly into your photography.</p>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/01_Real_Themes_And_Shaders.png" alt="Cosmic Aurora">
+            <span class="showcase-badge">Dynamic Aurora</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Cosmic Deep Space Aurora</h3>
+            <p class="showcase-desc">Slow undulating electromagnetic waves of emerald, violet, and gold pulse peacefully beneath your app icons.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6 -->
+    <section class="feature-section" id="audio-pets">
+      <div class="section-header-box">
+        <span class="section-pill">Physical Feedback</span>
+        <h2 class="section-title">Tactile Audio Switchboard & Zero-G Companions</h2>
+        <p class="section-desc">Experience acoustic satisfaction on every click. Test Genie's mechanical switch sounds below using the built-in browser audio engine.</p>
+      </div>
+
+      <div class="sim-stage-card">
+        <h3 style="font-size:1.15rem; margin-bottom:6px; color:var(--text);">🔊 Interactive Mechanical Soundboard (Click to Test)</h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:14px;">Every keystroke, hover, and app launch triggers acoustic resonance paired with Apple Taptic vibration.</p>
+
+        <div class="sound-switch-row">
+          <button class="sound-key-btn" onclick="playAcousticTone(650, 'square')">
+            <span>⌨️ Mechanical Blue Switch</span>
+          </button>
+          <button class="sound-key-btn" onclick="playAcousticTone(420, 'triangle')">
+            <span>🎚 Cream Linear Switch</span>
+          </button>
+          <button class="sound-key-btn" onclick="playAcousticTone(880, 'sine')">
+            <span>💧 Soft Ambient Droplet</span>
+          </button>
+          <button class="sound-key-btn" onclick="playAcousticTone(220, 'sawtooth')">
+            <span>⚡️ Cyber Haptic Thump</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="feature-grid-2" style="margin-top:24px;">
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/appstore_screenshots/08_Spatial_Sound_Engine.png" alt="Spatial Sound Engine">
+            <span class="showcase-badge">3D Stereo Panning</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Spatial Acoustic Engine</h3>
+            <p class="showcase-desc">Sound effects pan left or right based on the icon's exact physical coordinates on your screen for rich spatial realism.</p>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/03_Real_Entities_And_Companions.png" alt="Entities & Companions">
+            <span class="showcase-badge">120 FPS Physics</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Desktop Companions & Pinball</h3>
+            <p class="showcase-desc">Playful ambient pets orbit your cursor, bounce with zero-G physics, or let you play pinball directly on your wallpaper.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; align-items: center;">
+      <p><strong>Genie — Desktop Workspace</strong> • Precision-crafted in California by Nicholas M. Dudek</p>
+      <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+        <a href="index.html">Home Overview</a>
+        <a href="features.html" style="color:var(--text); font-weight:600;">Feature Studio</a>
+        <a href="privacy.html">Zero-Telemetry Privacy</a>
+        <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" rel="noopener">Mac App Store</a>
+      </div>
+      <p style="font-size: 0.8rem; color: #64748b; margin-top: 10px;">
+        Universal Binary (Apple Silicon & Intel) • macOS 14 Sonoma & macOS 15 Sequoia • Version 1.0.0 (Build 10)
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    function initTheme() {
+      const saved = localStorage.getItem("genie_theme") || "dark";
+      applyTheme(saved);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+      const next = current === "dark" ? "light" : "dark";
+      applyTheme(next);
+      localStorage.setItem("genie_theme", next);
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      const icon = document.getElementById("theme-icon");
+      const text = document.getElementById("theme-text");
+      if (icon) icon.textContent = theme === "dark" ? "🌙" : "☀️";
+      if (text) text.textContent = theme === "dark" ? "Dark" : "Light";
+    }
+
+    initTheme();
+
+    function setTrajectory(type, btn) {
+      document.querySelectorAll(".traj-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      const overlay = document.getElementById("mock-genie");
+      overlay.classList.add("animating-out");
+
+      setTimeout(() => {
+        overlay.className = "mock-genie-overlay traj-" + type + " animating-out";
+        void overlay.offsetWidth;
+        overlay.classList.remove("animating-out");
+      }, 250);
+    }
+
+    let audioCtx = null;
+    function playAcousticTone(freq, type = 'sine') {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.4, audioCtx.currentTime + 0.08);
+
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.09);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } catch (e) {
+        console.log("Audio not enabled or blocked", e);
+      }
+    }
+
+    let isCharging = false;
+    let isLowPower = false;
+
+    function updateBatterySimulator(val) {
+      val = parseInt(val, 10);
+      document.getElementById("slider-val").textContent = val + "%";
+
+      const fill = document.getElementById("fill-liquid");
+      const textLiquid = document.getElementById("text-liquid");
+      fill.style.width = val + "%";
+      textLiquid.textContent = (isCharging ? "⚡️ " : "") + val + "%";
+      if (val <= 20) {
+        fill.style.background = "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)";
+      } else if (val <= 35) {
+        fill.style.background = "linear-gradient(90deg, #f59e0b 0%, #d97706 100%)";
+      } else {
+        fill.style.background = "linear-gradient(90deg, #34d399 0%, #10b981 100%)";
+      }
+
+      document.getElementById("text-cyber").textContent = val + "%";
+      const cyberBars = document.querySelectorAll("#cyber-container .cyber-bar");
+      const activeCount = Math.round((val / 100) * cyberBars.length);
+      cyberBars.forEach((bar, idx) => {
+        if (idx < activeCount) {
+          bar.classList.add("active");
+          bar.style.background = val <= 20 ? "#ef4444" : "#38bdf8";
+          bar.style.boxShadow = val <= 20 ? "0 0 8px #ef4444" : "0 0 8px #38bdf8";
+        } else {
+          bar.classList.remove("active");
+          bar.style.background = "rgba(56, 189, 248, 0.15)";
+          bar.style.boxShadow = "none";
+        }
+      });
+
+      const monoText = document.getElementById("text-mono");
+      monoText.textContent = (isCharging ? "⚡️ " : "") + val + "% Battery";
+      const dot = document.getElementById("dot-mono");
+      dot.style.background = val <= 20 ? "#ef4444" : (isLowPower ? "#f59e0b" : "#34d399");
+      dot.style.boxShadow = `0 0 8px ${dot.style.background}`;
+
+      const vertCells = document.querySelectorAll("#vert-stack .vert-cell");
+      const activeVert = Math.round((val / 100) * vertCells.length);
+      vertCells.forEach((c, i) => {
+        c.style.opacity = i < activeVert ? "1" : "0.15";
+      });
+      document.getElementById("text-vert").textContent = (isCharging ? "⚡️ " : "") + val + "% Power";
+    }
+
+    function toggleChargingState() {
+      isCharging = !isCharging;
+      const statusText = document.getElementById("charging-status-text");
+      statusText.textContent = isCharging ? "Connected ⚡️" : "Unplugged";
+      statusText.style.color = isCharging ? "var(--green)" : "var(--text-muted)";
+      const currentVal = document.getElementById("battery-slider").value;
+      updateBatterySimulator(currentVal);
+    }
+
+    function toggleLowPowerMode() {
+      isLowPower = !isLowPower;
+      const statusText = document.getElementById("lowpower-status-text");
+      statusText.textContent = isLowPower ? "Active (Amber)" : "Off";
+      statusText.style.color = isLowPower ? "var(--gold)" : "var(--text-muted)";
+      const currentVal = document.getElementById("battery-slider").value;
+      updateBatterySimulator(currentVal);
+    }
+
+    const canvas = document.getElementById("particle-canvas");
+    const ctx = canvas.getContext("2d");
+    let particles = [];
+    let currentStyle = 'stardust';
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = 340;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function setParticleStyle(style, btn) {
+      currentStyle = style;
+      document.querySelectorAll(".canvas-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+
+    class Particle {
+      constructor(x, y, style) {
+        this.x = x;
+        this.y = y;
+        this.style = style;
+        this.life = 1.0;
+
+        if (style === 'stardust') {
+          this.size = Math.random() * 4 + 2;
+          this.vx = (Math.random() - 0.5) * 2;
+          this.vy = (Math.random() - 0.5) * 2 - 0.5;
+          this.color = Math.random() > 0.5 ? '#f4c375' : '#ffffff';
+          this.decay = 0.02 + Math.random() * 0.02;
+        } else if (style === 'neon') {
+          this.size = Math.random() * 6 + 3;
+          this.vx = (Math.random() - 0.5) * 1.5;
+          this.vy = (Math.random() - 0.5) * 1.5;
+          this.color = Math.random() > 0.5 ? '#38bdf8' : '#ec4899';
+          this.decay = 0.03;
+        } else if (style === 'liquid') {
+          this.size = Math.random() * 12 + 6;
+          this.vx = (Math.random() - 0.5) * 0.8;
+          this.vy = (Math.random() - 0.5) * 0.8;
+          this.color = 'rgba(147, 95, 245, 0.6)';
+          this.decay = 0.025;
+        } else {
+          this.size = 2;
+          this.maxRadius = Math.random() * 30 + 15;
+          this.vx = 0;
+          this.vy = 0;
+          this.color = '#34d399';
+          this.decay = 0.035;
+        }
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+        if (this.style === 'pulsar') {
+          this.size += 1.5;
+        }
+      }
+
+      draw(c) {
+        c.save();
+        c.globalAlpha = Math.max(0, this.life);
+        c.fillStyle = this.color;
+        c.strokeStyle = this.color;
+
+        if (this.style === 'pulsar') {
+          c.beginPath();
+          c.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          c.lineWidth = 2;
+          c.stroke();
+        } else {
+          c.beginPath();
+          c.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          c.fill();
+        }
+        c.restore();
+      }
+    }
+
+    function spawnParticles(x, y) {
+      const count = currentStyle === 'liquid' ? 2 : 4;
+      for (let i = 0; i < count; i++) {
+        particles.push(new Particle(x, y, currentStyle));
+      }
+    }
+
+    canvas.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      spawnParticles(x, y);
+    });
+
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      for (let i = 0; i < 15; i++) {
+        particles.push(new Particle(x, y, currentStyle));
+      }
+      playAcousticTone(800, 'sine');
+    });
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update();
+        p.draw(ctx);
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+  </script>
+</body>
+</html>
