@@ -1163,7 +1163,33 @@
         </div>
       </div>
 
-      <div class="feature-grid-2" style="margin-top:24px;">
+      <!-- Real Menu Bar Dropdown Showcase & Screenshot Switcher -->
+      <div class="sim-stage-card" style="margin-top:28px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+          <div>
+            <h3 style="font-size:1.3rem; font-weight:700; color:var(--text); margin-bottom:4px;">Direct Menu Bar Dropdown Inspection</h3>
+            <p style="color:var(--text-muted); font-size:0.88rem;">Explore high-resolution Retina captures of the actual Studio Hub menu bar controls running in macOS.</p>
+          </div>
+          <div class="canvas-controls" id="feat-menu-controls">
+            <button class="canvas-btn active" onclick="switchFeatMenuImg('battery', this)">🔋 Settings & Battery</button>
+            <button class="canvas-btn" onclick="switchFeatMenuImg('statusbar', this)">⚡️ Status Customizer</button>
+            <button class="canvas-btn" onclick="switchFeatMenuImg('hub', this)">🎛️ Studio Hub</button>
+            <button class="canvas-btn" onclick="switchFeatMenuImg('themes', this)">🎨 Themes Menu</button>
+            <button class="canvas-btn" onclick="switchFeatMenuImg('sounds', this)">🔊 Sound Engine</button>
+          </div>
+        </div>
+
+        <div style="position:relative; border-radius:16px; overflow:hidden; border:1px solid var(--border); background:#000; box-shadow:0 16px 40px rgba(0,0,0,0.5);">
+          <img id="feat-menu-display-img" src="assets/images/4_Settings_And_Battery_Styles.png" alt="Settings and Battery Styles Menu Bar Dropdown" style="width:100%; height:auto; display:block; aspect-ratio:16/10; object-fit:cover; transition:opacity 0.25s ease;">
+          <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(180deg, transparent 0%, rgba(7,9,14,0.95) 40%, rgba(7,9,14,0.98) 100%); padding:24px; color:#fff;">
+            <div style="display:inline-block; font-size:0.75rem; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;" id="feat-menu-tag">Retina 3024×1964 System Capture</div>
+            <h4 style="font-size:1.25rem; font-weight:700; margin-bottom:6px; color:#fff;" id="feat-menu-title">Settings & Battery Styles Dropdown</h4>
+            <p style="font-size:0.9rem; color:#cbd5e1; line-height:1.5; margin:0;" id="feat-menu-desc">Shows the live configuration panel where users can switch between 28+ battery styles, toggle SMC hardware wattage readouts, enable Low Power Mode adaptations, and customize status bar icons.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-grid-3" style="margin-top:24px;">
         <div class="showcase-card">
           <div class="showcase-media-box">
             <img src="assets/images/appstore_screenshots/09_Dynamic_Battery_Status_Bar.png" alt="Dynamic Battery Status Bar">
@@ -1171,7 +1197,7 @@
           </div>
           <div class="showcase-body">
             <h3 class="showcase-title">Hardware Telemetry Readouts</h3>
-            <p class="showcase-desc">Instant real-time readings of active discharge rate, wattage draw, charge cycle health, and estimated time remaining.</p>
+            <p class="showcase-desc">Instant real-time readings of active discharge rate, wattage draw (e.g. 14.2W), charge cycle health, and estimated time remaining.</p>
           </div>
         </div>
 
@@ -1181,8 +1207,19 @@
             <span class="showcase-badge">Studio Hub</span>
           </div>
           <div class="showcase-body">
-            <h3 class="showcase-title">Customizable Menu Bar Dropdown</h3>
-            <p class="showcase-desc">Organize battery styles, date formatting, and appearance presets in the sleek Studio Hub dropdown menu.</p>
+            <h3 class="showcase-title">Real Status Bar Customizer</h3>
+            <p class="showcase-desc">Organize battery styles, date formatting, percentage labels, and appearance presets in the sleek Studio Hub dropdown menu.</p>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/images/3_MenuBar_Studio_Hub.png" alt="Studio Hub Command Center">
+            <span class="showcase-badge">Menu Bar Dropdown</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">11-Tab Command Center</h3>
+            <p class="showcase-desc">Quickly configure app matrices, desktop view modes, particle trails, and spatial sound without opening a heavy preferences window.</p>
           </div>
         </div>
       </div>
@@ -1554,6 +1591,67 @@
       requestAnimationFrame(animateParticles);
     }
     animateParticles();
-  </script>
+  
+    // Feature Page Menu Bar Dropdown Switcher
+    const FEAT_MENU_DATA = {
+      battery: {
+        img: 'assets/images/4_Settings_And_Battery_Styles.png',
+        tag: 'Retina 3024×1964 System Capture',
+        title: 'Settings & Battery Styles Dropdown',
+        desc: 'Shows the live configuration panel where users can switch between 28+ battery styles, toggle SMC hardware wattage readouts, enable Low Power Mode adaptations, and customize status bar icons.'
+      },
+      statusbar: {
+        img: 'assets/images/08_Real_Status_Bar_Customizer.png',
+        tag: 'Retina 2880×1800 System Capture',
+        title: 'Real Status Bar Customizer',
+        desc: 'Deep status bar calibration: adjust date & clock typography, toggle percentage indicators, customize charging glow thresholds, and select monochrome or neon color schemes.'
+      },
+      hub: {
+        img: 'assets/images/3_MenuBar_Studio_Hub.png',
+        tag: 'Retina 3024×1964 System Capture',
+        title: 'Studio Hub Menu Bar Dropdown',
+        desc: 'The complete 11-tab studio command center unrolled from the macOS menu bar icon. Instant control over Apps, Desktop Modes, Themes, Formations, and Sound Engines.'
+      },
+      themes: {
+        img: 'assets/images/02_Studio_Hub_Themes.png',
+        tag: 'Retina 2880×1800 System Capture',
+        title: 'Living Themes & Shaders Menu',
+        desc: 'Browse and preview all 52+ real-time GPU Metal 3 shaders with instant live thumbnails directly inside the menu bar popup.'
+      },
+      sounds: {
+        img: 'assets/images/03_Studio_Hub_Sounds.png',
+        tag: 'Retina 2880×1800 System Capture',
+        title: 'Spatial Sound & Haptics Menu',
+        desc: 'Test mechanical switch clicks, calibrate trackpad haptic pulses, and adjust spatial volume sliders directly from the menu bar.'
+      }
+    };
+
+    function switchFeatMenuImg(key, btn) {
+      const d = FEAT_MENU_DATA[key];
+      if (!d) return;
+
+      const btns = document.querySelectorAll('#feat-menu-controls .canvas-btn');
+      btns.forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+
+      const img = document.getElementById('feat-menu-display-img');
+      const tag = document.getElementById('feat-menu-tag');
+      const title = document.getElementById('feat-menu-title');
+      const desc = document.getElementById('feat-menu-desc');
+
+      if (img) {
+        img.style.opacity = '0.3';
+        setTimeout(() => {
+          img.src = d.img;
+          img.alt = d.title;
+          img.style.opacity = '1';
+        }, 150);
+      }
+      if (tag) tag.textContent = d.tag;
+      if (title) title.textContent = d.title;
+      if (desc) desc.textContent = d.desc;
+    }
+
+</script>
 </body>
 </html>

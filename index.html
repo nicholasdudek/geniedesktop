@@ -1449,6 +1449,444 @@
       background: rgba(255, 255, 255, 0.06);
     }
 
+
+    /* ==========================================================================
+       Menu Bar Studio Hub & Dynamic Battery Customizer Section
+       ========================================================================== */
+    .menubar-studio-section {
+      max-width: 1200px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .menubar-hero-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 36px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      margin-bottom: 36px;
+    }
+
+    .menubar-tabs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 28px;
+      background: rgba(0, 0, 0, 0.28);
+      padding: 8px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .menubar-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 9px 18px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .menubar-tab-btn:hover {
+      color: var(--text);
+      background: var(--tag-bg);
+    }
+
+    .menubar-tab-btn.active {
+      background: var(--border-accent);
+      color: var(--gold);
+      border-color: var(--border-accent);
+      box-shadow: 0 2px 12px rgba(244, 195, 117, 0.2);
+    }
+
+    .menubar-display-stage {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    @media (max-width: 960px) {
+      .menubar-display-stage {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .menubar-screen-frame {
+      position: relative;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+      box-shadow: 0 20px 48px rgba(0,0,0,0.55);
+    }
+
+    .menubar-screen-frame img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      transition: opacity 0.3s ease;
+    }
+
+    .menubar-zoom-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--gold);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .menubar-details-pane h3 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .menubar-details-pane p {
+      color: var(--text-muted);
+      font-size: 0.96rem;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    .menubar-feature-bullets {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .menubar-feature-bullets li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .menubar-feature-bullets li span.bullet-icon {
+      color: var(--gold);
+      font-size: 1.15rem;
+      line-height: 1.1;
+      flex-shrink: 0;
+    }
+
+    .menubar-details-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(244, 195, 117, 0.15);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      padding: 10px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+    .menubar-details-cta:hover {
+      background: var(--gold);
+      color: #0c0f17;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(244, 195, 117, 0.3);
+    }
+
+    /* Battery Selections Cards */
+    .battery-selections-box {
+      margin-top: 48px;
+    }
+
+    .battery-selections-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .battery-selections-header h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .battery-selections-header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .battery-styles-showcase-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+
+    .battery-style-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 14px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .battery-style-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+      background: var(--card-hover);
+    }
+
+    .battery-style-name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .battery-style-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .battery-style-tag {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--gold);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Live CSS Battery Mockups */
+    .idx-batt-liquid {
+      width: 126px;
+      height: 34px;
+      border-radius: 17px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    .idx-batt-liquid-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 88%;
+      background: linear-gradient(90deg, #34d399, #10b981);
+      border-radius: 17px 0 0 17px;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+    }
+    .idx-batt-liquid-text {
+      position: relative;
+      z-index: 2;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    }
+
+    .idx-batt-cyber {
+      width: 136px;
+      height: 32px;
+      background: #050811;
+      border: 1px solid #38bdf8;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      gap: 3px;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .idx-cyber-seg {
+      flex: 1;
+      height: 18px;
+      background: #38bdf8;
+      border-radius: 1.5px;
+      box-shadow: 0 0 6px #38bdf8;
+    }
+    .idx-cyber-seg.dim {
+      background: rgba(56, 189, 248, 0.18);
+      box-shadow: none;
+    }
+    .idx-cyber-txt {
+      font-family: ui-monospace, monospace;
+      font-size: 0.74rem;
+      color: #38bdf8;
+      font-weight: 700;
+      margin-left: 4px;
+    }
+
+    .idx-batt-mono {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .idx-mono-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+    }
+
+    .idx-batt-vert {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .idx-vert-box {
+      width: 20px;
+      height: 42px;
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      border-radius: 3.5px;
+      padding: 2px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 2px;
+      position: relative;
+    }
+    .idx-vert-box::before {
+      content: "";
+      position: absolute;
+      top: -4.5px;
+      left: 5.5px;
+      width: 6px;
+      height: 2.5px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 1px 1px 0 0;
+    }
+    .idx-vert-cell {
+      height: 6px;
+      background: #f4c375;
+      border-radius: 1px;
+    }
+    .idx-vert-cell.empty {
+      background: rgba(244, 195, 117, 0.15);
+    }
+    .idx-vert-txt {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .idx-batt-vision {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+    .idx-vision-ring {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #38bdf8;
+      border-top-color: transparent;
+      animation: spin 3s linear infinite;
+    }
+    .idx-vision-txt {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Telemetry strip */
+    .telemetry-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-top: 28px;
+    }
+    .telemetry-card {
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+    .telemetry-card:hover {
+      border-color: var(--border-accent);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .telemetry-num {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--gold);
+      margin-bottom: 4px;
+      font-feature-settings: "tnum";
+    }
+    .telemetry-lbl {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+    }
+    .telemetry-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
 </style>
 </head>
 <body>
@@ -1466,7 +1904,8 @@
       <a href="#stats" data-i18n="nav_stats">Speed & Stats</a>
       <a href="#architecture" data-i18n="nav_architecture">Architecture</a>
       <a href="#features" data-i18n="nav_features">Features</a>
-      <a href="features.html" style="color:var(--gold); font-weight:600;">Studio & Gestures ✨</a>
+      <a href="#menubar-studio" style="color:var(--gold); font-weight:600;">Menu Bar & Battery ⚡️</a>
+      <a href="features.html">Studio Lab 🧪</a>
       <a href="#screenshots" data-i18n="nav_showcase">Showcase</a>
       <a href="#languages" data-i18n="nav_languages">Languages</a>
       <a href="#contact" data-i18n="nav_support">Support</a>
@@ -1767,6 +2206,174 @@
           <span class="tech-tag">NSHapticFeedback</span>
           <span class="tech-tag">AVAudioEngine</span>
           <span class="tech-tag">Sub-ms Audio</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  
+  <!-- Menu Bar Studio Hub & Dynamic Battery Customizer Showcase Section -->
+  <section id="menubar-studio" class="menubar-studio-section">
+    <div class="section-title">
+      <div class="hero-badge" style="margin-bottom: 12px; display: inline-flex;">⚡️ Real macOS Menu Bar Power</div>
+      <h2>Menu Bar Studio Hub & Dynamic Battery Customizer</h2>
+      <p>Take complete command of your workspace without ever minimizing your apps. Switch between 28+ living battery styles, monitor active wattage telemetry, and tweak all 11 studio subsystems directly from your macOS menu bar.</p>
+    </div>
+
+    <!-- Main Interactive Menu Showcase Card -->
+    <div class="menubar-hero-card">
+      <!-- Tab Switcher for Real Menu Bar Screenshots -->
+      <div class="menubar-tabs-bar" id="menubar-tabs-bar">
+        <button class="menubar-tab-btn active" onclick="switchMenubarTab('battery', this)">
+          <span>🔋 Battery Styles & Settings</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('status', this)">
+          <span>⚡️ Status Bar Customizer</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('hub', this)">
+          <span>🎛️ Studio Hub Command Center</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('themes', this)">
+          <span>🎨 Living Themes Menu</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('sounds', this)">
+          <span>🔊 Spatial Audio Engine</span>
+        </button>
+      </div>
+
+      <!-- Display Stage: Real Screenshot + Deep Feature Breakdown -->
+      <div class="menubar-display-stage">
+        <div class="menubar-screen-frame">
+          <img id="menubar-feature-img" src="assets/images/4_Settings_And_Battery_Styles.png" alt="Settings and Battery Styles Menu Bar Dropdown">
+          <span class="menubar-zoom-badge" id="menubar-feature-badge">Retina Menu Bar Capture</span>
+        </div>
+
+        <div class="menubar-details-pane">
+          <span class="hero-version-pill" id="menubar-pane-pill" style="margin-bottom:12px; display:inline-block;">Studio Hub Subsystem</span>
+          <h3 id="menubar-pane-title">28+ Living Battery Styles & Hardware Telemetry</h3>
+          <p id="menubar-pane-desc">Replace your static system battery icon with fluid living gauges. Genie connects directly to Apple Silicon power rails and the System Management Controller (SMC) to deliver millisecond-level telemetry right on your status bar.</p>
+
+          <ul class="menubar-feature-bullets" id="menubar-pane-bullets">
+            <li>
+              <span class="bullet-icon">⚡️</span>
+              <div><strong>Real-Time Wattage & Velocity:</strong> Live readouts of active power draw in watts (e.g. 14.2W), battery cycle count, and precise discharge speed.</div>
+            </li>
+            <li>
+              <span class="bullet-icon">✨</span>
+              <div><strong>5 Signature Gauge Families:</strong> Liquid Glass Capsule, Cyberpunk Digital HUD, VisionOS Pill, Vertical Energy Column, and Minimalist Monochrome.</div>
+            </li>
+            <li>
+              <span class="bullet-icon">🔋</span>
+              <div><strong>State-Aware Transitions:</strong> Fluid green charging bolts on AC power, ember amber in Low Power Mode, and red pulse below 20%.</div>
+            </li>
+            <li>
+              <span class="bullet-icon">🎛️</span>
+              <div><strong>Zero-Delay Hotkey Control:</strong> Open the Studio Hub dropdown instantaneously via global hotkey or top-edge hover without stealing active window focus.</div>
+            </li>
+          </ul>
+
+          <a href="features.html#battery-designs" class="menubar-details-cta">
+            <span>Test the Interactive Battery Lab & Simulator</span>
+            <span>→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- The 5 Signature Battery Selections Showcase -->
+    <div class="battery-selections-box">
+      <div class="battery-selections-header">
+        <h3>5 Signature Battery Selections — Built for Every Aesthetic</h3>
+        <p>Whether you want Cyberpunk HUD telemetry or an ultra-clean VisionOS glass pill, Genie gives your Mac status bar a bespoke look.</p>
+      </div>
+
+      <div class="battery-styles-showcase-grid">
+        <!-- 1. Liquid Glass Capsule -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Fluid Physics</span>
+          <div class="idx-batt-liquid">
+            <div class="idx-batt-liquid-fill"></div>
+            <span class="idx-batt-liquid-text">88%</span>
+          </div>
+          <div class="battery-style-name">Liquid Glass Capsule</div>
+          <div class="battery-style-desc">Frosted translucent glass with dynamic wave meniscus that sloshes on motion and glows emerald when charging.</div>
+        </div>
+
+        <!-- 2. Cyberpunk Digital HUD -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Telemetry HUD</span>
+          <div class="idx-batt-cyber">
+            <div class="idx-cyber-seg"></div>
+            <div class="idx-cyber-seg"></div>
+            <div class="idx-cyber-seg"></div>
+            <div class="idx-cyber-seg"></div>
+            <div class="idx-cyber-seg dim"></div>
+            <span class="idx-cyber-txt">88%</span>
+          </div>
+          <div class="battery-style-name">Cyberpunk Digital HUD</div>
+          <div class="battery-style-desc">Segmented neon energy bars with active watt draw readouts and glowing critical reserve alarms.</div>
+        </div>
+
+        <!-- 3. VisionOS Dynamic Pill -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Spatial Computing</span>
+          <div class="idx-batt-vision">
+            <div class="idx-vision-ring"></div>
+            <span class="idx-vision-txt">88% Charged</span>
+          </div>
+          <div class="battery-style-name">VisionOS Dynamic Pill</div>
+          <div class="battery-style-desc">Ultra-subtle acrylic glass pill inspired by Apple VisionOS with real-time radial charging pulse.</div>
+        </div>
+
+        <!-- 4. Minimalist Monochrome -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Apple Pure</span>
+          <div class="idx-batt-mono">
+            <span class="idx-mono-dot"></span>
+            <span>88% Battery</span>
+          </div>
+          <div class="battery-style-name">Minimalist Monochrome</div>
+          <div class="battery-style-desc">Distraction-free typographic pill tuned to match Apple's native San Francisco status bar typography.</div>
+        </div>
+
+        <!-- 5. Vertical Energy Column -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Compact Density</span>
+          <div class="idx-batt-vert">
+            <div class="idx-vert-box">
+              <div class="idx-vert-cell"></div>
+              <div class="idx-vert-cell"></div>
+              <div class="idx-vert-cell"></div>
+              <div class="idx-vert-cell empty"></div>
+            </div>
+            <span class="idx-vert-txt">88% Power</span>
+          </div>
+          <div class="battery-style-name">Vertical Energy Column</div>
+          <div class="battery-style-desc">Dense vertical cell stack with individual cell discharge physics, perfect for crowded MacBook notches.</div>
+        </div>
+      </div>
+
+      <!-- Real-Time Telemetry Metrics -->
+      <div class="telemetry-strip">
+        <div class="telemetry-card">
+          <div class="telemetry-num">14.2W</div>
+          <div class="telemetry-lbl">Live SMC Wattage</div>
+          <div class="telemetry-sub">Hardware power-rail sampling</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">28+</div>
+          <div class="telemetry-lbl">Living Gauge Styles</div>
+          <div class="telemetry-sub">Dynamic SVG & CoreAnimation</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">100%</div>
+          <div class="telemetry-lbl">Cycle Health Telemetry</div>
+          <div class="telemetry-sub">Full battery wear & thermals</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">11 Tabs</div>
+          <div class="telemetry-lbl">Studio Hub Controls</div>
+          <div class="telemetry-sub">Total menu bar command center</div>
         </div>
       </div>
     </div>
@@ -2565,6 +3172,118 @@
       if (e.key === "ArrowLeft") prevShowcaseSlide();
       if (e.key === "ArrowRight") nextShowcaseSlide();
     });
-  </script>
+  
+    // Menu Bar Studio Hub Screenshot Switcher
+    const MENUBAR_DATA = {
+      battery: {
+        img: 'assets/images/4_Settings_And_Battery_Styles.png',
+        badge: 'Retina Menu Bar Capture',
+        pill: 'Studio Hub • Battery & Status',
+        title: '28+ Living Battery Styles & Hardware Telemetry',
+        desc: 'Replace your static system battery icon with fluid living gauges. Genie connects directly to Apple Silicon power rails and the System Management Controller (SMC) to deliver millisecond-level telemetry right on your status bar.',
+        bullets: [
+          { icon: '⚡️', title: 'Real-Time Wattage & Velocity:', desc: 'Live readouts of active power draw in watts (e.g. 14.2W), battery cycle count, and precise discharge speed.' },
+          { icon: '✨', title: '5 Signature Gauge Families:', desc: 'Liquid Glass Capsule, Cyberpunk Digital HUD, VisionOS Pill, Vertical Energy Column, and Minimalist Monochrome.' },
+          { icon: '🔋', title: 'State-Aware Transitions:', desc: 'Fluid green charging bolts on AC power, ember amber in Low Power Mode, and red pulse below 20%.' },
+          { icon: '🎛️', title: 'Zero-Delay Hotkey Control:', desc: 'Open the Studio Hub dropdown instantaneously via global hotkey or top-edge hover without stealing active window focus.' }
+        ]
+      },
+      status: {
+        img: 'assets/images/08_Real_Status_Bar_Customizer.png',
+        badge: 'Retina Menu Bar Capture',
+        pill: 'Status Bar Customizer',
+        title: 'Deep Status Bar Customization & Date Formatting',
+        desc: 'Configure exactly how your macOS status bar looks and behaves. Fine-tune date formats, toggle percentage text, calibrate battery health warnings, and adjust gauge opacity on the fly.',
+        bullets: [
+          { icon: '📅', title: 'Flexible Clock & Date Formats:', desc: 'Switch between ISO 8601, military 24h, natural language dates, or clean minimalist timestamps.' },
+          { icon: '📊', title: 'Percentage & Voltage Modes:', desc: 'Show percentage, remaining battery runtime (e.g. 8h 42m), or direct rail voltage.' },
+          { icon: '💡', title: 'Dynamic Contrast Shifting:', desc: 'Automatic color inversion ensures perfect legibility over light and dark menu bar backgrounds.' },
+          { icon: '🚀', title: 'Instant Live Apply:', desc: 'Every slider and toggle updates the menu bar in real-time with zero restart required.' }
+        ]
+      },
+      hub: {
+        img: 'assets/images/3_MenuBar_Studio_Hub.png',
+        badge: 'Retina Menu Bar Capture',
+        pill: 'Studio Hub Command Center',
+        title: '11-Tab Full Desktop Workspace Command Center',
+        desc: 'Access every workspace subsystem directly from the menu bar: Apps Matrix, Desktop Screen Modes, Living Themes, Formations, Mouse Trails, Entities, Sounds, Wallpaper, Motion, Status Bar, and VIP Packs.',
+        bullets: [
+          { icon: '📐', title: 'Formations & Matrix Grid:', desc: 'Adjust grid dimensions, launchpad layouts, and spatial formations directly from the dropdown.' },
+          { icon: '⚡️', title: 'Fast App Launcher:', desc: 'Search and launch all installed macOS applications with keyboard navigation and instant filter.' },
+          { icon: '🎯', title: 'Always Accessible:', desc: 'Click the Genie status icon or use ⌃⌥Space to instantly unveil the complete studio interface.' },
+          { icon: '🛡️', title: 'Zero CPU Overhead:', desc: 'Engineered in native Swift and AppKit. Uses 0% CPU when closed and dismisses on click-away.' }
+        ]
+      },
+      themes: {
+        img: 'assets/images/02_Studio_Hub_Themes.png',
+        badge: 'Retina Menu Bar Capture',
+        pill: 'Living GPU Themes Menu',
+        title: '52+ Real-Time Living Metal Shaders in One Click',
+        desc: 'Switch between 52+ hardware-accelerated themes directly from the menu bar dropdown. Preview real-time shaders like Frosted Aero Glass, Tokyo Neon Rain, Cosmic Aurora, and Wallpaper Camouflage.',
+        bullets: [
+          { icon: '🎨', title: 'Instant Shader Previews:', desc: 'Live thumbnail previews of all 52+ shaders render directly inside the dropdown menu.' },
+          { icon: '🪟', title: '1:1 Wallpaper Camouflage:', desc: 'Engage 100% transparent pass-through mode to blend your app matrix directly over your desktop.' },
+          { icon: '⚙️', title: 'Blur & Refraction Controls:', desc: 'Adjust blur radius, frosted saturation, and color tints with real-time slider updates.' },
+          { icon: '🔋', title: 'Energy-Optimized GPU Execution:', desc: 'Shaders run on Apple Metal 3 and pause completely when the workspace is idle.' }
+        ]
+      },
+      sounds: {
+        img: 'assets/images/03_Studio_Hub_Sounds.png',
+        badge: 'Retina Menu Bar Capture',
+        pill: 'Spatial Sound & Haptics Menu',
+        title: 'Mechanical Audio Profiles & Apple Force Touch Haptics',
+        desc: 'Select from authentic mechanical keyboard profiles (Cherry MX Blue, Brown, Red, Topre, Modern Cyber) and calibrate sub-millisecond Apple Taptic trackpad pulses for every click and drag.',
+        bullets: [
+          { icon: '🔊', title: 'PCM Synthesized Audio:', desc: 'Sub-millisecond audio engine delivers ultra-crisp tactile feedback on app selection and launch.' },
+          { icon: '🎚️', title: 'Independent Volume Sliders:', desc: 'Fine-tune volume levels for hover sounds, click sounds, formation switches, and retractions.' },
+          { icon: '📳', title: 'Apple Force Touch Feedback:', desc: 'Physical micro-vibrations synchronized to your trackpad via NSHapticFeedbackManager.' },
+          { icon: '🔇', title: 'Smart Mute Engine:', desc: 'Automatically mutes when audio output is routed to microphones or during screen recordings.' }
+        ]
+      }
+    };
+
+    function switchMenubarTab(tabKey, btnElement) {
+      const data = MENUBAR_DATA[tabKey];
+      if (!data) return;
+
+      // Update button active states
+      const allBtns = document.querySelectorAll('.menubar-tab-btn');
+      allBtns.forEach(b => b.classList.remove('active'));
+      if (btnElement) btnElement.classList.add('active');
+
+      // Update image with smooth fade
+      const img = document.getElementById('menubar-feature-img');
+      const badge = document.getElementById('menubar-feature-badge');
+      if (img) {
+        img.style.opacity = '0.3';
+        setTimeout(() => {
+          img.src = data.img;
+          img.alt = data.title;
+          img.style.opacity = '1';
+        }, 150);
+      }
+      if (badge) badge.textContent = data.badge;
+
+      // Update text pane
+      const pill = document.getElementById('menubar-pane-pill');
+      const title = document.getElementById('menubar-pane-title');
+      const desc = document.getElementById('menubar-pane-desc');
+      const bulletsList = document.getElementById('menubar-pane-bullets');
+
+      if (pill) pill.textContent = data.pill;
+      if (title) title.textContent = data.title;
+      if (desc) desc.textContent = data.desc;
+
+      if (bulletsList) {
+        bulletsList.innerHTML = data.bullets.map(b => `
+          <li>
+            <span class="bullet-icon">${b.icon}</span>
+            <div><strong>${b.title}</strong> ${b.desc}</div>
+          </li>
+        `).join('');
+      }
+    }
+
+</script>
 </body>
 </html>
