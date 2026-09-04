@@ -186,6 +186,25 @@ Here is the complete visual showcase of Genie matching the official Mac App Stor
 
 ---
 
+## 🌐 Native International Localization (10 Languages)
+
+Genie is architected from the ground up for a global user base with zero cloud translation overhead. All localization is compiled natively in `LocalizedStrings.swift` with bidirectional Right-to-Left (RTL) typography:
+
+| Flag | Language | Native Greeting | Direction |
+| :---: | :--- | :--- | :---: |
+| 🇺🇸 | **English (US)** | Hello | LTR |
+| 🇪🇸 | **Español** | Hola | LTR |
+| 🇫🇷 | **Français** | Bonjour | LTR |
+| 🇩🇪 | **Deutsch** | Hallo | LTR |
+| 🇯🇵 | **日本語** | こんにちは | LTR |
+| 🇨🇳 | **简体中文** | 你好 | LTR |
+| 🇮🇹 | **Italiano** | Ciao | LTR |
+| 🇰🇷 | **한국어** | 안녕하세요 | LTR |
+| 🇧🇷 | **Português** | Olá | LTR |
+| 🇸🇦 | **العربية** | مرحبا | RTL |
+
+---
+
 ## 🛡️ Privacy First Architecture
 
 Genie was built on the core principle that desktop productivity utilities should never watch, track, or phone home:
@@ -196,12 +215,17 @@ Genie was built on the core principle that desktop productivity utilities should
 
 ---
 
-## 🌐 Official Links
+## 📬 Contact & Developer Support
 
-* **Mac App Store**: [Download Genie](https://apps.apple.com/app/id6808165534)
-* **Website**: [nicholasdudek.github.io/geniedesktop](https://nicholasdudek.github.io/geniedesktop/)
+We provide direct engineering support with guaranteed responses under 24 hours:
+
+* **Principal Engineer & Founder**: Nicholas M. Dudek
+* **Direct Engineering Support**: [nicholas.dudek@icloud.com](mailto:nicholas.dudek@icloud.com)
+* **GitHub Issues & Discussions**: [github.com/nicholasdudek/geniedesktop/issues](https://github.com/nicholasdudek/geniedesktop/issues)
+* **Mac App Store**: [Download Genie v1.0.0 (Build 7)](https://apps.apple.com/app/id6808165534)
+* **Official Website**: [nicholasdudek.github.io/geniedesktop](https://nicholasdudek.github.io/geniedesktop/)
 * **Privacy Policy**: [nicholasdudek.github.io/geniedesktop/privacy.html](https://nicholasdudek.github.io/geniedesktop/privacy.html)
-* **Support**: [nicholas.dudek@icloud.com](mailto:nicholas.dudek@icloud.com)
+* **Location**: Genie Core Labs • San Francisco Bay Area, California
 
 ---
 

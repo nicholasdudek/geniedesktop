@@ -816,36 +816,270 @@
       line-height: 1.5;
     }
 
-    /* Footer */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 48px 24px;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.9rem;
+    /* Languages & Internationalization Section */
+    .languages-section {
+      max-width: 1120px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
     }
 
-    .footer-links {
+    .lang-tabs-wrapper {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
-      gap: 24px;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .lang-pill-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lang-pill-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .lang-pill-btn.active {
+      color: #0c0f17;
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      border-color: var(--gold);
+      font-weight: 600;
+      box-shadow: 0 2px 12px rgba(244, 195, 117, 0.35);
+    }
+
+    .lang-showcase-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .lang-preview-info h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-preview-info p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .lang-preview-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .lang-preview-tag {
+      background: rgba(244, 195, 117, 0.08);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+
+    .lang-mockup-window {
+      background: #10131c;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+    }
+
+    .lang-mockup-header {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: #94a3b8;
+    }
+
+    .lang-mockup-body {
+      padding: 22px;
+    }
+
+    .lang-mockup-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 0.88rem;
+    }
+    .lang-mockup-row:last-child { border-bottom: none; }
+    .lang-mockup-label { color: #94a3b8; }
+    .lang-mockup-value { color: #fff; font-weight: 600; }
+
+    /* Contact Section */
+    .contact-section {
+      max-width: 1120px;
+      margin: 0 auto 100px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .contact-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px 24px;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .contact-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.5);
+    }
+
+    .contact-icon {
+      font-size: 1.8rem;
+      margin-bottom: 14px;
+      display: inline-block;
+    }
+
+    .contact-card h4 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .contact-card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.5;
       margin-bottom: 16px;
     }
 
-    .footer-links a {
+    .contact-link-text {
+      color: var(--gold);
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Enhanced Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 60px 24px 36px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      background: rgba(10, 12, 18, 0.6);
+    }
+
+    .footer-columns {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+      text-align: left;
+      max-width: 1120px;
+      margin: 0 auto 48px;
+    }
+
+    .footer-col h5 {
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    .footer-col ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .footer-col li {
+      margin-bottom: 10px;
+    }
+
+    .footer-col a {
       color: var(--text-muted);
       text-decoration: none;
+      font-size: 0.86rem;
       transition: color 0.2s ease;
     }
 
-    .footer-links a:hover {
+    .footer-col a:hover {
       color: #fff;
+    }
+
+    .footer-brand p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      max-width: 320px;
+      margin-top: 12px;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1120px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 0.82rem;
     }
 
     @media (max-width: 992px) {
       .gallery-grid { grid-template-columns: 1fr; }
       .hero h1 { font-size: 3rem; }
       .features-grid { grid-template-columns: 1fr; }
+      .lang-showcase-box { grid-template-columns: 1fr; }
+      .footer-columns { grid-template-columns: 1fr 1fr; gap: 32px; }
     }
 
     @media (max-width: 768px) {
@@ -883,6 +1117,8 @@
       <a href="#dissection">Architecture</a>
       <a href="#features">Features</a>
       <a href="#screenshots">Screenshots</a>
+      <a href="#languages">Languages</a>
+      <a href="#contact">Contact</a>
       <a href="privacy.html">Privacy</a>
       <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-download-nav">Mac App Store (v1.0.0 Build 7)</a>
     </div>
@@ -1327,6 +1563,121 @@
     </div>
   </section>
 
+  <!-- International Languages & Localization Section -->
+  <section id="languages" class="languages-section">
+    <div class="section-title">
+      <h2>Native Global Localization</h2>
+      <p>Genie is handcrafted with native support for 10 world languages and bidirectional Right-to-Left (RTL) typography.</p>
+    </div>
+
+    <!-- Interactive Language Pills -->
+    <div class="lang-tabs-wrapper">
+      <button class="lang-pill-btn active" onclick="switchLanguage(0, this)">🇺🇸 English (US)</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(1, this)">🇪🇸 Español</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(2, this)">🇫🇷 Français</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(3, this)">🇩🇪 Deutsch</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(4, this)">🇯🇵 日本語</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(5, this)">🇨🇳 简体中文</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(6, this)">🇮🇹 Italiano</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(7, this)">🇰🇷 한국어</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(8, this)">🇧🇷 Português</button>
+      <button class="lang-pill-btn" onclick="switchLanguage(9, this)">🇸🇦 العربية</button>
+    </div>
+
+    <!-- Live Language Interactive Showcase Box -->
+    <div class="lang-showcase-box" id="lang-showcase-container">
+      <div class="lang-preview-info">
+        <h3 id="lang-heading">🇺🇸 English (US) • Native Localization</h3>
+        <p id="lang-description">Every button, slider, and system string in Genie is natively localized using Apple's <code>String(localized:)</code> and custom <code>LocalizedStrings.swift</code> runtime dictionaries. Zero network calls or external cloud APIs are ever required.</p>
+        <div class="lang-preview-pills">
+          <span class="lang-preview-tag" id="lang-greeting-badge">Greeting: "Hello"</span>
+          <span class="lang-preview-tag">UTF-8 Compliant</span>
+          <span class="lang-preview-tag" id="lang-direction-badge">LTR Layout</span>
+          <span class="lang-preview-tag">Zero Cloud Dependencies</span>
+        </div>
+      </div>
+
+      <div class="lang-mockup-window" id="lang-mockup-window">
+        <div class="lang-mockup-header">
+          <div class="mac-traffic-lights" style="width: 50px;">
+            <span class="traffic-light close" style="width:9px; height:9px;"></span>
+            <span class="traffic-light minimize" style="width:9px; height:9px;"></span>
+            <span class="traffic-light maximize" style="width:9px; height:9px;"></span>
+          </div>
+          <span id="lang-mockup-title">Genie Studio Hub — Localized Interface</span>
+        </div>
+        <div class="lang-mockup-body" id="lang-mockup-body">
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">System Greeting</span>
+            <span class="lang-mockup-value" id="mock-greeting">Hello</span>
+          </div>
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">Tab 1 (Apps)</span>
+            <span class="lang-mockup-value" id="mock-tab-apps">Apps</span>
+          </div>
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">Tab 2 (Desktop Grid)</span>
+            <span class="lang-mockup-value" id="mock-tab-desktop">Desktop</span>
+          </div>
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">Tab 3 (Living Themes)</span>
+            <span class="lang-mockup-value" id="mock-tab-themes">Themes</span>
+          </div>
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">Tab 4 (Formations)</span>
+            <span class="lang-mockup-value" id="mock-tab-formations">Formations</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact & Developer Support Section -->
+  <section id="contact" class="contact-section">
+    <div class="section-title">
+      <h2>Get in Touch & Developer Support</h2>
+      <p>Direct communication with the engineer. Whether you have feedback, feature ideas, or enterprise inquiries, we respond personally.</p>
+    </div>
+
+    <div class="contact-grid">
+      <a href="mailto:nicholas.dudek@icloud.com" class="contact-card">
+        <div>
+          <span class="contact-icon">✉️</span>
+          <h4>Direct Engineering Support</h4>
+          <p>Reach out directly to Nicholas M. Dudek for technical questions, bug reports, and priority support.</p>
+        </div>
+        <span class="contact-link-text">nicholas.dudek@icloud.com →</span>
+      </a>
+
+      <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank" class="contact-card">
+        <div>
+          <span class="contact-icon">💻</span>
+          <h4>GitHub Repository & Issues</h4>
+          <p>Explore official releases, documentation, changelogs, and submit public issue tickets.</p>
+        </div>
+        <span class="contact-link-text">github.com/nicholasdudek/geniedesktop →</span>
+      </a>
+
+      <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="contact-card">
+        <div>
+          <span class="contact-icon">🍏</span>
+          <h4>Mac App Store</h4>
+          <p>View the verified Apple Mac App Store listing, read verified user reviews, and check for updates.</p>
+        </div>
+        <span class="contact-link-text">App Store Listing (Build 7) →</span>
+      </a>
+
+      <div class="contact-card" style="cursor: default;">
+        <div>
+          <span class="contact-icon">🌉</span>
+          <h4>Genie Core Labs</h4>
+          <p>Proudly designed, architected, and built in the San Francisco Bay Area at the Golden Gate.</p>
+        </div>
+        <span class="contact-link-text" style="color: #34d399;">● Guaranteed Response &lt; 24h</span>
+      </div>
+    </div>
+  </section>
+
   <!-- Privacy Commitment -->
   <div class="privacy-banner">
     <h3>Built for Privacy-First Creators</h3>
@@ -1334,14 +1685,56 @@
     <a href="privacy.html">Read our Zero-Telemetry Privacy Policy →</a>
   </div>
 
-  <!-- Footer -->
+  <!-- Enhanced Multi-Column Footer -->
   <footer>
-    <div class="footer-links">
-      <a href="#">Overview</a>
-      <a href="#features">Features</a>
-      <a href="privacy.html">Privacy Policy</a>
-      <a href="mailto:nicholas.dudek@icloud.com">Support</a>
-    <p>Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.<br>macOS, Apple Silicon, and App Store are trademarks of Apple Inc.</p>
+    <div class="footer-columns">
+      <div class="footer-brand">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 700; color: #fff;">
+          <img src="assets/images/app_icon.png" alt="Genie Logo" style="width: 28px; height: 28px; border-radius: 6px;">
+          <span>Genie</span>
+        </div>
+        <p>Next-generation spatial workspace and application launcher for macOS. Engineered natively with Swift and Metal shaders with absolute offline privacy.</p>
+        <p style="margin-top: 10px; font-size: 0.82rem; color: var(--gold); font-weight: 600;">Version 1.0.0 (Build 7) • Universal Binary</p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#demo">Interactive Demo</a></li>
+          <li><a href="#stats">Speed & Stats</a></li>
+          <li><a href="#dissection">Architecture</a></li>
+          <li><a href="#features">Core Features</a></li>
+          <li><a href="#screenshots">App Store Showcase</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Languages</h5>
+        <ul>
+          <li><a href="#languages">English (US)</a></li>
+          <li><a href="#languages">Español & Français</a></li>
+          <li><a href="#languages">Deutsch & Italiano</a></li>
+          <li><a href="#languages">日本語 & 简体中文</a></li>
+          <li><a href="#languages">한국어 & Português</a></li>
+          <li><a href="#languages">العربية (RTL Native)</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Contact & Support</h5>
+        <ul>
+          <li><a href="mailto:nicholas.dudek@icloud.com">Email Nicholas M. Dudek</a></li>
+          <li><a href="https://github.com/nicholasdudek/geniedesktop" target="_blank">GitHub Repository</a></li>
+          <li><a href="https://apps.apple.com/app/id6808165534" target="_blank">Mac App Store</a></li>
+          <li><a href="privacy.html">Zero-Telemetry Privacy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.</div>
+      <div>Designed with precision in California. macOS, Apple Silicon, and App Store are trademarks of Apple Inc.</div>
+    </div>
   </footer>
 
   <script>
@@ -1383,7 +1776,6 @@
       video.play().then(() => {
         updatePlayIcons(true);
       }).catch(err => {
-        // Autoplay policy fallback
         updatePlayIcons(false);
       });
     }
@@ -1419,8 +1811,124 @@
       }
     }
 
-    // Toggle play/pause when tapping video directly
     document.getElementById('hero-preview-video')?.addEventListener('click', togglePlayPause);
+
+    // Multilingual Live Switcher
+    const languageData = [
+      {
+        name: "English (US)",
+        flag: "🇺🇸",
+        greeting: "Hello",
+        dir: "ltr",
+        desc: "Every button, slider, and system string in Genie is natively localized using Apple's String(localized:) and custom LocalizedStrings.swift runtime dictionaries. Zero network calls or external cloud APIs are ever required.",
+        tabs: { apps: "Apps", desktop: "Desktop", themes: "Themes", formations: "Formations" }
+      },
+      {
+        name: "Español",
+        flag: "🇪🇸",
+        greeting: "Hola",
+        dir: "ltr",
+        desc: "Totalmente traducido al español. La interfaz se adapta automáticamente según la configuración regional de macOS, con soporte completo para búsqueda en tiempo real.",
+        tabs: { apps: "Aplicaciones", desktop: "Escritorio", themes: "Temas", formations: "Formaciones" }
+      },
+      {
+        name: "Français",
+        flag: "🇫🇷",
+        greeting: "Bonjour",
+        dir: "ltr",
+        desc: "Entièrement traduit en français avec une précision typographique soignée. Navigation spatiale fluide et recherche instantanée adaptée.",
+        tabs: { apps: "Applications", desktop: "Bureau", themes: "Thèmes", formations: "Formations" }
+      },
+      {
+        name: "Deutsch",
+        flag: "🇩🇪",
+        greeting: "Hallo",
+        dir: "ltr",
+        desc: "Präzise deutsche Lokalisierung. Alle Menüs, Tastenkürzel und Einstellungsregler sind nahtlos auf die deutsche macOS-Sprachumgebung abgestimmt.",
+        tabs: { apps: "Programme", desktop: "Schreibtisch", themes: "Designs", formations: "Formationen" }
+      },
+      {
+        name: "日本語",
+        flag: "🇯🇵",
+        greeting: "こんにちは",
+        dir: "ltr",
+        desc: "macOSの日本語環境に完全ネイティブ対応。メニューバーや設定画面、検索機能まで美しくローカライズされています。",
+        tabs: { apps: "アプリ", desktop: "デスクトップ", themes: "テーマ", formations: "配置" }
+      },
+      {
+        name: "简体中文",
+        flag: "🇨🇳",
+        greeting: "你好",
+        dir: "ltr",
+        desc: "原生适配中文简体环境。包含完整的菜单栏控制中心、手势导航和极速应用模糊检索，无任何网络延迟。",
+        tabs: { apps: "应用", desktop: "桌面", themes: "主题", formations: "排列" }
+      },
+      {
+        name: "Italiano",
+        flag: "🇮🇹",
+        greeting: "Ciao",
+        dir: "ltr",
+        desc: "Localizzazione completa in italiano. Interfaccia elegante con sincronizzazione ProMotion a 120 FPS e riscontro tattile.",
+        tabs: { apps: "Applicazioni", desktop: "Scrivania", themes: "Temi", formations: "Formazioni" }
+      },
+      {
+        name: "한국어",
+        flag: "🇰🇷",
+        greeting: "안녕하세요",
+        dir: "ltr",
+        desc: "macOS 한국어 환경을 위한 완벽한 지원. 제스처 트래커 및 스튜디오 허브의 모든 컨트롤이 한국어로 자연스럽게 표시됩니다.",
+        tabs: { apps: "앱", desktop: "데스크탑", themes: "테마", formations: "배치" }
+      },
+      {
+        name: "Português",
+        flag: "🇧🇷",
+        greeting: "Olá",
+        dir: "ltr",
+        desc: "Totalmente adaptado para português (Brasil e Portugal). Controle intuitivo de gestos e personalização profunda de temas.",
+        tabs: { apps: "Aplicativos", desktop: "Mesa", themes: "Temas", formations: "Formações" }
+      },
+      {
+        name: "العربية",
+        flag: "🇸🇦",
+        greeting: "مرحبا",
+        dir: "rtl",
+        desc: "دعم أصيل كامل للغة العربية مع محاذاة تلقائية للنصوص من اليمين إلى اليسار (RTL)، مع الحفاظ على استجابة فيزيائية فائقة السرعة.",
+        tabs: { apps: "التطبيقات", desktop: "سطح المكتب", themes: "السمات", formations: "التشكيلات" }
+      }
+    ];
+
+    function switchLanguage(index, btn) {
+      document.querySelectorAll('.lang-pill-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+
+      const data = languageData[index];
+      const headingEl = document.getElementById('lang-heading');
+      const descEl = document.getElementById('lang-description');
+      const greetingBadge = document.getElementById('lang-greeting-badge');
+      const directionBadge = document.getElementById('lang-direction-badge');
+      const mockupWindow = document.getElementById('lang-mockup-window');
+
+      if (headingEl) headingEl.textContent = `${data.flag} ${data.name} • Native Localization`;
+      if (descEl) descEl.textContent = data.desc;
+      if (greetingBadge) greetingBadge.textContent = `Greeting: "${data.greeting}"`;
+      if (directionBadge) directionBadge.textContent = data.dir === 'rtl' ? 'RTL Layout (Right-to-Left)' : 'LTR Layout';
+
+      const mockGreeting = document.getElementById('mock-greeting');
+      const mockApps = document.getElementById('mock-tab-apps');
+      const mockDesktop = document.getElementById('mock-tab-desktop');
+      const mockThemes = document.getElementById('mock-tab-themes');
+      const mockFormations = document.getElementById('mock-tab-formations');
+
+      if (mockGreeting) mockGreeting.textContent = data.greeting;
+      if (mockApps) mockApps.textContent = data.tabs.apps;
+      if (mockDesktop) mockDesktop.textContent = data.tabs.desktop;
+      if (mockThemes) mockThemes.textContent = data.tabs.themes;
+      if (mockFormations) mockFormations.textContent = data.tabs.formations;
+
+      if (mockupWindow) {
+        mockupWindow.style.direction = data.dir;
+      }
+    }
   </script>
 </body>
 </html>
