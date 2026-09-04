@@ -85,8 +85,9 @@
     }
 
     
+    
     /* ==========================================================================
-       Polished Responsive Navigation & Glassmorphic Mobile Drawer
+       Ultra-Clean Top Navbar & Slide-Out Sidebar Drawer
        ========================================================================== */
     nav {
       position: sticky;
@@ -95,12 +96,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 32px;
+      padding: 0 28px;
+      height: 64px;
       background: var(--nav-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       border-bottom: 1px solid var(--border);
       transition: background 0.3s ease, border-color 0.3s ease;
+      box-sizing: border-box;
     }
 
     .nav-brand {
@@ -113,6 +116,7 @@
       font-size: 1.22rem;
       letter-spacing: -0.02em;
       flex-shrink: 0;
+      white-space: nowrap !important;
     }
 
     .nav-brand img {
@@ -122,42 +126,356 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.35);
     }
 
-    /* Desktop Navigation Links */
-    .nav-links {
+    /* Minimalist Desktop Quick Links (Only 3-4 clean items, NEVER wrapping) */
+    .nav-quick-links {
       display: flex;
       align-items: center;
-      gap: 18px;
+      gap: 8px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
     }
 
-    .nav-link-item {
+    .nav-quick-link {
       color: var(--text-muted);
       text-decoration: none;
       font-size: 0.88rem;
       font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 999px;
+      white-space: nowrap !important;
       transition: all 0.2s ease;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 10px;
-      border-radius: 8px;
+      line-height: 1.2;
     }
 
-    .nav-link-item:hover {
+    .nav-quick-link:hover {
       color: var(--text);
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--tag-bg);
     }
 
-    .nav-link-item.highlight-link {
+    .nav-quick-link.highlight {
+      color: var(--gold);
+      background: rgba(244, 195, 117, 0.1);
+      border: 1px solid var(--border-accent);
+      font-weight: 600;
+    }
+
+    .nav-quick-link.highlight:hover {
+      background: rgba(244, 195, 117, 0.2);
+    }
+
+    /* Right Controls */
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-download-nav {
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      color: #0c0f17 !important;
+      font-weight: 600 !important;
+      padding: 8px 18px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      box-shadow: 0 2px 10px rgba(244, 195, 117, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+      white-space: nowrap !important;
+    }
+    .btn-download-nav:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 16px rgba(244, 195, 117, 0.4);
+    }
+
+    /* Sidebar Trigger Button (Clean pill button with 3-bar icon) */
+    .btn-sidebar-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      white-space: nowrap !important;
+      user-select: none;
+    }
+
+    .btn-sidebar-trigger:hover {
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+      color: var(--gold);
+      transform: translateY(-1px);
+    }
+
+    .sidebar-trigger-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 3.5px;
+      width: 14px;
+    }
+
+    .sidebar-trigger-bars span {
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: currentColor;
+      border-radius: 2px;
+      transition: all 0.2s ease;
+    }
+
+    /* ==========================================================================
+       Slide-Out Sidebar (Off-Canvas macOS Drawer)
+       ========================================================================== */
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.68);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s;
+    }
+
+    .sidebar-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .app-sidebar-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 380px;
+      max-width: 90vw;
+      background: var(--dropdown-bg);
+      border-left: 1px solid var(--border-accent);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+      box-shadow: -16px 0 48px rgba(0, 0, 0, 0.75);
+      z-index: 2001;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .app-sidebar-drawer.open {
+      transform: translateX(0);
+    }
+
+    /* Sidebar Header */
+    .sidebar-header {
+      padding: 22px 24px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-brand-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-brand-box img {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .sidebar-brand-text strong {
+      display: block;
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+
+    .sidebar-brand-text span {
+      font-size: 0.75rem;
       color: var(--gold);
       font-weight: 600;
     }
-    .nav-link-item.highlight-link:hover {
-      background: rgba(244, 195, 117, 0.12);
+
+    .sidebar-close-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
     }
 
-    .nav-link-icon, .nav-link-badge, .nav-link-arrow,
-    .nav-mobile-header, .nav-mobile-footer, .nav-mobile-divider {
-      display: none;
+    .sidebar-close-btn:hover {
+      color: var(--text);
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+      transform: scale(1.05);
+    }
+
+    /* Sidebar Body & Sections */
+    .sidebar-body {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      flex: 1;
+    }
+
+    .sidebar-group-title {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+      padding-left: 4px;
+    }
+
+    .sidebar-nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar-nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 12px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      transition: all 0.18s ease;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .sidebar-nav-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border);
+      color: var(--gold);
+      transform: translateX(4px);
+    }
+
+    .sidebar-nav-item.highlight {
+      background: rgba(244, 195, 117, 0.1);
+      border-color: var(--border-accent);
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    .sidebar-nav-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-nav-icon {
+      font-size: 1.15rem;
+      width: 22px;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .sidebar-nav-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(244, 195, 117, 0.2);
+      color: var(--gold);
+      border: 1px solid var(--border-accent);
+      border-radius: 999px;
+      padding: 2px 8px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-nav-arrow {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      transition: transform 0.2s;
+    }
+    .sidebar-nav-item:hover .sidebar-nav-arrow {
+      transform: translateX(3px);
+      color: var(--gold);
+    }
+
+    /* Sidebar Footer */
+    .sidebar-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-btn-download {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      color: #0c0f17 !important;
+      font-weight: 700 !important;
+      padding: 13px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 0.94rem;
+      box-shadow: 0 4px 18px rgba(244, 195, 117, 0.35);
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
+    }
+
+    .sidebar-btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(244, 195, 117, 0.45);
+    }
+
+    .sidebar-footer-sub {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Responsive Queries */
+    @media (max-width: 960px) {
+      .nav-quick-links {
+        display: none !important;
+      }
+      .btn-download-nav {
+        display: none !important;
+      }
+      nav {
+        padding: 0 18px;
+      }
     }
 
     /* Right Controls */
@@ -2198,103 +2516,27 @@
   <div class="glow-sphere"></div>
 
   <!-- Navigation Bar -->
+  <!-- Navigation Bar -->
   <nav id="main-nav">
     <a href="#" class="nav-brand">
       <img src="assets/images/app_icon.png" alt="Genie Logo">
       <span>Genie</span>
     </a>
 
-    <!-- Desktop & Mobile Nav Links Drawer -->
-    <div class="nav-links" id="nav-links">
-      <div class="nav-mobile-header">
-        <div class="nav-mobile-brand">
-          <img src="assets/images/app_icon.png" alt="Genie Logo">
-          <div>
-            <strong>Genie Studio</strong>
-            <span>v1.0.0 (Build 12)</span>
-          </div>
-        </div>
-        <button class="nav-mobile-close" onclick="closeMobileMenu()" aria-label="Close Navigation">✕</button>
-      </div>
-
-      <div class="nav-links-scrollable">
-        <a href="#menubar-studio" class="nav-link-item highlight-link" onclick="closeMobileMenu()">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">⚡️</span>
-            <span class="nav-link-text">Menu Bar & Battery</span>
-          </span>
-          <span class="nav-link-badge">New</span>
-        </a>
-        <a href="features.html" class="nav-link-item highlight-link" onclick="closeMobileMenu()">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">🧪</span>
-            <span class="nav-link-text">Studio Lab & Gestures</span>
-          </span>
-          <span class="nav-link-arrow">↗</span>
-        </a>
-        <div class="nav-mobile-divider"></div>
-        <a href="#demo" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_demo">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">✨</span>
-            <span class="nav-link-text">Live Canvas Demo</span>
-          </span>
-          <span class="nav-link-arrow">›</span>
-        </a>
-        <a href="#stats" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_stats">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">📈</span>
-            <span class="nav-link-text">Speed & Benchmarks</span>
-          </span>
-          <span class="nav-link-arrow">›</span>
-        </a>
-        <a href="#architecture" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_architecture">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">📐</span>
-            <span class="nav-link-text">Deep Architecture</span>
-          </span>
-          <span class="nav-link-arrow">›</span>
-        </a>
-        <a href="#features" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_features">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">🎛️</span>
-            <span class="nav-link-text">Core Features</span>
-          </span>
-          <span class="nav-link-arrow">›</span>
-        </a>
-        <a href="#screenshots" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_showcase">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">🖼️</span>
-            <span class="nav-link-text">App Store Showcase</span>
-          </span>
-          <span class="nav-link-arrow">›</span>
-        </a>
-        <a href="#languages" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_languages">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">🌐</span>
-            <span class="nav-link-text">10 Native Languages</span>
-          </span>
-          <span class="nav-link-arrow">›</span>
-        </a>
-        <a href="#contact" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_support">
-          <span class="nav-link-left">
-            <span class="nav-link-icon">💬</span>
-            <span class="nav-link-text">Support & Contact</span>
-          </span>
-          <span class="nav-link-arrow">›</span>
-        </a>
-      </div>
-
-      <div class="nav-mobile-footer">
-        <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-mobile-download" data-i18n="nav_download">
-          <span> Download on Mac App Store</span>
-        </a>
-        <div class="nav-mobile-subinfo">
-          <span>Zero Telemetry • Pure Swift & Metal 3</span>
-        </div>
-      </div>
+    <!-- Minimalist Desktop Quick Links (Clean, No-Wrap) -->
+    <div class="nav-quick-links">
+      <a href="#menubar-studio" class="nav-quick-link highlight">
+        <span>⚡️ Battery & Menu Bar</span>
+      </a>
+      <a href="features.html" class="nav-quick-link">
+        <span>🧪 Studio Lab</span>
+      </a>
+      <a href="#screenshots" class="nav-quick-link">
+        <span>🖼️ Showcase</span>
+      </a>
     </div>
 
-    <!-- Right Controls: Language, Theme, CTA, Hamburger -->
+    <!-- Right Controls: Language, Theme, Download, and Sidebar Menu Toggle -->
     <div class="nav-controls">
       <!-- Language Dropdown -->
       <div class="lang-selector-nav">
@@ -2365,17 +2607,166 @@
       <!-- App Store Button -->
       <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-download-nav" data-i18n="nav_download">Mac App Store</a>
 
-      <!-- Animated 3-Bar Hamburger Button -->
-      <button class="mobile-menu-btn" onclick="toggleMobileMenu()" id="mobile-menu-btn" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span class="hamburger-bar top-bar"></span>
-        <span class="hamburger-bar mid-bar"></span>
-        <span class="hamburger-bar bot-bar"></span>
+      <!-- Slide-Out Sidebar Trigger Button -->
+      <button class="btn-sidebar-trigger" onclick="toggleSidebarDrawer()" id="sidebar-trigger-btn" aria-label="Open Navigation Sidebar">
+        <div class="sidebar-trigger-bars">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span>Menu</span>
       </button>
     </div>
   </nav>
 
-  <!-- Backdrop overlay for mobile menu -->
-  <div class="mobile-nav-backdrop" id="mobile-nav-backdrop" onclick="closeMobileMenu()"></div>
+  <!-- Slide-Out Sidebar Drawer Backdrop Overlay -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebarDrawer()"></div>
+
+  <!-- Slide-Out Sidebar Drawer -->
+  <aside class="app-sidebar-drawer" id="app-sidebar-drawer" aria-label="Site Navigation Sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand-box">
+        <img src="assets/images/app_icon.png" alt="Genie App Icon">
+        <div class="sidebar-brand-text">
+          <strong>Genie Studio</strong>
+          <span>v1.0.0 (Build 12)</span>
+        </div>
+      </div>
+      <button class="sidebar-close-btn" onclick="closeSidebarDrawer()" aria-label="Close Sidebar">✕</button>
+    </div>
+
+    <div class="sidebar-body">
+      <!-- Group 1: Workspaces & Features -->
+      <div>
+        <div class="sidebar-group-title">Workspaces & Features</div>
+        <ul class="sidebar-nav-list">
+          <li>
+            <a href="#menubar-studio" class="sidebar-nav-item highlight" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">⚡️</span>
+                <span>Menu Bar & Battery</span>
+              </span>
+              <span class="sidebar-nav-tag">New</span>
+            </a>
+          </li>
+          <li>
+            <a href="features.html" class="sidebar-nav-item highlight" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🧪</span>
+                <span>Studio Lab & Gestures</span>
+              </span>
+              <span class="sidebar-nav-arrow">↗</span>
+            </a>
+          </li>
+          <li>
+            <a href="#demo" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">✨</span>
+                <span>Live Canvas Walkthrough</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#features" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🎛️</span>
+                <span>Core Features & Shaders</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#screenshots" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🖼️</span>
+                <span>Retina App Store Showcase</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Group 2: System Architecture -->
+      <div>
+        <div class="sidebar-group-title">System & Architecture</div>
+        <ul class="sidebar-nav-list">
+          <li>
+            <a href="#stats" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">📈</span>
+                <span>Speed & Benchmarks</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#architecture" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">📐</span>
+                <span>Deep Subsystem Specs</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#languages" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🌐</span>
+                <span>10 Native World Languages</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#privacy" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🛡️</span>
+                <span>Zero-Telemetry Privacy</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Group 3: Support & Contact -->
+      <div>
+        <div class="sidebar-group-title">Developer & Support</div>
+        <ul class="sidebar-nav-list">
+          <li>
+            <a href="#contact" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">💬</span>
+                <span>Founder Contact & Help</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">📦</span>
+                <span>GitHub Repository</span>
+              </span>
+              <span class="sidebar-nav-arrow">↗</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+      <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="sidebar-btn-download">
+        <span> Download on Mac App Store</span>
+      </a>
+      <div class="sidebar-footer-sub">
+        <span>Universal Binary • macOS Sonoma & Sequoia</span>
+      </div>
+    </div>
+  </aside>
 
   <!-- Hero Section -->
   <header class="hero">
@@ -3274,49 +3665,38 @@
       }
     });
 
-    // 3. Mobile Navigation Menu Toggle
-        // 3. Mobile Navigation Menu Toggle & Auto-Dismiss
-    function toggleMobileMenu() {
-      const navLinks = document.getElementById("nav-links");
-      const menuBtn = document.getElementById("mobile-menu-btn");
-      const backdrop = document.getElementById("mobile-nav-backdrop");
-
-      const isOpen = navLinks?.classList.contains("open");
+        // Slide-Out Sidebar Drawer Functions
+    function toggleSidebarDrawer() {
+      const drawer = document.getElementById("app-sidebar-drawer");
+      const backdrop = document.getElementById("sidebar-backdrop");
+      const isOpen = drawer?.classList.contains("open");
       if (isOpen) {
-        closeMobileMenu();
+        closeSidebarDrawer();
       } else {
-        openMobileMenu();
+        openSidebarDrawer();
       }
     }
 
-    function openMobileMenu() {
-      const navLinks = document.getElementById("nav-links");
-      const menuBtn = document.getElementById("mobile-menu-btn");
-      const backdrop = document.getElementById("mobile-nav-backdrop");
-
-      navLinks?.classList.add("open");
-      menuBtn?.classList.add("active");
-      menuBtn?.setAttribute("aria-expanded", "true");
+    function openSidebarDrawer() {
+      const drawer = document.getElementById("app-sidebar-drawer");
+      const backdrop = document.getElementById("sidebar-backdrop");
+      drawer?.classList.add("open");
       backdrop?.classList.add("open");
-      document.body.style.overflow = "hidden"; // Prevent background scrolling
+      document.body.style.overflow = "hidden";
     }
 
-    function closeMobileMenu() {
-      const navLinks = document.getElementById("nav-links");
-      const menuBtn = document.getElementById("mobile-menu-btn");
-      const backdrop = document.getElementById("mobile-nav-backdrop");
-
-      navLinks?.classList.remove("open");
-      menuBtn?.classList.remove("active");
-      menuBtn?.setAttribute("aria-expanded", "false");
+    function closeSidebarDrawer() {
+      const drawer = document.getElementById("app-sidebar-drawer");
+      const backdrop = document.getElementById("sidebar-backdrop");
+      drawer?.classList.remove("open");
       backdrop?.classList.remove("open");
-      document.body.style.overflow = ""; // Restore scrolling
+      document.body.style.overflow = "";
     }
 
-    // Dismiss mobile menu on Escape key
+    // Dismiss sidebar on Escape key
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        closeMobileMenu();
+        closeSidebarDrawer();
       }
     });
 
