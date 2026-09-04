@@ -1372,7 +1372,84 @@
       .screenshots-section { padding: 0 16px; }
       .footer-columns { grid-template-columns: 1fr; }
     }
-  </style>
+  
+    /* App-Matching Language Selector Styles */
+    .lang-item-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .lang-greeting-tag {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      margin-left: auto;
+      margin-right: 6px;
+    }
+    .lang-check-icon {
+      font-size: 0.82rem;
+      color: var(--gold);
+      opacity: 0;
+      font-weight: 700;
+    }
+    .lang-dropdown-item.active .lang-check-icon,
+    .app-lang-card-item.active .lang-check-icon {
+      opacity: 1;
+    }
+    .app-lang-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 680px) {
+      .app-lang-grid { grid-template-columns: 1fr; }
+    }
+    .app-lang-card-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .app-lang-card-item:hover {
+      border-color: var(--border-accent);
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateY(-1px);
+    }
+    .app-lang-card-item.active {
+      border-color: var(--gold);
+      background: rgba(244, 195, 117, 0.12);
+      box-shadow: 0 0 16px rgba(244, 195, 117, 0.2);
+    }
+    .app-lang-card-item .lang-flag {
+      font-size: 1.25rem;
+    }
+    .app-lang-card-item .lang-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .app-lang-card-item.active .lang-title {
+      color: var(--gold);
+    }
+    .app-lang-card-item .lang-greeting-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-left: auto;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+</style>
 </head>
 <body>
   <div class="glow-sphere"></div>
@@ -1403,16 +1480,56 @@
           <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
         </button>
         <div class="lang-dropdown-menu" id="lang-dropdown-menu">
-          <div class="lang-dropdown-item active" onclick="setSiteLanguage('en')"><span>🇺🇸</span> English (US)</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('es')"><span>🇪🇸</span> Español</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('fr')"><span>🇫🇷</span> Français</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('de')"><span>🇩🇪</span> Deutsch</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('ja')"><span>🇯🇵</span> 日本語</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('zh')"><span>🇨🇳</span> 简体中文</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('it')"><span>🇮🇹</span> Italiano</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('ko')"><span>🇰🇷</span> 한국어</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('pt')"><span>🇧🇷</span> Português</div>
-          <div class="lang-dropdown-item" onclick="setSiteLanguage('ar')"><span>🇸🇦</span> العربية (RTL)</div>
+          <div class="lang-dropdown-item active" data-lang="en" onclick="setSiteLanguage('en')">
+            <div class="lang-item-left"><span>🇺🇸</span> <span>English (US)</span></div>
+            <span class="lang-greeting-tag">Hello</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="es" onclick="setSiteLanguage('es')">
+            <div class="lang-item-left"><span>🇪🇸</span> <span>Español</span></div>
+            <span class="lang-greeting-tag">Hola</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="fr" onclick="setSiteLanguage('fr')">
+            <div class="lang-item-left"><span>🇫🇷</span> <span>Français</span></div>
+            <span class="lang-greeting-tag">Bonjour</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="de" onclick="setSiteLanguage('de')">
+            <div class="lang-item-left"><span>🇩🇪</span> <span>Deutsch</span></div>
+            <span class="lang-greeting-tag">Hallo</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="ja" onclick="setSiteLanguage('ja')">
+            <div class="lang-item-left"><span>🇯🇵</span> <span>日本語</span></div>
+            <span class="lang-greeting-tag">こんにちは</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="zh" onclick="setSiteLanguage('zh')">
+            <div class="lang-item-left"><span>🇨🇳</span> <span>简体中文</span></div>
+            <span class="lang-greeting-tag">你好</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="it" onclick="setSiteLanguage('it')">
+            <div class="lang-item-left"><span>🇮🇹</span> <span>Italiano</span></div>
+            <span class="lang-greeting-tag">Ciao</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="ko" onclick="setSiteLanguage('ko')">
+            <div class="lang-item-left"><span>🇰🇷</span> <span>한국어</span></div>
+            <span class="lang-greeting-tag">안녕하세요</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="pt" onclick="setSiteLanguage('pt')">
+            <div class="lang-item-left"><span>🇧🇷</span> <span>Português</span></div>
+            <span class="lang-greeting-tag">Olá</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="ar" onclick="setSiteLanguage('ar')">
+            <div class="lang-item-left"><span>🇸🇦</span> <span>العربية (RTL)</span></div>
+            <span class="lang-greeting-tag">مرحبا</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
         </div>
       </div>
 
@@ -1434,8 +1551,8 @@
   <!-- Hero Section -->
   <header class="hero">
     <div class="hero-badge" data-i18n="hero_badge">✨ Version 1.0.0 (Build 7) • Engineered for macOS Sonoma & Sequoia</div>
-    <h1 data-i18n="hero_title">Your desktop transformed into a spatial canvas.</h1>
-    <p data-i18n="hero_desc">Genie reimagines how you launch, organize, and interact with apps on macOS. Powered natively by Swift, Metal shaders, and zero telemetry.</p>
+    <h1 data-i18n="hero_title">Turn your Mac desktop into a high-performance spatial canvas.</h1>
+    <p data-i18n="hero_desc">Launch and organize your apps in 28+ living formations, 52+ real-time GPU Metal shaders, tactile audio feedback, and ambient desktop pets — with 0% idle CPU and zero telemetry.</p>
     
     <div class="cta-group">
       <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="app-store-badge">
@@ -1824,17 +1941,68 @@
       <p data-i18n="languages_desc">Genie is handcrafted with native support for 10 world languages and bidirectional Right-to-Left (RTL) typography.</p>
     </div>
 
-    <div class="lang-tabs-wrapper">
-      <button class="lang-pill-btn active" onclick="setSiteLanguage('en')">🇺🇸 English (US)</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('es')">🇪🇸 Español</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('fr')">🇫🇷 Français</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('de')">🇩🇪 Deutsch</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('ja')">🇯🇵 日本語</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('zh')">🇨🇳 简体中文</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('it')">🇮🇹 Italiano</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('ko')">🇰🇷 한국어</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('pt')">🇧🇷 Português</button>
-      <button class="lang-pill-btn" onclick="setSiteLanguage('ar')">🇸🇦 العربية</button>
+    <!-- Interactive App-Matching Language Selector Cards -->
+    <div class="app-lang-grid">
+      <div class="app-lang-card-item active" data-lang="en" onclick="setSiteLanguage('en')">
+        <span class="lang-flag">🇺🇸</span>
+        <span class="lang-title">English (US)</span>
+        <span class="lang-greeting-sub">Hello</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="es" onclick="setSiteLanguage('es')">
+        <span class="lang-flag">🇪🇸</span>
+        <span class="lang-title">Español</span>
+        <span class="lang-greeting-sub">Hola</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="fr" onclick="setSiteLanguage('fr')">
+        <span class="lang-flag">🇫🇷</span>
+        <span class="lang-title">Français</span>
+        <span class="lang-greeting-sub">Bonjour</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="de" onclick="setSiteLanguage('de')">
+        <span class="lang-flag">🇩🇪</span>
+        <span class="lang-title">Deutsch</span>
+        <span class="lang-greeting-sub">Hallo</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="ja" onclick="setSiteLanguage('ja')">
+        <span class="lang-flag">🇯🇵</span>
+        <span class="lang-title">日本語</span>
+        <span class="lang-greeting-sub">こんにちは</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="zh" onclick="setSiteLanguage('zh')">
+        <span class="lang-flag">🇨🇳</span>
+        <span class="lang-title">简体中文</span>
+        <span class="lang-greeting-sub">你好</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="it" onclick="setSiteLanguage('it')">
+        <span class="lang-flag">🇮🇹</span>
+        <span class="lang-title">Italiano</span>
+        <span class="lang-greeting-sub">Ciao</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="ko" onclick="setSiteLanguage('ko')">
+        <span class="lang-flag">🇰🇷</span>
+        <span class="lang-title">한국어</span>
+        <span class="lang-greeting-sub">안녕하세요</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="pt" onclick="setSiteLanguage('pt')">
+        <span class="lang-flag">🇧🇷</span>
+        <span class="lang-title">Português</span>
+        <span class="lang-greeting-sub">Olá</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="ar" onclick="setSiteLanguage('ar')">
+        <span class="lang-flag">🇸🇦</span>
+        <span class="lang-title">العربية (RTL)</span>
+        <span class="lang-greeting-sub">مرحبا</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
     </div>
 
     <div class="lang-showcase-box" id="lang-showcase-container">
@@ -2027,14 +2195,16 @@
 
       // Update active in dropdown
       document.querySelectorAll(".lang-dropdown-item").forEach(el => {
-        el.classList.toggle("active", el.getAttribute("onclick")?.includes(`'${lang}'`));
+        const itemLang = el.getAttribute("data-lang") || (el.getAttribute("onclick")?.includes(`'${lang}'`) ? lang : "");
+        el.classList.toggle("active", itemLang === lang);
       });
       // Close dropdown
-      document.getElementById("lang-dropdown-menu").classList.remove("show");
+      document.getElementById("lang-dropdown-menu")?.classList.remove("show");
 
-      // Update active in languages section pill list
-      document.querySelectorAll(".lang-pill-btn").forEach(el => {
-        el.classList.toggle("active", el.getAttribute("onclick")?.includes(`'${lang}'`));
+      // Update active in app language card grid
+      document.querySelectorAll(".app-lang-card-item").forEach(el => {
+        const itemLang = el.getAttribute("data-lang");
+        el.classList.toggle("active", itemLang === lang);
       });
 
       // Apply translations to all data-i18n elements
