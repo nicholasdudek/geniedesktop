@@ -2,7 +2,7 @@
 
 **App Identifier:** `com.nicholasdudek.genie`  
 **Apple ID:** `6808165534`  
-**Current Release Version:** `1.0.0 (Build 8)`  
+**Current Release Version:** `1.0.0 (Build 10)`  
 **Target Platform:** macOS Sonoma (14.0+) & macOS Sequoia (15.0+)  
 **Architecture:** Universal Binary (Native Apple Silicon ARM64 & Intel x86_64)  
 **Monetization Model:** \$3.99 Upfront Paid Utility • Optional IAP Expansion Packs  
@@ -51,6 +51,24 @@ Genie combines **utilitarian desktop productivity** (instant app discovery, floa
   8. Italian (Italiano)
   9. Korean (한국어)
   10. Arabic (العربية) with Right-to-Left (RTL) typography support.
+
+### 2.5 Build 10 Ergonomics, Spatial Trajectories & Gesture Architecture
+* **Configurable Spatial Trajectories:**
+  * **Slide from Right (iPhone Mode 📱):** Default entrance mimicking iOS Slide-Over, gliding seamlessly into the workspace from the right display edge with spring inertia.
+  * **Pull Up from Bottom:** Upward summon from the dock region.
+  * **Slide from Left (Sidebar ⬅️):** Enterprise sidebar trajectory.
+  * **Drop Down from Top (Menu Bar ⬇️):** Pull-down notification-style trajectory.
+  * **Spatial Zoom from Center (Holographic ✨):** Direct central holographic expansion.
+* **Proven Hot Corners & Multi-Modal Shortcuts:**
+  * **Bottom-Right Hot Corner:** Quick Note-inspired cursor glide into screen corner triggers instant summon/dismissal.
+  * **Top-Right Hot Corner:** Secondary corner trigger.
+  * **Right-Edge Cursor Push:** Gentle right screen edge bump triggers instant summon.
+  * **Double-Tap ⌃ Control & Double-Tap ⌥ Option:** Rapid keyboard activation without interfering with standard modifier combinations.
+* **Smart App Shielding & Zero-Interference Scrolling:**
+  * Strict frontmost application verification drops all background scroll monitors whenever third-party apps (Xcode, Safari, Slack, VS Code) are focused.
+  * Native Finder folder double-clicks completely unhindered by removing left click interception.
+* **3-Way Adaptive Appearance System:**
+  * Dynamic cycling between `Auto 💻` (system appearance synchronization), `Light ☀️`, and `Dark 🌙` across both the native macOS utility and the marketing portal.
 
 ---
 
