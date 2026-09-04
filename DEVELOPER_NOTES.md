@@ -2,7 +2,7 @@
 
 **App Identifier:** `com.nicholasdudek.genie`  
 **Apple ID:** `6808165534`  
-**Current Release Version:** `1.0.0 (Build 10)`  
+**Current Release Version:** `1.0.0 (Build 11)`  
 **Target Platform:** macOS Sonoma (14.0+) & macOS Sequoia (15.0+)  
 **Architecture:** Universal Binary (Native Apple Silicon ARM64 & Intel x86_64)  
 **Monetization Model:** \$3.99 Upfront Paid Utility • Optional IAP Expansion Packs  
@@ -52,7 +52,7 @@ Genie combines **utilitarian desktop productivity** (instant app discovery, floa
   9. Korean (한국어)
   10. Arabic (العربية) with Right-to-Left (RTL) typography support.
 
-### 2.5 Build 10 Ergonomics, Spatial Trajectories & Gesture Architecture
+### 2.5 Build 11 Ergonomics, Spatial Trajectories & Gesture Architecture
 * **Configurable Spatial Trajectories:**
   * **Slide from Right (iPhone Mode 📱):** Default entrance mimicking iOS Slide-Over, gliding seamlessly into the workspace from the right display edge with spring inertia.
   * **Pull Up from Bottom:** Upward summon from the dock region.
