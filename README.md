@@ -13,7 +13,7 @@
   <a href="https://apps.apple.com/app/id6808165534">
     <img src="https://img.shields.io/badge/Mac_App_Store-Download-007AFF?style=for-the-badge&logo=apple&logoColor=white" alt="Mac App Store" />
   </a>
-  <img src="https://img.shields.io/badge/Current_Build-v1.0.0_(Build_7)-935ff5?style=for-the-badge&logo=apple&logoColor=white" alt="Current Build v1.0.0 (Build 7)" />
+  <img src="https://img.shields.io/badge/Current_Build-v1.0.0_(Build_8)-935ff5?style=for-the-badge&logo=apple&logoColor=white" alt="Current Build v1.0.0 (Build 8)" />
   <img src="https://img.shields.io/badge/macOS-14.0%20Sonoma%20%7C%2015.0%20Sequoia-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Sonoma & Sequoia" />
   <img src="https://img.shields.io/badge/Architecture-Apple%20Silicon%20%26%20Intel-FF9500?style=for-the-badge" alt="Apple Silicon" />
   <img src="https://img.shields.io/badge/Privacy-Zero%20Telemetry-success?style=for-the-badge" alt="Zero Telemetry" />
@@ -222,7 +222,7 @@ We provide direct engineering support with guaranteed responses under 24 hours:
 * **Principal Engineer & Founder**: Nicholas M. Dudek
 * **Direct Engineering Support**: [nicholas.dudek@icloud.com](mailto:nicholas.dudek@icloud.com)
 * **GitHub Issues & Discussions**: [github.com/nicholasdudek/geniedesktop/issues](https://github.com/nicholasdudek/geniedesktop/issues)
-* **Mac App Store**: [Download Genie v1.0.0 (Build 7)](https://apps.apple.com/app/id6808165534)
+* **Mac App Store**: [Download Genie v1.0.0 (Build 8)](https://apps.apple.com/app/id6808165534)
 * **Official Website**: [nicholasdudek.github.io/geniedesktop](https://nicholasdudek.github.io/geniedesktop/)
 * **Privacy Policy**: [nicholasdudek.github.io/geniedesktop/privacy.html](https://nicholasdudek.github.io/geniedesktop/privacy.html)
 * **Location**: Genie Core Labs • San Francisco Bay Area, California
