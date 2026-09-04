@@ -207,6 +207,108 @@
       display: block;
     }
 
+    /* App Preview Video Tabs */
+    .preview-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .preview-tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preview-tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .preview-tab-btn.active {
+      color: #000;
+      background: var(--gold);
+      border-color: var(--gold);
+      box-shadow: 0 0 20px rgba(244, 195, 117, 0.4);
+    }
+
+    /* Screenshots Grid Section */
+    .screenshots-section {
+      max-width: 1200px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+    }
+
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 24px;
+    }
+
+    .screenshot-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screenshot-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .screenshot-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      background: #000;
+    }
+
+    .screenshot-info {
+      padding: 18px 20px;
+    }
+
+    .screenshot-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    .screenshot-info h4 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .screenshot-info p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
     /* Features Grid */
     .features {
       max-width: 1120px;
@@ -471,6 +573,7 @@
     </a>
     <div class="nav-links">
       <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
       <a href="#showcase">Showcase</a>
       <a href="privacy.html">Privacy</a>
       <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-download-nav">Get on Mac App Store</a>
@@ -498,12 +601,22 @@
     </div>
   </header>
 
-  <!-- Video Showreel -->
+  <!-- Video Showreel with 3 Official App Previews -->
   <div class="preview-container">
+    <div class="preview-tabs">
+      <button class="preview-tab-btn active" onclick="switchPreview(0, this)">
+        <span>✨</span> Preview 1: Spatial Canvas & Gestures
+      </button>
+      <button class="preview-tab-btn" onclick="switchPreview(1, this)">
+        <span>🎨</span> Preview 2: Living Themes & Shaders
+      </button>
+      <button class="preview-tab-btn" onclick="switchPreview(2, this)">
+        <span>📐</span> Preview 3: Formations & Controls
+      </button>
+    </div>
     <div class="preview-frame">
-      <video autoplay loop muted playsinline poster="assets/images/real_showcase_themes.png">
-        <source src="assets/video/genie_live_demo_today.mp4" type="video/mp4">
-        <source src="assets/video/genie_studio_walkthrough.mp4" type="video/mp4">
+      <video id="hero-preview-video" autoplay loop muted playsinline controls poster="assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png">
+        <source src="assets/video/App_Preview_1_Spatial_Canvas_1080p.mp4" type="video/mp4">
       </video>
     </div>
   </div>
@@ -550,6 +663,106 @@
         <div class="feature-icon">🛡️</div>
         <h3>100% Offline & Private</h3>
         <p>Zero telemetry, zero tracking, and zero outbound network calls. Everything stays strictly on your Mac's CPU and GPU.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Official Mac App Store Screenshots (10 Pristine 2880x1800 Showcases) -->
+  <section id="screenshots" class="screenshots-section">
+    <div class="section-title">
+      <h2>App Store Showcase</h2>
+      <p>Explore all 10 official Mac App Store showcases in full 2880×1800 Retina resolution.</p>
+    </div>
+
+    <div class="screenshots-grid">
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png" alt="Spatial Desktop Canvas" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 01</span>
+          <h4>Spatial Desktop Canvas</h4>
+          <p>Summon your entire application library over your desktop with fluid 120 FPS spring physics.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/02_App_Matrix_Navigation.png" alt="App Matrix Navigation" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 02</span>
+          <h4>App Matrix Navigation</h4>
+          <p>Clean multi-page desktop canvas with instant search and effortless categorization.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/03_Studio_Hub_Living_Themes.png" alt="Studio Hub Living Themes" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 03</span>
+          <h4>Menu Bar Studio Hub</h4>
+          <p>An expansive 11-tab command center for deep cosmetic and functional customization.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/04_Wallpaper_Camouflage_Mode.png" alt="Wallpaper Camouflage Mode" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 04</span>
+          <h4>1:1 Wallpaper Camouflage</h4>
+          <p>100% transparent pass-through layer seamlessly blending icons over active desktop windows.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/05_Geometric_Formations_Lotus.png" alt="Geometric Formations Lotus" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 05</span>
+          <h4>Floating Lotus Formation</h4>
+          <p>Break free from boring grids with 28+ handcrafted geometric and radial layouts.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/06_Fibonacci_Galaxy_Spiral.png" alt="Fibonacci Galaxy Spiral" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 06</span>
+          <h4>Fibonacci Galaxy Spiral</h4>
+          <p>Golden ratio mathematical spiral arrangement orbiting around your desktop center.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/07_Motion_Physics_And_Gestures.png" alt="Motion Physics and Gestures" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 07</span>
+          <h4>Motion Physics & Dynamics</h4>
+          <p>Interactive trackpad gestures, fluid spring responsiveness, and magnetic drag reordering.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/08_Spatial_Sound_Engine.png" alt="Spatial Sound Engine" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 08</span>
+          <h4>Spatial Sound Engine</h4>
+          <p>Tactile mechanical switch audio feedback synchronized with Apple Force Touch haptic pulses.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/09_Dynamic_Battery_Status_Bar.png" alt="Dynamic Battery Status Bar" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 09</span>
+          <h4>Dynamic Battery Status Bar</h4>
+          <p>28+ animated battery styles, VisionOS pill gauges, and real-time charging equalizers.</p>
+        </div>
+      </div>
+
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/10_VIP_Expansion_Store.png" alt="VIP Expansion Store" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 10</span>
+          <h4>VIP Expansion Store</h4>
+          <p>StoreKit 2 powered expansion packs unlocking living desktop companions, 4K shaders, and VIP packs.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -642,9 +855,23 @@
       <a href="#features">Features</a>
       <a href="privacy.html">Privacy Policy</a>
       <a href="mailto:nicholas.dudek@icloud.com">Support</a>
-      <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank">GitHub</a>
-    </div>
     <p>Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.<br>macOS, Apple Silicon, and App Store are trademarks of Apple Inc.</p>
   </footer>
+
+  <script>
+    function switchPreview(index, btn) {
+      document.querySelectorAll('.preview-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const video = document.getElementById('hero-preview-video');
+      const sources = [
+        { src: 'assets/video/App_Preview_1_Spatial_Canvas_1080p.mp4', poster: 'assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png' },
+        { src: 'assets/video/App_Preview_2_Living_Themes_1080p.mp4', poster: 'assets/images/appstore_screenshots/03_Studio_Hub_Living_Themes.png' },
+        { src: 'assets/video/App_Preview_3_Formations_And_Controls_1080p.mp4', poster: 'assets/images/appstore_screenshots/05_Geometric_Formations_Lotus.png' }
+      ];
+      video.src = sources[index].src;
+      video.poster = sources[index].poster;
+      video.play().catch(function() {});
+    }
+  </script>
 </body>
 </html>
