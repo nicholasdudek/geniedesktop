@@ -84,7 +84,10 @@
       pointer-events: none;
     }
 
-    /* Navigation Bar */
+    
+    /* ==========================================================================
+       Polished Responsive Navigation & Glassmorphic Mobile Drawer
+       ========================================================================== */
     nav {
       position: sticky;
       top: 0;
@@ -99,7 +102,7 @@
       border-bottom: 1px solid var(--border);
       transition: background 0.3s ease, border-color 0.3s ease;
     }
-    
+
     .nav-brand {
       display: flex;
       align-items: center;
@@ -107,37 +110,354 @@
       text-decoration: none;
       color: var(--text);
       font-weight: 700;
-      font-size: 1.25rem;
+      font-size: 1.22rem;
       letter-spacing: -0.02em;
-    }
-    
-    .nav-brand img {
-      width: 38px;
-      height: 38px;
-      border-radius: 9px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      flex-shrink: 0;
     }
 
-    /* Clean Center Navigation Links */
+    .nav-brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+    }
+
+    /* Desktop Navigation Links */
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 22px;
+      gap: 18px;
     }
 
-    .nav-links a {
+    .nav-link-item {
       color: var(--text-muted);
       text-decoration: none;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 500;
-      transition: color 0.2s ease;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
     }
 
-    .nav-links a:hover {
+    .nav-link-item:hover {
       color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
     }
 
-    /* Right Controls: Language, Theme, CTA */
+    .nav-link-item.highlight-link {
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .nav-link-item.highlight-link:hover {
+      background: rgba(244, 195, 117, 0.12);
+    }
+
+    .nav-link-icon, .nav-link-badge, .nav-link-arrow,
+    .nav-mobile-header, .nav-mobile-footer, .nav-mobile-divider {
+      display: none;
+    }
+
+    /* Right Controls */
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-download-nav {
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      color: #0c0f17 !important;
+      font-weight: 600 !important;
+      padding: 8px 18px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      box-shadow: 0 2px 10px rgba(244, 195, 117, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+      white-space: nowrap;
+    }
+    .btn-download-nav:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 16px rgba(244, 195, 117, 0.4);
+    }
+
+    /* Modern 3-Bar Morphing Hamburger Button */
+    .mobile-menu-btn {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 5px;
+      transition: all 0.25s ease;
+      z-index: 1002;
+      padding: 0;
+    }
+    .mobile-menu-btn:hover {
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+    }
+    .hamburger-bar {
+      width: 20px;
+      height: 2px;
+      background-color: var(--text);
+      border-radius: 2px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, background-color 0.2s ease;
+      display: block;
+    }
+    .mobile-menu-btn.active {
+      border-color: var(--border-accent);
+      background: rgba(244, 195, 117, 0.12);
+    }
+    .mobile-menu-btn.active .top-bar {
+      transform: translateY(7px) rotate(45deg);
+      background-color: var(--gold);
+    }
+    .mobile-menu-btn.active .mid-bar {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    .mobile-menu-btn.active .bot-bar {
+      transform: translateY(-7px) rotate(-45deg);
+      background-color: var(--gold);
+    }
+
+    /* Mobile Backdrop Overlay */
+    .mobile-nav-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 998;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s;
+    }
+    .mobile-nav-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Responsive Mobile Navigation Drawer (Screen <= 1080px) */
+    @media (max-width: 1080px) {
+      nav {
+        padding: 12px 20px;
+      }
+      .mobile-menu-btn {
+        display: flex;
+      }
+      .btn-download-nav {
+        display: none;
+      }
+
+      .nav-links {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 68px;
+        left: 12px;
+        right: 12px;
+        background: var(--dropdown-bg);
+        border: 1px solid var(--border-accent);
+        border-radius: 20px;
+        padding: 18px;
+        gap: 4px;
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-14px) scale(0.98);
+        transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                    visibility 0.25s;
+        pointer-events: none;
+        max-height: calc(100vh - 84px);
+        overflow-y: auto;
+        z-index: 999;
+      }
+
+      .nav-links.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
+
+      /* Mobile Drawer Header */
+      .nav-mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-mobile-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .nav-mobile-brand img {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+      }
+      .nav-mobile-brand strong {
+        font-size: 0.95rem;
+        display: block;
+        color: var(--text);
+      }
+      .nav-mobile-brand span {
+        font-size: 0.75rem;
+        color: var(--gold);
+        font-weight: 600;
+      }
+      .nav-mobile-close {
+        background: var(--tag-bg);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+      .nav-mobile-close:hover {
+        color: var(--text);
+        border-color: var(--border-accent);
+      }
+
+      .nav-links-scrollable {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .nav-link-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 14px;
+        border-radius: 12px;
+        color: var(--text);
+        font-size: 0.94rem;
+        font-weight: 500;
+        text-decoration: none;
+        background: transparent;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+      }
+
+      .nav-link-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .nav-link-icon {
+        display: inline-flex;
+        font-size: 1.15rem;
+        width: 22px;
+        justify-content: center;
+      }
+
+      .nav-link-text {
+        font-weight: 500;
+      }
+
+      .nav-link-arrow {
+        display: inline-block;
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        transition: transform 0.2s ease;
+      }
+
+      .nav-link-badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        background: rgba(244, 195, 117, 0.2);
+        color: var(--gold);
+        border: 1px solid var(--border-accent);
+        border-radius: 999px;
+        padding: 2px 8px;
+        text-transform: uppercase;
+      }
+
+      .nav-link-item:hover, .nav-link-item:active {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--border);
+        color: var(--gold);
+      }
+      .nav-link-item:hover .nav-link-arrow {
+        transform: translateX(3px);
+        color: var(--gold);
+      }
+
+      .nav-link-item.highlight-link {
+        background: rgba(244, 195, 117, 0.08);
+        border-color: rgba(244, 195, 117, 0.25);
+        color: var(--gold);
+        font-weight: 600;
+      }
+
+      .nav-mobile-divider {
+        display: block;
+        height: 1px;
+        background: var(--border);
+        margin: 6px 0;
+      }
+
+      /* Mobile Drawer Footer */
+      .nav-mobile-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+
+      .btn-mobile-download {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+        color: #0c0f17 !important;
+        font-weight: 700 !important;
+        padding: 12px 18px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-size: 0.92rem;
+        box-shadow: 0 4px 18px rgba(244, 195, 117, 0.35);
+        text-align: center;
+      }
+
+      .nav-mobile-subinfo {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    }
+
+    /* Right Controls */
     .nav-controls {
       display: flex;
       align-items: center;
@@ -1350,22 +1670,7 @@
     }
 
     @media (max-width: 768px) {
-      nav { padding: 12px 18px; }
-      .nav-links {
-        display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: var(--dropdown-bg);
-        border-bottom: 1px solid var(--border);
-        flex-direction: column;
-        padding: 20px;
-        gap: 16px;
-        backdrop-filter: blur(24px);
-      }
-      .nav-links.open { display: flex; }
-      .mobile-menu-btn { display: block; }
+      nav { padding: 12px 16px; }
       .hero { margin: 40px auto 20px; padding: 0 16px; }
       .hero h1 { font-size: 2.2rem; }
       .features { padding: 0 16px; margin-bottom: 60px; }
@@ -1899,18 +2204,97 @@
       <span>Genie</span>
     </a>
 
+    <!-- Desktop & Mobile Nav Links Drawer -->
     <div class="nav-links" id="nav-links">
-      <a href="#demo" data-i18n="nav_demo">Demo</a>
-      <a href="#stats" data-i18n="nav_stats">Speed & Stats</a>
-      <a href="#architecture" data-i18n="nav_architecture">Architecture</a>
-      <a href="#features" data-i18n="nav_features">Features</a>
-      <a href="#menubar-studio" style="color:var(--gold); font-weight:600;">Menu Bar & Battery ⚡️</a>
-      <a href="features.html">Studio Lab 🧪</a>
-      <a href="#screenshots" data-i18n="nav_showcase">Showcase</a>
-      <a href="#languages" data-i18n="nav_languages">Languages</a>
-      <a href="#contact" data-i18n="nav_support">Support</a>
+      <div class="nav-mobile-header">
+        <div class="nav-mobile-brand">
+          <img src="assets/images/app_icon.png" alt="Genie Logo">
+          <div>
+            <strong>Genie Studio</strong>
+            <span>v1.0.0 (Build 12)</span>
+          </div>
+        </div>
+        <button class="nav-mobile-close" onclick="closeMobileMenu()" aria-label="Close Navigation">✕</button>
+      </div>
+
+      <div class="nav-links-scrollable">
+        <a href="#menubar-studio" class="nav-link-item highlight-link" onclick="closeMobileMenu()">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">⚡️</span>
+            <span class="nav-link-text">Menu Bar & Battery</span>
+          </span>
+          <span class="nav-link-badge">New</span>
+        </a>
+        <a href="features.html" class="nav-link-item highlight-link" onclick="closeMobileMenu()">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">🧪</span>
+            <span class="nav-link-text">Studio Lab & Gestures</span>
+          </span>
+          <span class="nav-link-arrow">↗</span>
+        </a>
+        <div class="nav-mobile-divider"></div>
+        <a href="#demo" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_demo">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">✨</span>
+            <span class="nav-link-text">Live Canvas Demo</span>
+          </span>
+          <span class="nav-link-arrow">›</span>
+        </a>
+        <a href="#stats" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_stats">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">📈</span>
+            <span class="nav-link-text">Speed & Benchmarks</span>
+          </span>
+          <span class="nav-link-arrow">›</span>
+        </a>
+        <a href="#architecture" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_architecture">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">📐</span>
+            <span class="nav-link-text">Deep Architecture</span>
+          </span>
+          <span class="nav-link-arrow">›</span>
+        </a>
+        <a href="#features" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_features">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">🎛️</span>
+            <span class="nav-link-text">Core Features</span>
+          </span>
+          <span class="nav-link-arrow">›</span>
+        </a>
+        <a href="#screenshots" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_showcase">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">🖼️</span>
+            <span class="nav-link-text">App Store Showcase</span>
+          </span>
+          <span class="nav-link-arrow">›</span>
+        </a>
+        <a href="#languages" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_languages">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">🌐</span>
+            <span class="nav-link-text">10 Native Languages</span>
+          </span>
+          <span class="nav-link-arrow">›</span>
+        </a>
+        <a href="#contact" class="nav-link-item" onclick="closeMobileMenu()" data-i18n="nav_support">
+          <span class="nav-link-left">
+            <span class="nav-link-icon">💬</span>
+            <span class="nav-link-text">Support & Contact</span>
+          </span>
+          <span class="nav-link-arrow">›</span>
+        </a>
+      </div>
+
+      <div class="nav-mobile-footer">
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-mobile-download" data-i18n="nav_download">
+          <span> Download on Mac App Store</span>
+        </a>
+        <div class="nav-mobile-subinfo">
+          <span>Zero Telemetry • Pure Swift & Metal 3</span>
+        </div>
+      </div>
     </div>
 
+    <!-- Right Controls: Language, Theme, CTA, Hamburger -->
     <div class="nav-controls">
       <!-- Language Dropdown -->
       <div class="lang-selector-nav">
@@ -1981,12 +2365,17 @@
       <!-- App Store Button -->
       <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-download-nav" data-i18n="nav_download">Mac App Store</a>
 
-      <!-- Mobile Hamburger Button -->
-      <button class="mobile-menu-btn" onclick="toggleMobileMenu()" id="mobile-menu-btn" aria-label="Open Navigation">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+      <!-- Animated 3-Bar Hamburger Button -->
+      <button class="mobile-menu-btn" onclick="toggleMobileMenu()" id="mobile-menu-btn" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="hamburger-bar top-bar"></span>
+        <span class="hamburger-bar mid-bar"></span>
+        <span class="hamburger-bar bot-bar"></span>
       </button>
     </div>
   </nav>
+
+  <!-- Backdrop overlay for mobile menu -->
+  <div class="mobile-nav-backdrop" id="mobile-nav-backdrop" onclick="closeMobileMenu()"></div>
 
   <!-- Hero Section -->
   <header class="hero">
@@ -2244,7 +2633,7 @@
       <!-- Display Stage: Real Screenshot + Deep Feature Breakdown -->
       <div class="menubar-display-stage">
         <div class="menubar-screen-frame">
-          <img id="menubar-feature-img" src="assets/images/4_Settings_And_Battery_Styles.png" alt="Settings and Battery Styles Menu Bar Dropdown">
+          <img id="menubar-feature-img" src="assets/images/zoom_battery_styles.png" alt="Settings and Battery Styles Menu Bar Dropdown">
           <span class="menubar-zoom-badge" id="menubar-feature-badge">Retina Menu Bar Capture</span>
         </div>
 
@@ -2886,9 +3275,50 @@
     });
 
     // 3. Mobile Navigation Menu Toggle
+        // 3. Mobile Navigation Menu Toggle & Auto-Dismiss
     function toggleMobileMenu() {
-      document.getElementById("nav-links")?.classList.toggle("open");
+      const navLinks = document.getElementById("nav-links");
+      const menuBtn = document.getElementById("mobile-menu-btn");
+      const backdrop = document.getElementById("mobile-nav-backdrop");
+
+      const isOpen = navLinks?.classList.contains("open");
+      if (isOpen) {
+        closeMobileMenu();
+      } else {
+        openMobileMenu();
+      }
     }
+
+    function openMobileMenu() {
+      const navLinks = document.getElementById("nav-links");
+      const menuBtn = document.getElementById("mobile-menu-btn");
+      const backdrop = document.getElementById("mobile-nav-backdrop");
+
+      navLinks?.classList.add("open");
+      menuBtn?.classList.add("active");
+      menuBtn?.setAttribute("aria-expanded", "true");
+      backdrop?.classList.add("open");
+      document.body.style.overflow = "hidden"; // Prevent background scrolling
+    }
+
+    function closeMobileMenu() {
+      const navLinks = document.getElementById("nav-links");
+      const menuBtn = document.getElementById("mobile-menu-btn");
+      const backdrop = document.getElementById("mobile-nav-backdrop");
+
+      navLinks?.classList.remove("open");
+      menuBtn?.classList.remove("active");
+      menuBtn?.setAttribute("aria-expanded", "false");
+      backdrop?.classList.remove("open");
+      document.body.style.overflow = ""; // Restore scrolling
+    }
+
+    // Dismiss mobile menu on Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeMobileMenu();
+      }
+    });
 
     // 4. Video Showreel with Back / Forward Side Arrows
     let currentPreviewIndex = 0;
@@ -3176,11 +3606,11 @@
     // Menu Bar Studio Hub Screenshot Switcher
     const MENUBAR_DATA = {
       battery: {
-        img: 'assets/images/4_Settings_And_Battery_Styles.png',
-        badge: 'Retina Menu Bar Capture',
+        img: 'assets/images/zoom_battery_styles.png',
+        badge: '🔍 Zoomed UI Detail • Battery Styles & HUD',
         pill: 'Studio Hub • Battery & Status',
         title: '28+ Living Battery Styles & Hardware Telemetry',
-        desc: 'Replace your static system battery icon with fluid living gauges. Genie connects directly to Apple Silicon power rails and the System Management Controller (SMC) to deliver millisecond-level telemetry right on your status bar.',
+        desc: 'Close-up inspection of Genie\'s dynamic battery gauges. Connects directly to Apple Silicon power rails and the System Management Controller (SMC) to deliver millisecond-level telemetry right on your status bar.',
         bullets: [
           { icon: '⚡️', title: 'Real-Time Wattage & Velocity:', desc: 'Live readouts of active power draw in watts (e.g. 14.2W), battery cycle count, and precise discharge speed.' },
           { icon: '✨', title: '5 Signature Gauge Families:', desc: 'Liquid Glass Capsule, Cyberpunk Digital HUD, VisionOS Pill, Vertical Energy Column, and Minimalist Monochrome.' },
@@ -3189,8 +3619,8 @@
         ]
       },
       status: {
-        img: 'assets/images/08_Real_Status_Bar_Customizer.png',
-        badge: 'Retina Menu Bar Capture',
+        img: 'assets/images/appstore_screenshots/09_Dynamic_Battery_Status_Bar.png',
+        badge: '✨ Full Retina Status Bar Showcase',
         pill: 'Status Bar Customizer',
         title: 'Deep Status Bar Customization & Date Formatting',
         desc: 'Configure exactly how your macOS status bar looks and behaves. Fine-tune date formats, toggle percentage text, calibrate battery health warnings, and adjust gauge opacity on the fly.',
@@ -3202,11 +3632,11 @@
         ]
       },
       hub: {
-        img: 'assets/images/3_MenuBar_Studio_Hub.png',
-        badge: 'Retina Menu Bar Capture',
+        img: 'assets/images/zoom_menubar_hub.png',
+        badge: '🔍 Zoomed UI Detail • 11 Studio Tabs',
         pill: 'Studio Hub Command Center',
         title: '11-Tab Full Desktop Workspace Command Center',
-        desc: 'Access every workspace subsystem directly from the menu bar: Apps Matrix, Desktop Screen Modes, Living Themes, Formations, Mouse Trails, Entities, Sounds, Wallpaper, Motion, Status Bar, and VIP Packs.',
+        desc: 'Close-up look at every workspace subsystem: Apps Matrix, Desktop Screen Modes, Living Themes, Formations, Mouse Trails, Entities, Sounds, Wallpaper, Motion, Status Bar, and VIP Packs.',
         bullets: [
           { icon: '📐', title: 'Formations & Matrix Grid:', desc: 'Adjust grid dimensions, launchpad layouts, and spatial formations directly from the dropdown.' },
           { icon: '⚡️', title: 'Fast App Launcher:', desc: 'Search and launch all installed macOS applications with keyboard navigation and instant filter.' },
@@ -3215,11 +3645,11 @@
         ]
       },
       themes: {
-        img: 'assets/images/02_Studio_Hub_Themes.png',
-        badge: 'Retina Menu Bar Capture',
+        img: 'assets/images/zoom_living_themes.png',
+        badge: '🔍 Zoomed UI Detail • Metal 3 Shaders',
         pill: 'Living GPU Themes Menu',
         title: '52+ Real-Time Living Metal Shaders in One Click',
-        desc: 'Switch between 52+ hardware-accelerated themes directly from the menu bar dropdown. Preview real-time shaders like Frosted Aero Glass, Tokyo Neon Rain, Cosmic Aurora, and Wallpaper Camouflage.',
+        desc: 'Close-up view of 52+ hardware-accelerated themes. Preview real-time shaders like Frosted Aero Glass, Tokyo Neon Rain, Cosmic Aurora, and Wallpaper Camouflage with rich lighting and refraction.',
         bullets: [
           { icon: '🎨', title: 'Instant Shader Previews:', desc: 'Live thumbnail previews of all 52+ shaders render directly inside the dropdown menu.' },
           { icon: '🪟', title: '1:1 Wallpaper Camouflage:', desc: 'Engage 100% transparent pass-through mode to blend your app matrix directly over your desktop.' },
@@ -3228,11 +3658,11 @@
         ]
       },
       sounds: {
-        img: 'assets/images/03_Studio_Hub_Sounds.png',
-        badge: 'Retina Menu Bar Capture',
+        img: 'assets/images/zoom_sound_engine.png',
+        badge: '🔍 Zoomed UI Detail • Tactile Audio Engine',
         pill: 'Spatial Sound & Haptics Menu',
         title: 'Mechanical Audio Profiles & Apple Force Touch Haptics',
-        desc: 'Select from authentic mechanical keyboard profiles (Cherry MX Blue, Brown, Red, Topre, Modern Cyber) and calibrate sub-millisecond Apple Taptic trackpad pulses for every click and drag.',
+        desc: 'Close-up inspection of tactile sound feedback. Select from authentic mechanical keyboard profiles (Cherry MX Blue, Brown, Red, Topre, Modern Cyber) and calibrate sub-millisecond Apple Taptic trackpad pulses.',
         bullets: [
           { icon: '🔊', title: 'PCM Synthesized Audio:', desc: 'Sub-millisecond audio engine delivers ultra-crisp tactile feedback on app selection and launch.' },
           { icon: '🎚️', title: 'Independent Volume Sliders:', desc: 'Fine-tune volume levels for hover sounds, click sounds, formation switches, and retractions.' },

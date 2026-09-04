@@ -825,15 +825,275 @@
     }
     footer a { color: var(--gold); text-decoration: none; }
 
-    @media (max-width: 900px) {
+
+    /* Modern 3-Bar Morphing Hamburger Button */
+    .mobile-menu-btn {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 5px;
+      transition: all 0.25s ease;
+      z-index: 1002;
+      padding: 0;
+    }
+    .mobile-menu-btn:hover {
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+    }
+    .hamburger-bar {
+      width: 18px;
+      height: 2px;
+      background-color: var(--text);
+      border-radius: 2px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, background-color 0.2s ease;
+      display: block;
+    }
+    .mobile-menu-btn.active {
+      border-color: var(--border-accent);
+      background: rgba(244, 195, 117, 0.12);
+    }
+    .mobile-menu-btn.active .top-bar {
+      transform: translateY(7px) rotate(45deg);
+      background-color: var(--gold);
+    }
+    .mobile-menu-btn.active .mid-bar {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    .mobile-menu-btn.active .bot-bar {
+      transform: translateY(-7px) rotate(-45deg);
+      background-color: var(--gold);
+    }
+
+    /* Mobile Backdrop Overlay */
+    .mobile-nav-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 998;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s;
+    }
+    .mobile-nav-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .nav-mobile-header, .nav-mobile-footer, .nav-mobile-divider,
+    .nav-link-icon, .nav-link-arrow, .nav-link-badge {
+      display: none;
+    }
+
+    @media (max-width: 1000px) {
       .trajectory-demo-container,
       .battery-lab-container,
       .feature-grid-2,
       .feature-grid-3 { grid-template-columns: 1fr; }
       .studio-hero h1 { font-size: 2.2rem; }
-      nav { padding: 12px 16px; }
-      .nav-links { display: none; }
+      nav { padding: 12px 18px; }
+      
+      .btn-back-home, .btn-download {
+        display: none;
+      }
+      .mobile-menu-btn {
+        display: flex;
+      }
+
+      .nav-links {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 66px;
+        left: 12px;
+        right: 12px;
+        background: var(--nav-bg);
+        border: 1px solid var(--border-accent);
+        border-radius: 20px;
+        padding: 18px;
+        gap: 4px;
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-14px) scale(0.98);
+        transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                    visibility 0.25s;
+        pointer-events: none;
+        max-height: calc(100vh - 84px);
+        overflow-y: auto;
+        z-index: 999;
+      }
+
+      .nav-links.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
+
+      .nav-mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-mobile-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .nav-mobile-brand img {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+      }
+      .nav-mobile-brand strong {
+        font-size: 0.95rem;
+        display: block;
+        color: var(--text);
+      }
+      .nav-mobile-brand span {
+        font-size: 0.75rem;
+        color: var(--gold);
+        font-weight: 600;
+      }
+      .nav-mobile-close {
+        background: var(--tag-bg);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+      .nav-mobile-close:hover {
+        color: var(--text);
+        border-color: var(--border-accent);
+      }
+
+      .nav-link-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 14px;
+        border-radius: 12px;
+        color: var(--text);
+        font-size: 0.94rem;
+        font-weight: 500;
+        text-decoration: none;
+        background: transparent;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+      }
+
+      .nav-link-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .nav-link-icon {
+        display: inline-flex;
+        font-size: 1.15rem;
+        width: 22px;
+        justify-content: center;
+      }
+
+      .nav-link-arrow {
+        display: inline-block;
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        transition: transform 0.2s ease;
+      }
+
+      .nav-link-badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        background: rgba(244, 195, 117, 0.2);
+        color: var(--gold);
+        border: 1px solid var(--border-accent);
+        border-radius: 999px;
+        padding: 2px 8px;
+        text-transform: uppercase;
+      }
+
+      .nav-link-item:hover, .nav-link-item:active {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--border);
+        color: var(--gold);
+      }
+      .nav-link-item:hover .nav-link-arrow {
+        transform: translateX(3px);
+        color: var(--gold);
+      }
+
+      .nav-link-item.highlight-link {
+        background: rgba(244, 195, 117, 0.08);
+        border-color: rgba(244, 195, 117, 0.25);
+        color: var(--gold);
+        font-weight: 600;
+      }
+
+      .nav-mobile-divider {
+        display: block;
+        height: 1px;
+        background: var(--border);
+        margin: 6px 0;
+      }
+
+      .nav-mobile-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+
+      .btn-mobile-download {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+        color: #0c0f17 !important;
+        font-weight: 700 !important;
+        padding: 12px 18px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-size: 0.92rem;
+        box-shadow: 0 4px 18px rgba(244, 195, 117, 0.35);
+        text-align: center;
+      }
+
+      .nav-mobile-subinfo {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
     }
+
   </style>
 </head>
 <body>
@@ -849,13 +1109,80 @@
       <span class="nav-badge-pill">Feature Studio</span>
     </div>
 
-    <div class="nav-links">
-      <a href="#views">Spatial Views</a>
-      <a href="#gestures">Gestures & Corners</a>
-      <a href="#cursor-fx">Cursor Trails</a>
-      <a href="#battery-designs">Battery HUD</a>
-      <a href="#themes-shaders">Living Themes</a>
-      <a href="#audio-pets">Sound & Pets</a>
+    <!-- Desktop & Mobile Links -->
+    <div class="nav-links" id="feat-nav-links">
+      <div class="nav-mobile-header">
+        <div class="nav-mobile-brand">
+          <img src="assets/images/app_icon.png" alt="Genie Logo">
+          <div>
+            <strong>Genie Feature Studio</strong>
+            <span>Interactive Simulator</span>
+          </div>
+        </div>
+        <button class="nav-mobile-close" onclick="closeFeatMobileMenu()" aria-label="Close Navigation">✕</button>
+      </div>
+
+      <a href="#views" class="nav-link-item" onclick="closeFeatMobileMenu()">
+        <span class="nav-link-left">
+          <span class="nav-link-icon">📱</span>
+          <span>Spatial Views</span>
+        </span>
+        <span class="nav-link-arrow">›</span>
+      </a>
+      <a href="#gestures" class="nav-link-item" onclick="closeFeatMobileMenu()">
+        <span class="nav-link-left">
+          <span class="nav-link-icon">👆</span>
+          <span>Gestures & Corners</span>
+        </span>
+        <span class="nav-link-arrow">›</span>
+      </a>
+      <a href="#cursor-fx" class="nav-link-item" onclick="closeFeatMobileMenu()">
+        <span class="nav-link-left">
+          <span class="nav-link-icon">💫</span>
+          <span>Cursor Trails</span>
+        </span>
+        <span class="nav-link-arrow">›</span>
+      </a>
+      <a href="#battery-designs" class="nav-link-item highlight-link" onclick="closeFeatMobileMenu()">
+        <span class="nav-link-left">
+          <span class="nav-link-icon">🔋</span>
+          <span>Battery HUD & Menu</span>
+        </span>
+        <span class="nav-link-badge">Interactive</span>
+      </a>
+      <a href="#themes-shaders" class="nav-link-item" onclick="closeFeatMobileMenu()">
+        <span class="nav-link-left">
+          <span class="nav-link-icon">🎨</span>
+          <span>Living Themes</span>
+        </span>
+        <span class="nav-link-arrow">›</span>
+      </a>
+      <a href="#audio-pets" class="nav-link-item" onclick="closeFeatMobileMenu()">
+        <span class="nav-link-left">
+          <span class="nav-link-icon">🔊</span>
+          <span>Sound & Pets</span>
+        </span>
+        <span class="nav-link-arrow">›</span>
+      </a>
+
+      <div class="nav-mobile-divider"></div>
+
+      <a href="index.html" class="nav-link-item highlight-link" onclick="closeFeatMobileMenu()">
+        <span class="nav-link-left">
+          <span class="nav-link-icon">🏠</span>
+          <span>Back to Main Overview</span>
+        </span>
+        <span class="nav-link-arrow">↗</span>
+      </a>
+
+      <div class="nav-mobile-footer">
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-mobile-download">
+          <span> Get Genie on App Store</span>
+        </a>
+        <div class="nav-mobile-subinfo">
+          <span>macOS Sonoma & Sequoia Native</span>
+        </div>
+      </div>
     </div>
 
     <div class="nav-controls">
@@ -864,8 +1191,18 @@
       </button>
       <a href="index.html" class="btn-back-home">← Back to Overview</a>
       <a href="https://apps.apple.com/app/id6808165534" class="btn-download" target="_blank" rel="noopener">Get Genie</a>
+
+      <!-- Animated 3-Bar Hamburger Button -->
+      <button class="mobile-menu-btn" onclick="toggleFeatMobileMenu()" id="feat-mobile-menu-btn" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="hamburger-bar top-bar"></span>
+        <span class="hamburger-bar mid-bar"></span>
+        <span class="hamburger-bar bot-bar"></span>
+      </button>
     </div>
   </nav>
+
+  <!-- Backdrop overlay for mobile menu -->
+  <div class="mobile-nav-backdrop" id="feat-mobile-nav-backdrop" onclick="closeFeatMobileMenu()"></div>
 
   <div class="container">
 
@@ -1007,7 +1344,7 @@
 
         <div class="showcase-card">
           <div class="showcase-media-box">
-            <img src="assets/images/05_Real_Motion_Physics_And_FX.png" alt="Right Edge Push">
+            <img src="assets/images/zoom_cursor_particles.png" alt="Right Edge Push">
             <span class="showcase-badge">Border Bump Trigger</span>
           </div>
           <div class="showcase-body">
@@ -1063,7 +1400,7 @@
       <div class="feature-grid-2" style="margin-top: 24px;">
         <div class="showcase-card">
           <div class="showcase-media-box">
-            <img src="assets/images/07_Real_Cursor_Effects.png" alt="Cursor Trails">
+            <img src="assets/images/zoom_cursor_particles.png" alt="Cursor Trails">
             <span class="showcase-badge">Metal 3 Hardware</span>
           </div>
           <div class="showcase-body">
@@ -1074,7 +1411,7 @@
 
         <div class="showcase-card">
           <div class="showcase-media-box">
-            <img src="assets/images/05_Mouse_And_Trails_FX.png" alt="Mouse and Trails">
+            <img src="assets/images/appstore_screenshots/07_Motion_Physics_And_Gestures.png" alt="Mouse and Trails">
             <span class="showcase-badge">Inertial Fluidics</span>
           </div>
           <div class="showcase-body">
@@ -1180,7 +1517,7 @@
         </div>
 
         <div style="position:relative; border-radius:16px; overflow:hidden; border:1px solid var(--border); background:#000; box-shadow:0 16px 40px rgba(0,0,0,0.5);">
-          <img id="feat-menu-display-img" src="assets/images/4_Settings_And_Battery_Styles.png" alt="Settings and Battery Styles Menu Bar Dropdown" style="width:100%; height:auto; display:block; aspect-ratio:16/10; object-fit:cover; transition:opacity 0.25s ease;">
+          <img id="feat-menu-display-img" src="assets/images/zoom_battery_styles.png" alt="Settings and Battery Styles Menu Bar Dropdown" style="width:100%; height:auto; display:block; aspect-ratio:16/10; object-fit:cover; transition:opacity 0.25s ease;">
           <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(180deg, transparent 0%, rgba(7,9,14,0.95) 40%, rgba(7,9,14,0.98) 100%); padding:24px; color:#fff;">
             <div style="display:inline-block; font-size:0.75rem; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;" id="feat-menu-tag">Retina 3024×1964 System Capture</div>
             <h4 style="font-size:1.25rem; font-weight:700; margin-bottom:6px; color:#fff;" id="feat-menu-title">Settings & Battery Styles Dropdown</h4>
@@ -1203,7 +1540,7 @@
 
         <div class="showcase-card">
           <div class="showcase-media-box">
-            <img src="assets/images/08_Real_Status_Bar_Customizer.png" alt="Status Bar Customizer">
+            <img src="assets/images/zoom_battery_styles.png" alt="Status Bar Customizer">
             <span class="showcase-badge">Studio Hub</span>
           </div>
           <div class="showcase-body">
@@ -1214,7 +1551,7 @@
 
         <div class="showcase-card">
           <div class="showcase-media-box">
-            <img src="assets/images/3_MenuBar_Studio_Hub.png" alt="Studio Hub Command Center">
+            <img src="assets/images/zoom_menubar_hub.png" alt="Studio Hub Command Center">
             <span class="showcase-badge">Menu Bar Dropdown</span>
           </div>
           <div class="showcase-body">
@@ -1258,7 +1595,7 @@
 
         <div class="showcase-card">
           <div class="showcase-media-box">
-            <img src="assets/images/01_Real_Themes_And_Shaders.png" alt="Cosmic Aurora">
+            <img src="assets/images/zoom_living_themes.png" alt="Cosmic Aurora">
             <span class="showcase-badge">Dynamic Aurora</span>
           </div>
           <div class="showcase-body">
@@ -1311,7 +1648,7 @@
 
         <div class="showcase-card">
           <div class="showcase-media-box">
-            <img src="assets/images/03_Real_Entities_And_Companions.png" alt="Entities & Companions">
+            <img src="assets/images/zoom_sound_engine.png" alt="Entities & Companions">
             <span class="showcase-badge">120 FPS Physics</span>
           </div>
           <div class="showcase-body">
@@ -1595,34 +1932,34 @@
     // Feature Page Menu Bar Dropdown Switcher
     const FEAT_MENU_DATA = {
       battery: {
-        img: 'assets/images/4_Settings_And_Battery_Styles.png',
-        tag: 'Retina 3024×1964 System Capture',
+        img: 'assets/images/zoom_battery_styles.png',
+        tag: '🔍 Zoomed UI Detail • 28+ Battery Styles',
         title: 'Settings & Battery Styles Dropdown',
-        desc: 'Shows the live configuration panel where users can switch between 28+ battery styles, toggle SMC hardware wattage readouts, enable Low Power Mode adaptations, and customize status bar icons.'
+        desc: 'Zoomed detail view of the live configuration panel: switch between 28+ battery styles, toggle SMC hardware wattage readouts (14.2W), enable Low Power Mode adaptations, and calibrate status bar icons.'
       },
       statusbar: {
-        img: 'assets/images/08_Real_Status_Bar_Customizer.png',
-        tag: 'Retina 2880×1800 System Capture',
-        title: 'Real Status Bar Customizer',
+        img: 'assets/images/appstore_screenshots/09_Dynamic_Battery_Status_Bar.png',
+        tag: '✨ Retina Status Bar Showcase',
+        title: 'Dynamic Battery Status Bar',
         desc: 'Deep status bar calibration: adjust date & clock typography, toggle percentage indicators, customize charging glow thresholds, and select monochrome or neon color schemes.'
       },
       hub: {
-        img: 'assets/images/3_MenuBar_Studio_Hub.png',
-        tag: 'Retina 3024×1964 System Capture',
+        img: 'assets/images/zoom_menubar_hub.png',
+        tag: '🔍 Zoomed UI Detail • 11 Studio Tabs',
         title: 'Studio Hub Menu Bar Dropdown',
-        desc: 'The complete 11-tab studio command center unrolled from the macOS menu bar icon. Instant control over Apps, Desktop Modes, Themes, Formations, and Sound Engines.'
+        desc: 'Zoomed close-up of the 11-tab studio command center unrolled from the macOS menu bar icon. Instant control over Apps, Desktop Modes, Themes, Formations, and Sound Engines.'
       },
       themes: {
-        img: 'assets/images/02_Studio_Hub_Themes.png',
-        tag: 'Retina 2880×1800 System Capture',
+        img: 'assets/images/zoom_living_themes.png',
+        tag: '🔍 Zoomed UI Detail • Metal 3 Shaders',
         title: 'Living Themes & Shaders Menu',
-        desc: 'Browse and preview all 52+ real-time GPU Metal 3 shaders with instant live thumbnails directly inside the menu bar popup.'
+        desc: 'Browse and preview all 52+ real-time GPU Metal 3 shaders with vibrant ambient lighting, Frosted Aero Glass, and optical refraction.'
       },
       sounds: {
-        img: 'assets/images/03_Studio_Hub_Sounds.png',
-        tag: 'Retina 2880×1800 System Capture',
+        img: 'assets/images/zoom_sound_engine.png',
+        tag: '🔍 Zoomed UI Detail • Mechanical Audio Engine',
         title: 'Spatial Sound & Haptics Menu',
-        desc: 'Test mechanical switch clicks, calibrate trackpad haptic pulses, and adjust spatial volume sliders directly from the menu bar.'
+        desc: 'Zoomed inspection of tactile mechanical switches, Apple Force Touch haptic calibration, and spatial volume mixing.'
       }
     };
 
@@ -1651,6 +1988,51 @@
       if (title) title.textContent = d.title;
       if (desc) desc.textContent = d.desc;
     }
+
+
+    // Feature Page Mobile Menu Functions
+    function toggleFeatMobileMenu() {
+      const navLinks = document.getElementById("feat-nav-links");
+      const menuBtn = document.getElementById("feat-mobile-menu-btn");
+      const backdrop = document.getElementById("feat-mobile-nav-backdrop");
+
+      const isOpen = navLinks?.classList.contains("open");
+      if (isOpen) {
+        closeFeatMobileMenu();
+      } else {
+        openFeatMobileMenu();
+      }
+    }
+
+    function openFeatMobileMenu() {
+      const navLinks = document.getElementById("feat-nav-links");
+      const menuBtn = document.getElementById("feat-mobile-menu-btn");
+      const backdrop = document.getElementById("feat-mobile-nav-backdrop");
+
+      navLinks?.classList.add("open");
+      menuBtn?.classList.add("active");
+      menuBtn?.setAttribute("aria-expanded", "true");
+      backdrop?.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeFeatMobileMenu() {
+      const navLinks = document.getElementById("feat-nav-links");
+      const menuBtn = document.getElementById("feat-mobile-menu-btn");
+      const backdrop = document.getElementById("feat-mobile-nav-backdrop");
+
+      navLinks?.classList.remove("open");
+      menuBtn?.classList.remove("active");
+      menuBtn?.setAttribute("aria-expanded", "false");
+      backdrop?.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeFeatMobileMenu();
+      }
+    });
 
 </script>
 </body>
