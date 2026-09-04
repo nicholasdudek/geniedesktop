@@ -348,6 +348,66 @@
       font-weight: 500;
     }
 
+    /* Team Section */
+    .team-section {
+      max-width: 1000px;
+      margin: 0 auto 100px;
+      padding: 0 24px;
+      text-align: center;
+    }
+
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      margin-top: 40px;
+    }
+
+    .team-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 24px;
+      backdrop-filter: blur(16px);
+      transition: transform 0.25s ease, border-color 0.25s ease;
+    }
+
+    .team-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(244, 195, 117, 0.4);
+    }
+
+    .team-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(244, 195, 117, 0.2), rgba(147, 95, 245, 0.2));
+      border: 1px solid var(--border-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      margin: 0 auto 16px;
+    }
+
+    .team-card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 4px;
+    }
+
+    .team-card .role {
+      color: var(--gold);
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .team-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
     /* Footer */
     footer {
       border-top: 1px solid var(--border);
@@ -419,7 +479,7 @@
 
   <!-- Hero Section -->
   <header class="hero">
-    <div class="hero-badge">✨ Engineered for macOS Sonoma & Sequoia</div>
+    <div class="hero-badge">✨ Engineered for macOS Sonoma, Sequoia & Golden Gate (macOS 16 Beta)</div>
     <h1>Your desktop transformed into a spatial canvas.</h1>
     <p>Genie reimagines how you launch, organize, and interact with apps on macOS. Powered natively by Swift, Metal shaders, and zero telemetry.</p>
     
@@ -540,6 +600,30 @@
           <h4>Status Bar & Battery Styles</h4>
           <p>28 animated battery gauges, custom glyphs, and real-time charging equalizer animations.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Team & Engineering Section -->
+  <section class="team-section">
+    <div class="section-title">
+      <h2>Engineering & Design</h2>
+      <p>Passionate craftsmanship bringing next-generation spatial computing to macOS.</p>
+    </div>
+
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-avatar">👨‍💻</div>
+        <h3>Nicholas M. Dudek</h3>
+        <div class="role">Founder & Principal Engineer</div>
+        <p>Architect of Genie's spatial windowing engine, custom Metal shader pipelines, and tactile macOS haptic systems.</p>
+      </div>
+
+      <div class="team-card">
+        <div class="team-avatar">✨</div>
+        <h3>Genie Core Labs</h3>
+        <div class="role">System Architecture & QA</div>
+        <p>Dedicated to native Swift performance, mathematical formations, and strict zero-telemetry offline privacy guarantees.</p>
       </div>
     </div>
   </section>
