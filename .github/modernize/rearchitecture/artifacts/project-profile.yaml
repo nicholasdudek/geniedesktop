@@ -1,0 +1,43 @@
+project:
+  scope_path: "."
+  loc: 2352
+  languages: [swift]
+  git: false
+  structure:
+    Sources/Nexus: "Primary Swift app source"
+    docs/feature-council: "Project governance and planning docs"
+  notes: "Swift menubar-style app with app delegate, models, helper utilities, and menu UI view."
+
+assessment:
+  change_type: upgrade
+  rationale: |
+    The request is to fix behavior in an existing app without a stack migration.
+    Recon shows a compact single-language Swift codebase, so this is an in-place
+    change on the current stack.
+  transformations:
+    - fromStack: Swift AppKit/SwiftUI
+      fromStackVersion: unknown
+      toStack: Swift AppKit/SwiftUI
+      toStackVersion: unknown
+  grouping_needed: false
+  deep_planning: undecided
+
+progress_sync:
+  run_id: 172a46bf-3744-4e09-88a5-b57909bc8dd2
+  grouping_mode: none
+  execution_mode: all-at-once
+  plan_start_time: 2026-09-01T05:38:21Z
+  plan_completed_time: 2026-09-01T05:44:57Z
+  execution_start_time: 2026-09-01T06:49:03Z
+  execution_completed_time: ""
+  validation_start_time: ""
+  validation_completed_time: ""
+  total_phases: 6
+  completed_phases: 0
+  total_modules: 1
+  completed_modules: 0
+  total_tasks: 7
+  completed_tasks: 0
+  total_commits: 0
+  build_verified: false
+  test_verified: false

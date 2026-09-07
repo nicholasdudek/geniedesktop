@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genie — Master Feature Previews & Interactive Laboratory</title>
+  <meta name="description" content="Interactive website preview studio for Genie (GoldGate) macOS spatial desktop. Inspect all 18 flagship features in 3024×1890 Retina resolution with live simulators, Web Audio haptics, and video walkthroughs.">
+  <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+
+  <style>
+    :root, [data-theme="dark"] {
+      --bg: #07090e;
+      --bg-surface: #0e121d;
+      --bg-glass: rgba(14, 18, 29, 0.75);
+      --card-bg: rgba(255, 255, 255, 0.035);
+      --card-hover: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(244, 195, 117, 0.35);
+      --gold: #f4c375;
+      --gold-glow: rgba(244, 195, 117, 0.25);
+      --purple: #935ff5;
+      --purple-glow: rgba(147, 95, 245, 0.35);
+      --blue: #38bdf8;
+      --green: #34d399;
+      --red: #f87171;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --nav-bg: rgba(7, 9, 14, 0.88);
+      --canvas-bg: #0b0f19;
+      --tag-bg: rgba(255, 255, 255, 0.06);
+      --code-bg: #05070a;
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-glass: rgba(255, 255, 255, 0.85);
+      --card-bg: rgba(0, 0, 0, 0.03);
+      --card-hover: rgba(0, 0, 0, 0.06);
+      --border: rgba(0, 0, 0, 0.09);
+      --border-accent: rgba(217, 119, 6, 0.45);
+      --gold: #d97706;
+      --gold-glow: rgba(217, 119, 6, 0.15);
+      --purple: #7c3aed;
+      --purple-glow: rgba(124, 58, 237, 0.15);
+      --blue: #0284c7;
+      --green: #059669;
+      --red: #dc2626;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --nav-bg: rgba(255, 255, 255, 0.92);
+      --canvas-bg: #f1f5f9;
+      --tag-bg: rgba(0, 0, 0, 0.05);
+      --code-bg: #f8fafc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      background-image: 
+        radial-gradient(circle at 15% 0%, var(--purple-glow) 0%, transparent 45%),
+        radial-gradient(circle at 85% 15%, var(--gold-glow) 0%, transparent 45%);
+    }
+
+    /* Top Navigation */
+    nav.top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: var(--nav-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .nav-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .nav-brand-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+      background: linear-gradient(135deg, var(--gold) 0%, #fff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .nav-brand-badge {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--tag-bg);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .nav-link {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: var(--text);
+      background: var(--card-bg);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .icon-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+    .icon-btn:hover {
+      background: var(--card-hover);
+      border-color: var(--border-accent);
+      transform: translateY(-1px);
+    }
+
+    /* Main Layout: Sidebar & Content Area */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      height: calc(100vh - 61px);
+      overflow: hidden;
+    }
+
+    /* Feature List Sidebar */
+    aside.sidebar {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+    }
+    .sidebar-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .sidebar-title-row h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sidebar-count {
+      font-size: 0.72rem;
+      padding: 2px 7px;
+      background: var(--tag-bg);
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .search-box {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .search-box input {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px 7px 32px;
+      font-size: 0.82rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    .search-box input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px var(--gold-glow);
+    }
+    .search-box .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    /* Category Filter Pills */
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .filter-pills::-webkit-scrollbar { display: none; }
+    .filter-pill {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .filter-pill:hover, .filter-pill.active {
+      background: var(--gold-glow);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* Feature Items List */
+    .feature-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .feature-list::-webkit-scrollbar { width: 5px; }
+    .feature-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.18s ease;
+      position: relative;
+    }
+    .feature-item:hover {
+      background: var(--card-hover);
+      border-color: var(--border);
+      transform: translateX(2px);
+    }
+    .feature-item.active {
+      background: rgba(244, 195, 117, 0.08);
+      border-color: var(--border-accent);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+    .feature-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 10%;
+      bottom: 10%;
+      width: 3px;
+      background: var(--gold);
+      border-radius: 0 4px 4px 0;
+    }
+
+    .feature-item-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #000;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .feature-item-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .feature-item-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .feature-item-badge {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .feature-item-badge span {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+    .feature-item-num {
+      font-size: 0.72rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    /* Main Stage */
+    main.stage {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow-y: auto;
+      background: var(--bg);
+      position: relative;
+    }
+
+    /* Stage Header */
+    .stage-header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .stage-info {
+      flex: 1;
+    }
+    .stage-pill-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .category-badge {
+      font-size: 0.72rem;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--tag-bg);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .hw-badge {
+      font-size: 0.72rem;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--blue);
+      font-weight: 600;
+      font-family: ui-monospace, monospace;
+    }
+    .stage-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+    .stage-tagline {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Stage View Mode Tabs */
+    .stage-modes-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-bg);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .mode-btn:hover {
+      color: var(--text);
+    }
+    .mode-btn.active {
+      background: var(--gold);
+      color: #07090e;
+      box-shadow: 0 2px 8px var(--gold-glow);
+    }
+
+    /* Stage Viewport Area */
+    .viewport-container {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-height: 600px;
+    }
+
+    /* Viewport Panel */
+    .preview-panel {
+      display: none;
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-panel.active {
+      display: block;
+      animation: fadeIn 0.2s ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Mode 1: High-Res Screenshot Preview */
+    .screenshot-viewer-wrap {
+      position: relative;
+      background: #000;
+      min-height: 520px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+    .screenshot-viewer-img {
+      width: 100%;
+      height: auto;
+      max-height: 72vh;
+      object-fit: contain;
+      display: block;
+      transition: opacity 0.2s ease;
+    }
+    /* Zoom Magnifier Lens */
+    .zoom-lens {
+      position: absolute;
+      width: 160px;
+      height: 160px;
+      border: 2px solid var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(244,195,117,0.4);
+      pointer-events: none;
+      display: none;
+      background-repeat: no-repeat;
+      z-index: 10;
+    }
+
+    .viewer-toolbar {
+      padding: 12px 18px;
+      background: var(--bg-glass);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+    }
+    .viewer-specs {
+      display: flex;
+      gap: 16px;
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .viewer-specs b { color: var(--gold); }
+    .viewer-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .pill-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .pill-btn:hover {
+      background: var(--card-hover);
+      border-color: var(--border-accent);
+    }
+
+    /* Mode 2: Interactive Simulators */
+    .sim-container {
+      padding: 24px;
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .sim-controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.82rem;
+    }
+    .sim-control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sim-control-group label {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .sim-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      outline: none;
+      width: 110px;
+    }
+    .sim-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--gold);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--gold-glow);
+    }
+
+    .sim-canvas-stage {
+      flex: 1;
+      min-height: 420px;
+      border-radius: 12px;
+      background: #000;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Mode 3: Video Walkthrough */
+    .video-container {
+      padding: 24px;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .video-player {
+      width: 100%;
+      max-width: 960px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      background: #000;
+    }
+    .video-selector-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 960px;
+    }
+    .video-pick-card {
+      flex: 1;
+      padding: 12px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+    .video-pick-card:hover, .video-pick-card.active {
+      border-color: var(--gold);
+      background: rgba(244, 195, 117, 0.08);
+    }
+    .video-pick-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .video-pick-desc {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* Mode 4: Architecture & Code */
+    .code-container {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .code-meta-card {
+      padding: 14px 18px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .code-file-tag {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.85rem;
+      color: var(--gold);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+    }
+
+    /* Telemetry Details Footer Card */
+    .telemetry-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .telemetry-item h5 {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+    .telemetry-item p {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Modal Fullscreen Lightbox */
+    dialog.lightbox-modal {
+      width: 95vw;
+      max-width: 1400px;
+      height: 90vh;
+      border-radius: 16px;
+      background: rgba(7, 9, 14, 0.96);
+      backdrop-filter: blur(30px);
+      border: 1px solid var(--border-accent);
+      color: var(--text);
+      padding: 0;
+      margin: auto;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.8);
+      outline: none;
+    }
+    dialog.lightbox-modal::backdrop {
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+    }
+    .modal-content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 14px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-body {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #000;
+    }
+    .modal-body img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    /* Specific Simulator Styles */
+    .spatial-grid-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 12px;
+      width: 90%;
+      max-width: 580px;
+      height: 360px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+    }
+    .spatial-cell {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .spatial-cell:hover, .spatial-cell.selected {
+      background: var(--gold-glow);
+      border-color: var(--gold);
+      color: var(--gold);
+      transform: scale(1.04);
+    }
+    .spatial-cell.selected::after {
+      content: '● ACTIVE';
+      position: absolute;
+      bottom: 6px;
+      font-size: 0.6rem;
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    .battery-pill-display {
+      width: 220px;
+      height: 90px;
+      border: 3px solid var(--gold);
+      border-radius: 20px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 6px;
+      background: rgba(0,0,0,0.6);
+      box-shadow: 0 0 25px var(--gold-glow);
+    }
+    .battery-pill-display::after {
+      content: '';
+      position: absolute;
+      right: -14px;
+      width: 8px;
+      height: 36px;
+      background: var(--gold);
+      border-radius: 0 4px 4px 0;
+    }
+    .battery-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f59e0b, #10b981);
+      border-radius: 12px;
+      transition: width 0.3s ease, background 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #000;
+      font-size: 1.1rem;
+    }
+
+    @media (max-width: 1024px) {
+      .app-shell {
+        grid-template-columns: 280px 1fr;
+      }
+    }
+    @media (max-width: 768px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      aside.sidebar {
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <a href="index.html" class="nav-brand">
+      <img src="assets/images/app_icon.png" alt="Genie Icon" width="32" height="32">
+      <div>
+        <div class="nav-brand-title">Genie Master Previews</div>
+      </div>
+      <span class="nav-brand-badge">Build 12 • 18 Features</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="features.html" class="nav-link">Feature Lab</a>
+      <a href="previews.html" class="nav-link active">Live Previews</a>
+      <a href="docs/USER_GUIDE.md" class="nav-link">Documentation</a>
+    </div>
+
+    <div class="nav-actions">
+      <button class="icon-btn" id="btn-sound-toggle" onclick="toggleAudioFx()" title="Toggle Web Audio Haptics & Acoustic Feedback">🔊</button>
+      <button class="icon-btn" id="btn-theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌓</button>
+      <button class="pill-btn" onclick="openFullscreenModal()" style="background:var(--gold); color:#000; font-weight:700;">
+        <span>⤢</span> Fullscreen
+      </button>
+    </div>
+  </nav>
+
+  <!-- App Shell -->
+  <div class="app-shell">
+
+    <!-- Feature Navigator Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title-row">
+          <h3><span>⚡️</span> Feature Catalog</h3>
+          <span class="sidebar-count" id="catalog-count">18 Verified</span>
+        </div>
+
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="feature-search-input" placeholder="Search features, shaders, telemetry..." oninput="filterFeatures()">
+        </div>
+
+        <div class="filter-pills">
+          <button class="filter-pill active" onclick="setCategoryFilter('all', this)">All (18)</button>
+          <button class="filter-pill" onclick="setCategoryFilter('spatial', this)">Spatial (3)</button>
+          <button class="filter-pill" onclick="setCategoryFilter('metal', this)">Metal & Glass (3)</button>
+          <button class="filter-pill" onclick="setCategoryFilter('ai', this)">AI & Search (2)</button>
+          <button class="filter-pill" onclick="setCategoryFilter('hardware', this)">Hardware (3)</button>
+          <button class="filter-pill" onclick="setCategoryFilter('haptics', this)">Haptics & Pets (3)</button>
+          <button class="filter-pill" onclick="setCategoryFilter('governance', this)">Governance (4)</button>
+        </div>
+      </div>
+
+      <!-- Feature List Items -->
+      <div class="feature-list" id="feature-list-container">
+      </div>
+    </aside>
+
+    <!-- Master Stage -->
+    <main class="stage">
+
+      <!-- Stage Header & Controls -->
+      <header class="stage-header">
+        <div class="stage-info">
+          <div class="stage-pill-row">
+            <span class="category-badge" id="active-category-pill">Hardware Telemetry</span>
+            <span class="hw-badge" id="active-hw-pill">3024 × 1890 Retina</span>
+            <span class="hw-badge" id="active-fps-pill">120 FPS Metal</span>
+          </div>
+          <h1 class="stage-title" id="active-feature-title">Power Reserve & Battery Telemetry</h1>
+          <p class="stage-tagline" id="active-feature-desc">Granular watt-meter, cycle telemetry, and dynamic status bar aesthetics integrated directly with macOS IOKit and Apple Silicon SMC.</p>
+        </div>
+
+        <!-- Mode Selectors -->
+        <div class="stage-modes-row">
+          <button class="mode-btn active" id="mode-btn-capture" onclick="switchStageMode('capture')">
+            <span>📸</span> Retina Capture
+          </button>
+          <button class="mode-btn" id="mode-btn-sim" onclick="switchStageMode('sim')">
+            <span>🕹️</span> Live Simulator
+          </button>
+          <button class="mode-btn" id="mode-btn-video" onclick="switchStageMode('video')">
+            <span>🎥</span> Motion Video
+          </button>
+          <button class="mode-btn" id="mode-btn-code" onclick="switchStageMode('code')">
+            <span>📐</span> Swift Code
+          </button>
+        </div>
+      </header>
+
+      <!-- Viewport Stage -->
+      <div class="viewport-container">
+
+        <!-- Mode 1: High-Res Screenshot Panel -->
+        <div class="preview-panel active" id="panel-capture">
+          <div class="screenshot-viewer-wrap" id="screenshot-wrap" onmousemove="handleMagnifier(event)" onmouseleave="hideMagnifier()">
+            <img id="stage-screenshot-img" class="screenshot-viewer-img" src="assets/screenshots/01_power_reserve_battery.png" alt="Feature Screenshot Preview">
+            <div class="zoom-lens" id="zoom-lens"></div>
+          </div>
+          <div class="viewer-toolbar">
+            <div class="viewer-specs">
+              <span>Resolution: <b>3024 × 1890</b></span>
+              <span>Aspect: <b>16:10 Liquid Retina</b></span>
+              <span>Color: <b>Display P3</b></span>
+              <span>Window: <b>SharingType.readOnly</b></span>
+            </div>
+            <div class="viewer-actions">
+              <button class="pill-btn" onclick="openFullscreenModal()"><span>⤢</span> Fullscreen</button>
+              <a id="download-capture-link" href="assets/screenshots/01_power_reserve_battery.png" download class="pill-btn"><span>⬇️</span> Download PNG</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode 2: Interactive Live Simulator Panel -->
+        <div class="preview-panel" id="panel-sim">
+          <div class="sim-container">
+            <div class="sim-controls-bar" id="sim-controls-bar">
+            </div>
+
+            <div class="sim-canvas-stage" id="sim-canvas-stage">
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode 3: Motion Video Walkthrough Panel -->
+        <div class="preview-panel" id="panel-video">
+          <div class="video-container">
+            <div class="video-selector-row">
+              <div class="video-pick-card active" id="vid-card-1" onclick="switchActiveVideo(1)">
+                <div class="video-pick-title">🎥 1. Control Center Architecture Walkthrough</div>
+                <div class="video-pick-desc">Dynamic cycling across all flagship panels, Metal shaders, glass finishes, power reserve, and console preferences.</div>
+              </div>
+              <div class="video-pick-card" id="vid-card-2" onclick="switchActiveVideo(2)">
+                <div class="video-pick-title">🗺️ 2. 3×3 Spatial Canvas Navigation & Zoom</div>
+                <div class="video-pick-desc">Smooth trackpad pinch-to-zoom out to the 3×3 matrix, multi-workspace panning, and seamless camera landing.</div>
+              </div>
+            </div>
+
+            <video id="feature-video-player" class="video-player" controls preload="metadata" playsinline width="960" height="540">
+              <source id="video-source-elem" src="assets/videos/Genie_Control_Center_Walkthrough.mov" type="video/mp4">
+              Your browser does not support HTML5 video.
+            </video>
+          </div>
+        </div>
+
+        <!-- Mode 4: Architecture & Swift Source Code Panel -->
+        <div class="preview-panel" id="panel-code">
+          <div class="code-container">
+            <div class="code-meta-card">
+              <div class="code-file-tag">
+                <span>📄</span> <span id="code-file-path">Sources/GoldGate/Views/SettingsView.swift</span>
+              </div>
+              <div class="viewer-specs">
+                <span>Subsystem: <b id="code-subsystem-name">IOKit / SMC Telemetry</b></span>
+                <span>Language: <b>Swift 6.0 + AppKit</b></span>
+              </div>
+            </div>
+
+            <pre class="code-block" id="code-block-content">
+// Loading Swift Architecture Definition...
+            </pre>
+          </div>
+        </div>
+
+        <!-- Telemetry Details Footer Card -->
+        <div class="telemetry-card">
+          <div class="telemetry-item">
+            <h5>Subsystem Location</h5>
+            <p id="footer-subsystem">IOKit Battery & SMC Bridge</p>
+          </div>
+          <div class="telemetry-item">
+            <h5>Primary Source Hook</h5>
+            <p id="footer-hook" style="font-family:ui-monospace, monospace; font-size:0.8rem; color:var(--gold);">SettingsView.swift#L450</p>
+          </div>
+          <div class="telemetry-item">
+            <h5>Hardware Acceleration</h5>
+            <p id="footer-accel">Apple Silicon M-Series SMC</p>
+          </div>
+          <div class="telemetry-item">
+            <h5>UserDefaults Migration Key</h5>
+            <p id="footer-key" style="font-family:ui-monospace, monospace; font-size:0.8rem; color:var(--blue);">AppDefaultsManager.Key.powerReserve</p>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Fullscreen Modal Lightbox -->
+  <dialog id="lightbox-modal" class="lightbox-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span class="category-badge" id="modal-category">Retina Capture</span>
+          <h3 id="modal-title" style="font-size:1.1rem; font-weight:700;">Feature Inspection</h3>
+        </div>
+        <button class="icon-btn" onclick="closeFullscreenModal()" style="font-size:1.2rem;">✕</button>
+      </div>
+      <div class="modal-body">
+        <img id="modal-img" src="assets/screenshots/01_power_reserve_battery.png" alt="Fullscreen Feature">
+      </div>
+    </div>
+  </dialog>
+
+  <!-- JavaScript Engine -->
+  <script>
+    const FEATURES_DATA = [
+      {
+        id: "01_power_reserve_battery",
+        num: "01",
+        title: "Power Reserve & Battery Telemetry",
+        tagline: "Granular watt-meter, cycle telemetry, and dynamic status bar aesthetics",
+        category: "hardware",
+        categoryName: "Hardware Telemetry",
+        hw: "3024 × 1890 Retina",
+        fps: "SMC 10Hz Polling",
+        img: "assets/screenshots/01_power_reserve_battery.png",
+        file: "Sources/GoldGate/Views/SettingsView.swift",
+        subsystem: "IOKit & SMC Telemetry Engine",
+        hook: "SettingsView.swift#L450",
+        accel: "Apple Silicon SMC Power Rail",
+        prefKey: "powerReservePaletteIndex",
+        desc: "Direct IOKit and SMC integration reporting instant charging wattage (up to 140W on 14-inch MacBook Pro), active cycle degradation curves, thermal dissipation profiles, and 28+ customizable status bar battery styles including VisionOS pills and neon meters.",
+        code: `// Battery Telemetry & SMC Power Poller
+final class PowerReserveManager: ObservableObject {
+    @Published var instantaneousWattage: Double = 34.2
+    @Published var stateOfChargePercentage: Int = 94
+    @Published var cycleCount: Int = 118
+    @Published var thermalHeadroomCelsius: Double = 38.4
+    @Published var isLowPowerModeActive: Bool = false
+
+    func pollSystemManagementController() -> BatteryTelemetry {
+        let smcService = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
+        defer { IOObjectRelease(smcService) }
+        return BatteryTelemetry.read(from: smcService)
+    }
+}`
+      },
+      {
+        id: "02_atmospheric_murals_shaders",
+        num: "02",
+        title: "Atmospheric Murals & Metal Shaders",
+        tagline: "52+ hardware-accelerated GPU living shaders rendering at 120 FPS ProMotion",
+        category: "metal",
+        categoryName: "Metal & Shaders",
+        hw: "Metal 3 Pipeline",
+        fps: "120 FPS ProMotion",
+        img: "assets/screenshots/02_atmospheric_murals_shaders.png",
+        file: "Sources/GoldGate/Engine/AtmosphericShaderEngine.swift",
+        subsystem: "AtmosphericShaderEngine & Metal Core",
+        hook: "AtmosphericShaderEngine.swift#L24",
+        accel: "GPU Metal 3 MSL Compute",
+        prefKey: "activeAtmosphericMuralShader",
+        desc: "Custom Metal Shading Language (MSL) pipeline with zero CPU overhead. Features Golden Gate Sunset, Northern Lights aurora, sub-surface oceanic caustics, and 80s retro cyber vector grids with dynamic ambient color matching.",
+        code: `// Atmospheric Metal Shader Compute Kernel
+kernel void atmospheric_sunset_kernel(
+    texture2d<float, access::write> outputTexture [[texture(0)]],
+    constant ShaderUniforms &uniforms [[buffer(0)]],
+    uint2 coordinate [[thread_position_in_grid]]
+) {
+    float2 uv = float2(coordinate) / uniforms.viewportSize;
+    float time = uniforms.currentTime * 0.4;
+    float wave = sin(uv.x * 6.28 + time) * 0.08;
+    float4 goldenGate = mix(float4(0.95, 0.45, 0.15, 1.0), float4(0.55, 0.15, 0.45, 1.0), uv.y + wave);
+    outputTexture.write(goldenGate, coordinate);
+}`
+      },
+      {
+        id: "03_atelier_finishes_glass",
+        num: "03",
+        title: "Atelier Finishes & Frosted Glass",
+        tagline: "Subpixel optical refraction, variable acrylic blur, and border luminescence",
+        category: "metal",
+        categoryName: "Metal & Glass",
+        hw: "NSVisualEffectView Subpixel",
+        fps: "Real-time Blit",
+        img: "assets/screenshots/03_atelier_finishes_glass.png",
+        file: "Sources/GoldGate/Helpers/PanelViews.swift",
+        subsystem: "Vitreous Panel Material Architecture",
+        hook: "PanelViews.swift#L28",
+        accel: "CoreAnimation Compositor",
+        prefKey: "atelierFinishMaterialMode",
+        desc: "Ultra-luxury frosted glass composition with configurable Gaussian blur radius (up to 100px), Fresnel edge illumination, chromatic dispersion, and high-contrast dark/light mode tinting.",
+        code: `// Panel Views Glassmorphism Material Composer
+final class FrostedAtelierPanel: NSPanel {
+    override init(contentRect: NSRect, styleMask: NSWindow.StyleMask, backing: NSWindow.BackingStoreType, defer flag: Bool) {
+        super.init(contentRect: contentRect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: flag)
+        self.sharingType = .readOnly // Critical for WindowServer capture
+        self.hasShadow = true
+        self.backgroundColor = .clear
+        self.isOpaque = false
+    }
+}`
+      },
+      {
+        id: "04_executive_intelligence_ai",
+        num: "04",
+        title: "Executive Intelligence & AI Models",
+        tagline: "Local LLM inference via Ollama / LM Studio and cloud intelligence",
+        category: "ai",
+        categoryName: "AI & Intelligence",
+        hw: "CoreML & Local REST API",
+        fps: "Sub-50ms TTFT",
+        img: "assets/screenshots/04_executive_intelligence_ai.png",
+        file: "Sources/GoldGate/Core/DialogueStudioEngine.swift",
+        subsystem: "DialogueStudio & LLM Router",
+        hook: "DialogueStudioEngine.swift#L80",
+        accel: "Apple Neural Engine (ANE)",
+        prefKey: "executiveIntelligenceProvider",
+        desc: "Zero-latency conversational interface and desktop automation agent. Connects seamlessly with local models (Llama 3, Mistral, Gemma via Ollama / LM Studio) or cloud endpoints (Claude 3.5, GPT-4o) with dedicated system prompts and terminal runners.",
+        code: `// Dialogue Studio Intelligent Router
+final class DialogueStudioEngine: ObservableObject {
+    enum Provider: String, CaseIterable {
+        case ollamaLocal = "http://localhost:11434"
+        case lmStudio = "http://localhost:1234"
+        case appleFoundation = "coreml://foundation"
+        case anthropicClaude = "https://api.anthropic.com"
+    }
+
+    func streamPrompt(_ prompt: String, provider: Provider) async throws {
+        // Dispatches to local socket or HTTPS streaming endpoint
+    }
+}`
+      },
+      {
+        id: "05_architectural_canvas",
+        num: "05",
+        title: "Architectural Canvas & Pan/Zoom Physics",
+        tagline: "Infinite spatial canvas with fluid trackpad pinch, pan, and momentum inertia",
+        category: "spatial",
+        categoryName: "Spatial Architecture",
+        hw: "Fluid Spring Damper",
+        fps: "120 FPS CoreAnimation",
+        img: "assets/screenshots/05_architectural_canvas.png",
+        file: "Sources/GoldGate/Core/SpatialPlaneManager.swift",
+        subsystem: "SpatialPlaneManager Coordinate Engine",
+        hook: "SpatialPlaneManager.swift#L310",
+        accel: "Quartz Display Services",
+        prefKey: "spatialPhysicsSpringTension",
+        desc: "A physical coordinate plane supporting continuous multi-finger trackpad panning, elastic boundary dampening, spring-mass harmonic oscillation, and instant camera snapping between zoom layers.",
+        code: `// Spatial Canvas Spring-Damper Pan Engine
+struct SpatialPhysicsEngine {
+    var springTension: Double = 320.0
+    var frictionDampening: Double = 28.5
+    var currentVelocity: CGPoint = .zero
+
+    mutating func stepSimulation(deltaTime: Double, target: CGPoint, current: inout CGPoint) {
+        let displacement = CGPoint(x: target.x - current.x, y: target.y - current.y)
+        let springForce = CGPoint(x: displacement.x * springTension, y: displacement.y * springTension)
+        let dampingForce = CGPoint(x: currentVelocity.x * frictionDampening, y: currentVelocity.y * frictionDampening)
+        currentVelocity.x += (springForce.x - dampingForce.x) * deltaTime
+        current.x += currentVelocity.x * deltaTime
+    }
+}`
+      },
+      {
+        id: "06_spatial_formations_geometry",
+        num: "06",
+        title: "Spatial Formations & Geometry Engine",
+        tagline: "Pixel-perfect 3×3 grid partitioning for MacBook Pro Liquid Retina displays",
+        category: "spatial",
+        categoryName: "Spatial Architecture",
+        hw: "3024 × 1890 Display Split",
+        fps: "Instant Snapping",
+        img: "assets/screenshots/06_spatial_formations_geometry.png",
+        file: "Sources/GoldGate/Core/SpatialPlaneManager.swift",
+        subsystem: "DisplayPixelGeometry Validator",
+        hook: "SpatialPlaneManager.swift#L940",
+        accel: "Liquid Retina XDR Scaling",
+        prefKey: "spatialFormationsLayoutMatrix",
+        desc: "Exact physical pixel split (3024 × 1890 hardware pixels, 1512 × 945 Retina points, 982 × 624 safe desktop points) dividing the display into an evenly distributed 3×3 matrix with zero overlapping borders.",
+        code: `// 14\" MacBook Pro Hardware Display Geometry
+public struct MacBookPro14Geometry {
+    public static let physicalWidthPixels: Double = 3024.0
+    public static let physicalHeightPixels: Double = 1890.0
+    public static let safeHeightPixels: Double = 1812.0 // Notch deducted
+    public static let cellWidthPixels: Double = 1008.0  // Exactly 3024 / 3
+    public static let cellHeightPixels: Double = 604.0  // Exactly 1812 / 3
+}`
+      },
+      {
+        id: "07_application_atelier",
+        num: "07",
+        title: "Application Atelier & Dock Drawer",
+        tagline: "High-speed app launcher with quadrant assignment and process telemetry",
+        category: "spatial",
+        categoryName: "Spatial Architecture",
+        hw: "Fuzzy Index & NSWorkspace",
+        fps: "Sub-16ms Query",
+        img: "assets/screenshots/07_application_atelier.png",
+        file: "Sources/GoldGate/Views/AtelierDockView.swift",
+        subsystem: "Atelier Application Hub",
+        hook: "AtelierDockView.swift#L55",
+        accel: "Spotlight Metadata Engine",
+        prefKey: "atelierDockPinnedApps",
+        desc: "A spatial dock drawer providing keyboard-driven fuzzy search, instant quadrant assignment, process memory monitoring, and running instance badges with fluid entrance trajectories.",
+        code: `// Application Atelier Query Pipeline
+final class ApplicationAtelierEngine: ObservableObject {
+    @Published var installedApplications: [AppItem] = []
+    
+    func queryRunningInstances() -> [RunningProcess] {
+        return NSWorkspace.shared.runningApplications.compactMap { app in
+            guard app.activationPolicy == .regular else { return nil }
+            return RunningProcess(name: app.localizedName ?? "App", pid: app.processIdentifier)
+        }
+    }
+}`
+      },
+      {
+        id: "08_haute_bezels_snuggies",
+        num: "08",
+        title: "Haute Bezels & Display Snuggies",
+        tagline: "Display-matched corner radii and notch-blending architectural housing",
+        category: "hardware",
+        categoryName: "Hardware Housing",
+        hw: "Curved Corner Snuggies",
+        fps: "Zero Overhead",
+        img: "assets/screenshots/08_haute_bezels_snuggies.png",
+        file: "Sources/GoldGate/Core/CustomMenuBarManager.swift",
+        subsystem: "Haute Bezel & Notch Masking",
+        hook: "CustomMenuBarManager.swift#L428",
+        accel: "Quartz Window Masking",
+        prefKey: "hauteBezelCornerRadiusPoints",
+        desc: "Engineered specifically for the curved upper corners and camera housing of modern Apple silicon laptops. Provides custom corner snuggies, bezel glow accents, and seamless black-out notch blending.",
+        code: `// Bezel & Notch Concealment Window Wrapper
+final class NotchSnuggieOverlayWindow: NSWindow {
+    func configureNotchConcealment(for screen: NSScreen) {
+        let maskPath = CGPath(roundedRect: bounds, cornerWidth: 28.0, cornerHeight: 28.0, transform: nil)
+        self.contentView?.layer?.mask = CAShapeLayer(path: maskPath)
+    }
+}`
+      },
+      {
+        id: "09_haute_typography",
+        num: "09",
+        title: "Haute Typography & Optical Scaling",
+        tagline: "Tailored typeface pairings with dynamic optical sizing and monospaced digits",
+        category: "metal",
+        categoryName: "Typography & Finish",
+        hw: "Apple SF Pro & New York",
+        fps: "Subpixel Rendering",
+        img: "assets/screenshots/09_haute_typography.png",
+        file: "Sources/GoldGate/Helpers/PanelViews.swift",
+        subsystem: "Haute Typography Compositor",
+        hook: "PanelViews.swift#L180",
+        accel: "CoreText Glyph Engine",
+        prefKey: "hauteTypographyScalePreset",
+        desc: "Curated typography suite combining Apple SF Pro Display, New York Serif, and JetBrains Mono for telemetry. Features tabular monospaced figures, dynamic kerning adjustments, and optical sizing rules across resolutions.",
+        code: `// Haute Typography Font Cascade
+struct HauteTypography {
+    static func displayHeadline(size: CGFloat) -> NSFont {
+        return NSFont.systemFont(ofSize: size, weight: .bold)
+    }
+    static func telemetryMono(size: CGFloat) -> NSFont {
+        return NSFont.monospacedDigitSystemFont(ofSize: size, weight: .medium)
+    }
+}`
+      },
+      {
+        id: "10_kinetic_gestures_inertia",
+        num: "10",
+        title: "Kinetic Gestures & Trackpad Inertia",
+        tagline: "Native multi-touch event taps with velocity curves and active hot corners",
+        category: "haptics",
+        categoryName: "Haptics & Gestures",
+        hw: "CoreGraphics EventTap",
+        fps: "1000Hz Input Sampling",
+        img: "assets/screenshots/10_kinetic_gestures_inertia.png",
+        file: "Sources/GoldGate/Core/GestureEngine.swift",
+        subsystem: "KineticGesture Recognizer",
+        hook: "GestureEngine.swift#L74",
+        accel: "MultitouchHID Driver",
+        prefKey: "kineticTrackpadFrictionCurve",
+        desc: "Direct CoreGraphics event taps intercepting 3-finger and 4-finger swipes, pinch gestures, and screen hot-corners. Features friction dampening, momentum release, and velocity-based deceleration.",
+        code: `// Multi-touch Event Tap Listener
+final class KineticGestureEngine {
+    private var eventTap: CFMachPort?
+
+    func startInterception() {
+        let mask = (1 << CGEventType.scrollWheel.rawValue)
+        eventTap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: CGEventMask(mask), callback: handleEvent, userInfo: nil)
+    }
+}`
+      },
+      {
+        id: "11_acoustic_signatures_haptics",
+        num: "11",
+        title: "Acoustic Signatures & Haptic Feedback",
+        tagline: "Synthesized mechanical switch audio synchronized with Force Touch pulses",
+        category: "haptics",
+        categoryName: "Haptics & Audio",
+        hw: "Apple Force Touch & CoreAudio",
+        fps: "Low Latency Audio",
+        img: "assets/screenshots/11_acoustic_signatures_haptics.png",
+        file: "Sources/GoldGate/Helpers/SoundHapticManager.swift",
+        subsystem: "Acoustic & Tactile Synthesizer",
+        hook: "SoundHapticManager.swift#L32",
+        accel: "Apple Taptic Engine",
+        prefKey: "acousticSoundPackSelection",
+        desc: "Micro-acoustic feedback engine producing bespoke mechanical click signatures (Cherry Blue, Holy Panda, Box Navy) coupled with Apple Taptic Engine Force Touch clicks for tactile spatial navigation.",
+        code: `// Tactile Audio & Haptic Synthesizer
+final class SoundHapticManager {
+    static let shared = SoundHapticManager()
+
+    func playMechanicalClick(type: SoundPack = .holyPanda) {
+        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+        NSSound(named: "cherry_blue_click")?.play()
+    }
+}`
+      },
+      {
+        id: "12_grand_horizon_menubar",
+        num: "12",
+        title: "Grand Horizon Floating Status Rail",
+        tagline: "Floating pill status rail positioned below the notch with live metrics",
+        category: "hardware",
+        categoryName: "Hardware Housing",
+        hw: "Detached Inset Window",
+        fps: "60 FPS Visualizer",
+        img: "assets/screenshots/12_grand_horizon_menubar.png",
+        file: "Sources/GoldGate/Core/CustomMenuBarManager.swift",
+        subsystem: "Grand Horizon Bar Manager",
+        hook: "CustomMenuBarManager.swift#L88",
+        accel: "CoreAnimation Glass Compositor",
+        prefKey: "grandHorizonBarInsetPadding",
+        desc: "An inset status bar detached from the top edge of the display, avoiding notch interference. Houses live audio spectrum equalizers, battery readouts, active workspace indicators, and popover anchors.",
+        code: `// Floating Status Rail Geometry Calculator
+final class GrandHorizonManager {
+    func snappedPopoverFrame(for screen: NSScreen, panelSize: CGSize) -> CGRect {
+        let vis = screen.visibleFrame
+        let targetY = vis.maxY - panelSize.height - 4
+        let targetX = vis.midX - (panelSize.width / 2)
+        return CGRect(x: targetX, y: targetY, width: panelSize.width, height: panelSize.height)
+    }
+}`
+      },
+      {
+        id: "13_spatial_pets_pinball",
+        num: "13",
+        title: "Spatial Desktop Pets & Pinball Dynamics",
+        tagline: "Interactive desktop companions with rigid-body bounce physics and feeding",
+        category: "haptics",
+        categoryName: "Haptics & Companions",
+        hw: "SpriteKit 2D Rigid Body",
+        fps: "120 FPS Physics",
+        img: "assets/screenshots/13_spatial_pets_pinball.png",
+        file: "Sources/GoldGate/Core/SpatialPetManager.swift",
+        subsystem: "Spatial Pets Physics Engine",
+        hook: "SpatialPetManager.swift#L112",
+        accel: "SpriteKit Physics World",
+        prefKey: "activeSpatialDesktopPetsList",
+        desc: "Living desktop companions (dolphins, red panda, capybara, dragons, and koi) rendered with SpriteKit physics. Features elastic wall collisions, cursor gravity attraction, roaming behaviors, and interactive pinball mode.",
+        code: `// SpriteKit Physics Companion Engine
+final class SpatialPetScene: SKScene {
+    override func didMove(to view: SKView) {
+        self.physicsBody = SKPhysicsBody(edgeLoopFrom: frame)
+        self.physicsWorld.gravity = CGVector(dx: 0, dy: -2.0)
+    }
+    func spawnCompanion(named: String) {
+        let pet = SKSpriteNode(imageNamed: named)
+        pet.physicsBody = SKPhysicsBody(circleOfRadius: 24)
+        pet.physicsBody?.restitution = 0.85
+        addChild(pet)
+    }
+}`
+      },
+      {
+        id: "14_bespoke_commissions_store",
+        num: "14",
+        title: "Bespoke Commissions & Extensions Store",
+        tagline: "Modular expansion marketplace for community shaders, widgets, and themes",
+        category: "governance",
+        categoryName: "Store & Governance",
+        hw: "StoreKit 2 Sandbox Bundles",
+        fps: "Instant Expansion",
+        img: "assets/screenshots/14_bespoke_commissions_store.png",
+        file: "Sources/GoldGate/Views/CommissionsStoreView.swift",
+        subsystem: "StoreKit 2 Extension Repository",
+        hook: "CommissionsStoreView.swift#L40",
+        accel: "CryptoKit Bundle Verification",
+        prefKey: "installedBespokeCommissions",
+        desc: "Extensible module registry allowing users to install bespoke Metal shaders, dynamic clock widgets, weather instruments, and productivity utilities packaged as sandbox-safe bundles.",
+        code: `// StoreKit 2 Expansion Registry
+final class BespokeCommissionsStore: ObservableObject {
+    @Published var availablePacks: [ExpansionPack] = []
+
+    func installBespokeShaderBundle(id: String) async throws {
+        // Authenticates receipt, extracts Metal library, verifies SHA256
+    }
+}`
+      },
+      {
+        id: "15_security_governance_privacy",
+        num: "15",
+        title: "Security Governance & Privacy Attestation",
+        tagline: "Transparent permission verification and hardened runtime compliance",
+        category: "governance",
+        categoryName: "Store & Governance",
+        hw: "Hardened Runtime & TCC",
+        fps: "100% On-Device",
+        img: "assets/screenshots/15_security_governance_privacy.png",
+        file: "Sources/GoldGate/Helpers/AppPermissionsManager.swift",
+        subsystem: "TCC Permissions & Hardened Runtime",
+        hook: "AppPermissionsManager.swift#L19",
+        accel: "macOS Security Framework",
+        prefKey: "governancePrivacyAttestationDate",
+        desc: "Real-time attestation dashboard for macOS Accessibility APIs, Screen Recording entitlement, Input Monitoring, and Apple Silicon sandbox integrity with zero network telemetry collection.",
+        code: `// Privacy & TCC Permission Checker
+struct AppPermissionsManager {
+    static func verifyAccessibility() -> Bool {
+        return AXIsProcessTrusted()
+    }
+    static func verifyScreenRecording() -> Bool {
+        return CGPreflightScreenCaptureAccess()
+    }
+}`
+      },
+      {
+        id: "16_console_preferences",
+        num: "16",
+        title: "Console Preferences & System Hub",
+        tagline: "Comprehensive control center managing LaunchAgents, defaults, and hotkeys",
+        category: "governance",
+        categoryName: "Store & Governance",
+        hw: "LaunchServices & SMAppService",
+        fps: "Zero Idle CPU",
+        img: "assets/screenshots/16_console_preferences.png",
+        file: "Sources/GoldGate/Views/SettingsView.swift",
+        subsystem: "AppDefaultsManager & Preferences",
+        hook: "SettingsView.swift#L20",
+        accel: "System Services Daemon",
+        prefKey: "launchAtLoginEnabled",
+        desc: "Unified control panel for Launch at Login, background daemon health, AppKit activation policy switching (Accessory vs Regular), keyboard shortcut assignment, and backup restore.",
+        code: `// System Hub Launch Agent Configuration
+final class ConsolePreferencesManager {
+    func setLaunchAtLogin(enabled: Bool) throws {
+        if #available(macOS 13.0, *) {
+            let service = SMAppService.mainApp
+            enabled ? try service.register() : try service.unregister()
+        }
+    }
+}`
+      },
+      {
+        id: "17_spatial_3x3_matrix_overview",
+        num: "17",
+        title: "3×3 Spatial Matrix Overview",
+        tagline: "Full-screen capture of all 9 independent workspaces on a 14-inch display",
+        category: "spatial",
+        categoryName: "Spatial Architecture",
+        hw: "9-Quadrant Continuous Matrix",
+        fps: "120 FPS Panning",
+        img: "assets/screenshots/17_spatial_3x3_matrix_overview.png",
+        file: "Sources/GoldGate/Core/SpatialPlaneManager.swift",
+        subsystem: "Spatial Matrix Super-Canvas",
+        hook: "SpatialPlaneManager.swift#L980",
+        accel: "Virtual Workspace Planes",
+        prefKey: "activeSpatialQuadrantTarget",
+        desc: "High-resolution capture proving all 9 spatial quadrants fit seamlessly within the 14-inch display frame without clipping or overlapping. Features live mini-map, quadrant zoom targets, and active window bounds.",
+        code: `// 3x3 Coordinate Matrix Bounds Definition
+public struct SpatialMatrixGrid {
+    public static let quadrants: [(x: Int, y: Int, name: String)] = [
+        (-1,  1, "Top-Left (Creatives)"),
+        ( 0,  1, "Top-Center (Communication)"),
+        ( 1,  1, "Top-Right (Media)"),
+        (-1,  0, "Center-Left (Code)"),
+        ( 0,  0, "Center-Origin (Executive Hub)"),
+        ( 1,  0, "Center-Right (Terminal)"),
+        (-1, -1, "Bottom-Left (Finance)"),
+        ( 0, -1, "Bottom-Center (Diagnostics)"),
+        ( 1, -1, "Bottom-Right (Scratchpad)")
+    ]
+}`
+      },
+      {
+        id: "18_dialogue_studio_omni_search",
+        num: "18",
+        title: "Dialogue Studio & Omni-Search",
+        tagline: "Floating conversational intelligence HUD with omni-search input canvas",
+        category: "ai",
+        categoryName: "AI & Intelligence",
+        hw: "HUD Spatial Overlay",
+        fps: "Real-time Fuzzy Stream",
+        img: "assets/screenshots/18_dialogue_studio_omni_search.png",
+        file: "Sources/GoldGate/Core/DialogueStudioEngine.swift",
+        subsystem: "DialogueStudio HUD Window",
+        hook: "DialogueStudioEngine.swift#L210",
+        accel: "Metal Glass Acrylic HUD",
+        prefKey: "dialogueStudioHotKeyAssignment",
+        desc: "Central command overlay providing unified system search, contextual AI querying, terminal command execution, and direct workspace teleportation summoned via hotkey or gesture.",
+        code: `// Dialogue Studio Omni-Search HUD Window
+final class DialogueStudioWindow: NSPanel {
+    func presentOmniCanvas() {
+        self.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+}`
+      }
+    ];
+
+    let currentFeatureIndex = 0;
+    let currentCategory = "all";
+    let currentStageMode = "capture";
+    let isAudioEnabled = true;
+
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+    function playTactileClick(freq = 900, duration = 0.02) {
+      if (!isAudioEnabled) return;
+      try {
+        initAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + duration);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function toggleAudioFx() {
+      isAudioEnabled = !isAudioEnabled;
+      const btn = document.getElementById("btn-sound-toggle");
+      btn.textContent = isAudioEnabled ? "🔊" : "🔇";
+      if (isAudioEnabled) playTactileClick(1200, 0.04);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      playTactileClick(800, 0.02);
+    }
+
+    function renderFeatureList(features) {
+      const container = document.getElementById("feature-list-container");
+      container.innerHTML = "";
+
+      features.forEach((feat, index) => {
+        const item = document.createElement("div");
+        item.className = `feature-item ${feat.id === FEATURES_DATA[currentFeatureIndex].id ? "active" : ""}`;
+        item.id = `feat-item-${feat.id}`;
+        item.onclick = () => selectFeatureById(feat.id);
+
+        item.innerHTML = `
+          <img src="${feat.img}" class="feature-item-thumb" alt="${feat.title}">
+          <div class="feature-item-body">
+            <div class="feature-item-title">${feat.title}</div>
+            <div class="feature-item-badge">
+              <span></span> ${feat.categoryName}
+            </div>
+          </div>
+          <span class="feature-item-num">${feat.num}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function selectFeatureById(id) {
+      const idx = FEATURES_DATA.findIndex(f => f.id === id);
+      if (idx !== -1) {
+        currentFeatureIndex = idx;
+        renderActiveFeature();
+        playTactileClick(1100, 0.03);
+      }
+    }
+
+    function renderActiveFeature() {
+      const feat = FEATURES_DATA[currentFeatureIndex];
+      if (!feat) return;
+
+      document.querySelectorAll(".feature-item").forEach((el) => {
+        el.classList.toggle("active", el.id === `feat-item-${feat.id}`);
+      });
+
+      document.getElementById("active-category-pill").textContent = feat.categoryName;
+      document.getElementById("active-hw-pill").textContent = feat.hw;
+      document.getElementById("active-fps-pill").textContent = feat.fps;
+      document.getElementById("active-feature-title").textContent = feat.title;
+      document.getElementById("active-feature-desc").textContent = feat.tagline + ". " + feat.desc;
+
+      const imgElem = document.getElementById("stage-screenshot-img");
+      imgElem.src = feat.img;
+      imgElem.alt = feat.title;
+      document.getElementById("download-capture-link").href = feat.img;
+
+      document.getElementById("code-file-path").textContent = feat.file;
+      document.getElementById("code-subsystem-name").textContent = feat.subsystem;
+      document.getElementById("code-block-content").textContent = feat.code;
+
+      document.getElementById("footer-subsystem").textContent = feat.subsystem;
+      document.getElementById("footer-hook").textContent = feat.hook;
+      document.getElementById("footer-accel").textContent = feat.accel;
+      document.getElementById("footer-key").textContent = "AppDefaultsManager.Key." + feat.prefKey;
+
+      document.getElementById("modal-category").textContent = feat.categoryName;
+      document.getElementById("modal-title").textContent = feat.title;
+      document.getElementById("modal-img").src = feat.img;
+
+      if (currentStageMode === "sim") {
+        renderFeatureSimulator(feat);
+      }
+    }
+
+    function switchStageMode(mode) {
+      currentStageMode = mode;
+      playTactileClick(950, 0.02);
+
+      document.querySelectorAll(".mode-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.id === `mode-btn-${mode}`);
+      });
+
+      document.querySelectorAll(".preview-panel").forEach(panel => {
+        panel.classList.toggle("active", panel.id === `panel-${mode}`);
+      });
+
+      const feat = FEATURES_DATA[currentFeatureIndex];
+      if (mode === "sim") {
+        renderFeatureSimulator(feat);
+      } else if (mode === "video") {
+        const vid = document.getElementById("feature-video-player");
+        if (vid.paused) {
+          vid.play().catch(() => {});
+        }
+      }
+    }
+
+    function switchActiveVideo(num) {
+      const vids = {
+        1: "assets/videos/Genie_Control_Center_Walkthrough.mov",
+        2: "assets/videos/Genie_Spatial_Canvas_Walkthrough.mov"
+      };
+      document.getElementById("vid-card-1").classList.toggle("active", num === 1);
+      document.getElementById("vid-card-2").classList.toggle("active", num === 2);
+
+      const player = document.getElementById("feature-video-player");
+      const src = document.getElementById("video-source-elem");
+      src.src = vids[num];
+      player.load();
+      player.play().catch(() => {});
+      playTactileClick(1200, 0.03);
+    }
+
+    function setCategoryFilter(category, btn) {
+      currentCategory = category;
+      playTactileClick(850, 0.02);
+
+      document.querySelectorAll(".filter-pill").forEach(p => p.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+
+      filterFeatures();
+    }
+
+    function filterFeatures() {
+      const q = document.getElementById("feature-search-input").value.toLowerCase().trim();
+      const filtered = FEATURES_DATA.filter(f => {
+        const matchCat = (currentCategory === "all" || f.category === currentCategory);
+        const matchQ = (!q || f.title.toLowerCase().includes(q) || f.tagline.toLowerCase().includes(q) || f.subsystem.toLowerCase().includes(q));
+        return matchCat && matchQ;
+      });
+
+      renderFeatureList(filtered);
+      document.getElementById("catalog-count").textContent = `${filtered.length} Matched`;
+
+      if (filtered.length > 0 && !filtered.some(f => f.id === FEATURES_DATA[currentFeatureIndex].id)) {
+        selectFeatureById(filtered[0].id);
+      }
+    }
+
+    let simAnimationId = null;
+
+    function renderFeatureSimulator(feat) {
+      if (simAnimationId) cancelAnimationFrame(simAnimationId);
+
+      const controls = document.getElementById("sim-controls-bar");
+      const stage = document.getElementById("sim-canvas-stage");
+      controls.innerHTML = "";
+      stage.innerHTML = "";
+
+      if (feat.category === "spatial") {
+        controls.innerHTML = `
+          <div class="sim-control-group">
+            <label>Matrix Partition:</label>
+            <span style="color:var(--gold); font-weight:700;">3×3 Liquid Retina Safe Split</span>
+          </div>
+          <div class="sim-control-group">
+            <button class="pill-btn" onclick="snapMatrixQuadrant(0, 0)">🎯 Center (0,0)</button>
+            <button class="pill-btn" onclick="snapMatrixQuadrant(-1, 1)">↖ Top-Left</button>
+            <button class="pill-btn" onclick="snapMatrixQuadrant(1, -1)">↘ Bottom-Right</button>
+          </div>
+        `;
+
+        stage.innerHTML = `
+          <div class="spatial-grid-board">
+            <div class="spatial-cell" onclick="selectSimQuad(-1, 1, this)">(-1, 1)<br>Creatives</div>
+            <div class="spatial-cell" onclick="selectSimQuad(0, 1, this)">(0, 1)<br>Comms</div>
+            <div class="spatial-cell" onclick="selectSimQuad(1, 1, this)">(1, 1)<br>Media</div>
+            <div class="spatial-cell" onclick="selectSimQuad(-1, 0, this)">(-1, 0)<br>Code</div>
+            <div class="spatial-cell selected" onclick="selectSimQuad(0, 0, this)">(0, 0)<br>Executive Hub</div>
+            <div class="spatial-cell" onclick="selectSimQuad(1, 0, this)">(1, 0)<br>Terminal</div>
+            <div class="spatial-cell" onclick="selectSimQuad(-1, -1, this)">(-1, -1)<br>Finance</div>
+            <div class="spatial-cell" onclick="selectSimQuad(0, -1, this)">(0, -1)<br>Diagnostics</div>
+            <div class="spatial-cell" onclick="selectSimQuad(1, -1, this)">(1, -1)<br>Scratchpad</div>
+          </div>
+        `;
+      } 
+      else if (feat.category === "metal") {
+        controls.innerHTML = `
+          <div class="sim-control-group">
+            <label>Shader Preset:</label>
+            <select id="shader-preset-select" class="pill-btn">
+              <option value="sunset">Golden Gate Sunset</option>
+              <option value="aurora">Northern Lights Aurora</option>
+              <option value="caustics">Sub-Surface Caustics</option>
+              <option value="cyber">Retro Cyber Grid</option>
+            </select>
+          </div>
+          <div class="sim-control-group">
+            <label>Speed:</label>
+            <input type="range" class="sim-slider" id="shader-speed" min="1" max="10" value="4">
+          </div>
+          <div class="sim-control-group">
+            <label>Glow:</label>
+            <input type="range" class="sim-slider" id="shader-glow" min="10" max="100" value="65">
+          </div>
+        `;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 600;
+        canvas.height = 360;
+        canvas.style.borderRadius = "10px";
+        canvas.style.boxShadow = "0 0 30px rgba(0,0,0,0.5)";
+        stage.appendChild(canvas);
+
+        const ctx = canvas.getContext("2d");
+        let t = 0;
+        function renderShader() {
+          const speed = parseFloat(document.getElementById("shader-speed")?.value || 4) * 0.01;
+          const glow = parseFloat(document.getElementById("shader-glow")?.value || 65) / 100;
+          const preset = document.getElementById("shader-preset-select")?.value || "sunset";
+
+          t += speed;
+          ctx.fillStyle = "#07090e";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          if (preset === "sunset") {
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, `rgba(244, 114, 182, ${glow})`);
+            grad.addColorStop(0.5, `rgba(245, 158, 11, ${glow * 0.9})`);
+            grad.addColorStop(1, `rgba(17, 24, 39, 1)`);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height * 0.6 + Math.sin(t) * 15, 60, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(254, 240, 138, 0.9)";
+            ctx.shadowColor = "#f59e0b";
+            ctx.shadowBlur = 40;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          } else if (preset === "aurora") {
+            for (let i = 0; i < 4; i++) {
+              ctx.beginPath();
+              ctx.moveTo(0, canvas.height * 0.3);
+              for (let x = 0; x < canvas.width; x += 20) {
+                const y = canvas.height * 0.4 + Math.sin(x * 0.01 + t + i) * 60;
+                ctx.lineTo(x, y);
+              }
+              ctx.strokeStyle = i % 2 === 0 ? `rgba(52, 211, 153, ${glow})` : `rgba(147, 95, 245, ${glow})`;
+              ctx.lineWidth = 18;
+              ctx.stroke();
+            }
+          } else {
+            ctx.strokeStyle = `rgba(56, 189, 248, ${glow * 0.6})`;
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 30) {
+              ctx.beginPath();
+              ctx.moveTo(x, 0);
+              ctx.lineTo(x, canvas.height);
+              ctx.stroke();
+            }
+            for (let y = (t * 20) % 30; y < canvas.height; y += 30) {
+              ctx.beginPath();
+              ctx.moveTo(0, y);
+              ctx.lineTo(canvas.width, y);
+              ctx.stroke();
+            }
+          }
+          simAnimationId = requestAnimationFrame(renderShader);
+        }
+        renderShader();
+      } 
+      else if (feat.category === "hardware") {
+        controls.innerHTML = `
+          <div class="sim-control-group">
+            <label>Charging Wattage:</label>
+            <input type="range" class="sim-slider" id="watt-slider" min="5" max="140" value="45" oninput="updateBatterySim()">
+            <span id="watt-val" style="color:var(--gold); font-weight:700;">45W</span>
+          </div>
+          <div class="sim-control-group">
+            <label>Charge %:</label>
+            <input type="range" class="sim-slider" id="soc-slider" min="5" max="100" value="84" oninput="updateBatterySim()">
+            <span id="soc-val" style="color:var(--green); font-weight:700;">84%</span>
+          </div>
+          <div class="sim-control-group">
+            <button class="pill-btn" onclick="toggleLowPowerSim()">⚡️ Toggle Low Power Mode</button>
+          </div>
+        `;
+
+        stage.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:20px;">
+            <div class="battery-pill-display" id="battery-pill-box">
+              <div class="battery-fill" id="battery-fill-bar" style="width: 84%;">84%</div>
+            </div>
+            <div style="display:flex; gap:24px; font-family:ui-monospace, monospace; font-size:0.85rem;">
+              <span>Status: <b id="batt-status" style="color:var(--green);">Charging (Fast)</b></span>
+              <span>Health: <b>98.4%</b></span>
+              <span>Cycles: <b>118</b></span>
+            </div>
+          </div>
+        `;
+      }
+      else if (feat.category === "ai") {
+        controls.innerHTML = `
+          <div class="sim-control-group">
+            <label>Active Engine:</label>
+            <select class="pill-btn" id="ai-engine-select">
+              <option>Ollama (Llama 3.2 8B Local)</option>
+              <option>LM Studio (Mistral Nemo)</option>
+              <option>Apple Foundation Model (ANE)</option>
+              <option>Claude 3.5 Sonnet</option>
+            </select>
+          </div>
+          <div class="sim-control-group">
+            <button class="pill-btn" onclick="sendAiSamplePrompt('split screen 3x3')">Query: \"Split Screen 3x3\"</button>
+            <button class="pill-btn" onclick="sendAiSamplePrompt('boost performance')">Query: \"Boost Performance\"</button>
+          </div>
+        `;
+
+        stage.innerHTML = `
+          <div style="width:90%; max-width:620px; background:var(--bg-glass); border:1px solid var(--border); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-family:ui-monospace, monospace;">EXEC_TERMINAL_PROMPT_ENGINE [ONLINE]</div>
+            <div id="ai-chat-output" style="background:#000; border-radius:8px; padding:14px; min-height:160px; font-family:ui-monospace, monospace; font-size:0.82rem; line-height:1.6; color:#a7f3d0; overflow-y:auto;">
+              Genie AI Engine ready. Type a command or click a quick query above to execute spatial operations.
+            </div>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="ai-user-input" placeholder="Ask Genie to arrange windows, switch shaders, or inspect hardware..." style="flex:1; background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:8px 12px; color:var(--text); outline:none;" onkeydown="if(event.key==='Enter') executeAiPrompt()">
+              <button class="pill-btn" onclick="executeAiPrompt()" style="background:var(--gold); color:#000; font-weight:700;">Send</button>
+            </div>
+          </div>
+        `;
+      }
+      else {
+        controls.innerHTML = `
+          <div class="sim-control-group">
+            <label>Interactive Action:</label>
+            <button class="pill-btn" onclick="playTactileClick(1200, 0.05); spawnPetParticle();">🔊 Play Cherry Blue Click</button>
+            <button class="pill-btn" onclick="playTactileClick(300, 0.08); spawnPetParticle();">🔊 Force Touch Thump</button>
+            <button class="pill-btn" onclick="clearPetCanvas()">🧹 Clear Canvas</button>
+          </div>
+        `;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 600;
+        canvas.height = 360;
+        canvas.style.borderRadius = "10px";
+        canvas.style.background = "#07090e";
+        canvas.style.cursor = "pointer";
+        canvas.onclick = (e) => {
+          playTactileClick(700 + Math.random() * 400, 0.03);
+          addBouncingPet(e.offsetX, e.offsetY);
+        };
+        stage.appendChild(canvas);
+
+        const ctx = canvas.getContext("2d");
+        const pets = [
+          { x: 100, y: 100, vx: 2.5, vy: 1.8, emoji: "🐬", size: 30 },
+          { x: 300, y: 150, vx: -2.0, vy: 2.2, emoji: "🐼", size: 30 },
+          { x: 450, y: 220, vx: 1.8, vy: -2.5, emoji: "🦫", size: 30 }
+        ];
+
+        window.addBouncingPet = (x, y) => {
+          const emojis = ["🐬", "🐼", "🦫", "🐉", "🎏"];
+          const e = emojis[Math.floor(Math.random() * emojis.length)];
+          pets.push({
+            x, y,
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6,
+            emoji: e,
+            size: 32
+          });
+        };
+        window.clearPetCanvas = () => { pets.length = 0; };
+        window.spawnPetParticle = () => { addBouncingPet(canvas.width / 2, canvas.height / 2); };
+
+        function updatePets() {
+          ctx.fillStyle = "rgba(7, 9, 14, 0.3)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          pets.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x < 20 || p.x > canvas.width - 20) p.vx *= -1;
+            if (p.y < 20 || p.y > canvas.height - 20) p.vy *= -1;
+
+            ctx.font = `${p.size}px sans-serif`;
+            ctx.fillText(p.emoji, p.x - p.size/2, p.y + p.size/3);
+          });
+          simAnimationId = requestAnimationFrame(updatePets);
+        }
+        updatePets();
+      }
+    }
+
+    function selectSimQuad(x, y, elem) {
+      document.querySelectorAll(".spatial-cell").forEach(c => c.classList.remove("selected"));
+      elem.classList.add("selected");
+      playTactileClick(1000 + (x + y) * 200, 0.03);
+    }
+    function snapMatrixQuadrant(x, y) {
+      document.querySelectorAll(".spatial-cell").forEach(c => {
+        if (c.textContent.includes(`(${x}, ${y})`)) {
+          c.classList.add("selected");
+        } else {
+          c.classList.remove("selected");
+        }
+      });
+      playTactileClick(1250, 0.04);
+    }
+
+    function updateBatterySim() {
+      const w = document.getElementById("watt-slider")?.value || 45;
+      const soc = document.getElementById("soc-slider")?.value || 84;
+      document.getElementById("watt-val").textContent = `${w}W`;
+      document.getElementById("soc-val").textContent = `${soc}%`;
+      const fill = document.getElementById("battery-fill-bar");
+      if (fill) {
+        fill.style.width = `${soc}%`;
+        fill.textContent = `${soc}%`;
+        fill.style.background = soc < 20 ? "#ef4444" : (soc < 50 ? "#f59e0b" : "linear-gradient(90deg, #f59e0b, #10b981)");
+      }
+    }
+    function toggleLowPowerSim() {
+      const status = document.getElementById("batt-status");
+      if (status.textContent.includes("Low Power")) {
+        status.textContent = "Charging (Fast)";
+        status.style.color = "var(--green)";
+      } else {
+        status.textContent = "Low Power Mode (Throttled)";
+        status.style.color = "var(--gold)";
+      }
+      playTactileClick(600, 0.04);
+    }
+
+    function sendAiSamplePrompt(text) {
+      document.getElementById("ai-user-input").value = text;
+      executeAiPrompt();
+    }
+    function executeAiPrompt() {
+      const input = document.getElementById("ai-user-input");
+      const out = document.getElementById("ai-chat-output");
+      const val = input.value.trim();
+      if (!val) return;
+
+      playTactileClick(1150, 0.02);
+      out.innerHTML += `<div style="color:var(--text); margin-top:8px;"><b>user@macbook:~$</b> ${val}</div>`;
+      input.value = "";
+
+      out.innerHTML += `<div style="color:#60a5fa; margin-top:4px;">Thinking via ${document.getElementById("ai-engine-select")?.value}...</div>`;
+      setTimeout(() => {
+        out.innerHTML += `<div style="color:#34d399; margin-top:4px;">✓ Executed: Spatial parameters re-indexed. Display safe boundaries locked at 3024×1890 pixels. Harmonic spring physics engaged at 120 FPS.</div>`;
+        out.scrollTop = out.scrollHeight;
+      }, 400);
+    }
+
+    function handleMagnifier(e) {
+      const wrap = document.getElementById("screenshot-wrap");
+      const img = document.getElementById("stage-screenshot-img");
+      const lens = document.getElementById("zoom-lens");
+      if (!lens || !img) return;
+
+      const rect = img.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
+        lens.style.display = "none";
+        return;
+      }
+
+      lens.style.display = "block";
+      lens.style.left = `${e.clientX - wrap.getBoundingClientRect().left - 80}px`;
+      lens.style.top = `${e.clientY - wrap.getBoundingClientRect().top - 80}px`;
+      lens.style.backgroundImage = `url('${img.src}')`;
+      lens.style.backgroundSize = `${rect.width * 2.5}px ${rect.height * 2.5}px`;
+      lens.style.backgroundPosition = `-${x * 2.5 - 80}px -${y * 2.5 - 80}px`;
+    }
+    function hideMagnifier() {
+      const lens = document.getElementById("zoom-lens");
+      if (lens) lens.style.display = "none";
+    }
+
+    function openFullscreenModal() {
+      const modal = document.getElementById("lightbox-modal");
+      modal.showModal();
+      playTactileClick(1200, 0.03);
+    }
+    function closeFullscreenModal() {
+      const modal = document.getElementById("lightbox-modal");
+      modal.close();
+      playTactileClick(800, 0.02);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        currentFeatureIndex = (currentFeatureIndex + 1) % FEATURES_DATA.length;
+        renderActiveFeature();
+        playTactileClick(1000, 0.02);
+      } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        currentFeatureIndex = (currentFeatureIndex - 1 + FEATURES_DATA.length) % FEATURES_DATA.length;
+        renderActiveFeature();
+        playTactileClick(1000, 0.02);
+      } else if (e.key === "1") switchStageMode("capture");
+      else if (e.key === "2") switchStageMode("sim");
+      else if (e.key === "3") switchStageMode("video");
+      else if (e.key === "4") switchStageMode("code");
+      else if (e.key.toLowerCase() === "f") openFullscreenModal();
+    });
+
+    // Parse URL params for direct feature & mode preview
+    const urlParams = new URLSearchParams(window.location.search);
+    const featParam = urlParams.get("feat");
+    const modeParam = urlParams.get("mode");
+    if (featParam) {
+      const foundIdx = FEATURES_DATA.findIndex(f => f.id.includes(featParam) || f.num === featParam);
+      if (foundIdx !== -1) currentFeatureIndex = foundIdx;
+    }
+    if (modeParam && ["capture", "sim", "video", "code"].includes(modeParam)) {
+      currentStageMode = modeParam;
+    }
+
+    // Initialize immediately
+    renderFeatureList(FEATURES_DATA);
+    renderActiveFeature();
+    switchStageMode(currentStageMode);
+  </script>
+</body>
+</html>
