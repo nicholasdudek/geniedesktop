@@ -17,7 +17,7 @@ let isMASBuild = ProcessInfo.processInfo.environment["GENIE_MAS"] == "1"
 let package = Package(
     name: "Genie",
     platforms: [.macOS("27.0")],
-    dependencies: [.package(path: "AgentRuntime")],
+    dependencies: [.package(path: "AgentRuntime"), .package(path: "EnvironmentKit")],
     targets: [
         .target(
             name: "GenieFinderSyncShared",
@@ -57,6 +57,7 @@ let package = Package(
             name: "Genie",
             dependencies: [
                 .product(name: "GenieAgentCore", package: "AgentRuntime"),
+                .product(name: "GenieEnvironmentKit", package: "EnvironmentKit"),
                 "GenieFinderSyncShared"
             ],
             path: "Sources/GoldGate",

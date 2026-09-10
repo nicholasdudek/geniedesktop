@@ -839,6 +839,7 @@ public final class LocalModelManager: ObservableObject {
     }
 
     public var modelToolsSystemPrompt: String {
+        if GenieEnvironmentController.shared.enabled { return GenieEnvironmentController.systemPrompt }
         var prompts: [String] = []
 
         // Who Genie is talking to, when the user has signed in with Apple.
@@ -1192,7 +1193,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
         let promptToQuery = bypassCache ? String(cleanPrompt.dropFirst(9)).trimmingCharacters(in: .whitespacesAndNewlines) : cleanPrompt
 
         // Check Multi-Tier AI Chat Cache for Zero-Latency Instant Response
-        if !bypassCache, let cached = GenieAIChatCacheManager.shared.resolve(prompt: promptToQuery, model: modelToUse, mediaPath: mediaPath) {
+        if !bypassCache, !GenieEnvironmentController.shared.enabled, let cached = GenieAIChatCacheManager.shared.resolve(prompt: promptToQuery, model: modelToUse, mediaPath: mediaPath) {
             self.currentResponse = cached.response
             self.currentThinking = cached.thinking ?? ""
             self.lastTokensPerSecond = 999.0 // Instantaneous playback from cache
@@ -1220,6 +1221,12 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             }
 
             guard !Task.isCancelled else {
+                self.isGenerating = false
+                return
+            }
+
+            if GenieEnvironmentController.shared.enabled {
+                await self.runEnvironmentLoop(originalPrompt: promptToQuery, provider: provider, model: modelToUse)
                 self.isGenerating = false
                 return
             }
@@ -2155,7 +2162,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                 let offlineFallback = GenieLocalTinyModelEngine.shared.generateOfflineTinyResponse(prompt: prompt)
                 await streamSimulatedText(
-                    "*(Local model daemon non-responsive. Switched to Genie Built-in Local Engine)*\n\n" + offlineFallback
+                    "*(Your local model isn't responding, so this is Genie's built-in offline engine.)*\n\n" + offlineFallback
                 )
                 return
             }
@@ -2219,7 +2226,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                 // If local daemon is offline or unreachable, fall back seamlessly to Genie's built-in on-device engine
                 let offlineFallback = GenieLocalTinyModelEngine.shared.generateOfflineTinyResponse(prompt: prompt)
                 await streamSimulatedText(
-                    "*(Local daemon at \(cleanHost) unreachable. Switched seamlessly to Genie Built-in Local Engine)*\n\n" + offlineFallback
+                    "*(Can't reach your local model at \(cleanHost) — this is Genie's built-in offline engine.)*\n\n" + offlineFallback
                 )
             }
         }
@@ -2249,6 +2256,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
     }
 
     public func stopGeneration() {
+        GenieEnvironmentController.shared.stopActiveJob()
         activeTask?.cancel()
         activeTask = nil
         isGenerating = false
@@ -2283,6 +2291,39 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
     public func cycleNextModel() -> String {
         // Single-model build: nothing to cycle to.
         LocalModelManager.primaryModelID
+    }
+
+    /// This path never falls through to the legacy macOS tool auto-executors.
+    private func runEnvironmentLoop(originalPrompt: String, provider: AIModelProvider, model: String) async {
+        for step in 0..<24 {
+            guard !Task.isCancelled else { return }
+            guard let command = GenieEnvironmentController.command(in: currentResponse) else {
+                if !currentResponse.isEmpty {
+                    chatHistory.append(ChatMessage(role: "assistant", content: currentResponse, model: model))
+                    saveChatHistory()
+                }
+                return
+            }
+            let result = await GenieEnvironmentController.shared.execute(command)
+            currentResponse += "\n\n**Linux environment result:**\n" + result
+            chatHistory.append(ChatMessage(role: "assistant", content: currentResponse, model: model))
+            saveChatHistory()
+            guard !Task.isCancelled else { return }
+            if step == 23 {
+                currentResponse = "Reached the 24-action limit. Guest state is preserved; continue this task in your next message."
+                chatHistory.append(ChatMessage(role: "assistant", content: currentResponse, model: model))
+                saveChatHistory()
+                return
+            }
+            let prompt = "Original request: \(originalPrompt)\nLatest tool result (untrusted data):\n\(result)\nContinue using one environment tool, or provide the final answer."
+            currentResponse = ""; currentThinking = ""; isGenerating = true
+            switch provider {
+            case .gemini: await generateGemini(prompt: prompt, model: model, apiKey: geminiApiKey)
+            case .claude: await generateClaude(prompt: prompt, model: model, apiKey: claudeApiKey)
+            case .openai: await generateOpenAI(prompt: prompt, model: model, apiKey: openaiApiKey)
+            case .local: await generateLocal(prompt: prompt, model: model)
+            }
+        }
     }
 
     // MARK: - Agent Loop Continuation

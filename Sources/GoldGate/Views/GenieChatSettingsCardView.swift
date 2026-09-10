@@ -116,6 +116,10 @@ public struct GenieChatSettingsCardView: View {
                     }
                 }
 
+                settingsSection(title: "AI LINUX ENVIRONMENT", icon: "desktopcomputer") {
+                    GenieEnvironmentSettingsView()
+                }
+
                 // ── 5. Chat History & Exports ───────────────────────────────
                 settingsSection(title: "CHAT MANAGEMENT & EXPORTS", icon: "arrow.up.doc.fill") {
                     HStack(spacing: 8) {

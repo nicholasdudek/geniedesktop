@@ -7,6 +7,15 @@ import Foundation
 // user preferences carry over untouched. Add new keys here; never inline a key literal.
 
 public enum PrefKey {
+    public static let utmEnvironmentEnabled = "nexus.utmEnvironmentEnabled"
+    public static let utmEnvironmentID = "nexus.utmEnvironmentID"
+    public static let utmVMID = "nexus.utmVMID"
+    // How the host reaches the Linux guest: "orbstack" or "ssh".
+    public static let environmentKind = "nexus.environmentKind"
+    public static let environmentMachine = "nexus.environmentMachine"
+    public static let environmentSSHHost = "nexus.environmentSSHHost"
+    public static let environmentSSHUser = "nexus.environmentSSHUser"
+    public static let environmentSSHKey = "nexus.environmentSSHKey"
     public static let aboveLevelCursorEnabled = "nexus.aboveLevelCursorEnabled"
     public static let agentDedicatedUserEnabled = "nexus.agentDedicatedUserEnabled"
     public static let agentMemoryLimitMB = "nexus.agentMemoryLimitMB"
