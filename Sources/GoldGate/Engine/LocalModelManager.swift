@@ -212,8 +212,12 @@ public final class LocalModelManager: ObservableObject {
     public static let primaryModelID = "genie-master"
 
     /// Context window Genie requests per generation. The base weights go to
-    /// 262144; 64k is what fits alongside the app on a 48 GB machine.
-    public static let localContextWindow = 65536
+    /// 262144, but the cache is what constrains it: this model keeps 4 KV heads
+    /// over 48 layers, so a token costs about 96 KB at f16 and 256k would want
+    /// ~25 GB on top of 17.5 GB of weights, past what the GPU may wire.
+    /// 128k fits on a 48 GB machine once Ollama runs with OLLAMA_FLASH_ATTENTION=1
+    /// and OLLAMA_KV_CACHE_TYPE=q8_0, which halve that per-token cost.
+    public static let localContextWindow = 131072
 
     /// Cap on chained tool -> model -> tool rounds in `runAgentContinuation`,
     /// so a model that keeps emitting commands can't loop forever.
