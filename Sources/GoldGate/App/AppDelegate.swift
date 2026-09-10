@@ -49,6 +49,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("GENIE: applicationDidFinishLaunching entered")
+        // Also keeps GenieCapabilities.buildMarker referenced so the linker
+        // cannot strip it — the packaging scripts grep the binary for it to
+        // confirm they are signing the flavour they think they are.
+        print("GENIE: distribution = \(GenieCapabilities.distributionChannel) [\(GenieCapabilities.buildMarker)]")
         AppDelegate.shared = self
 
         // 0a. Initialize standardized factory defaults and register them
@@ -57,6 +61,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 0b. Silently refresh permissions status on launch without intrusive popups
         PermissionsManager.shared.refreshAll()
+
+        // 0b-2. Listen for requests handed off from the GenieFinderSync Finder extension
+        FinderSyncBridge.shared.start()
+
+        // 0c. On the very first launch after install, actually ask for the access Genie needs
+        // (screen recording, accessibility, full disk) instead of silently running degraded.
+        if !UserDefaults.standard.bool(forKey: PrefKey.hasPromptedForPermissions) {
+            UserDefaults.standard.set(true, forKey: PrefKey.hasPromptedForPermissions)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                PermissionsManager.shared.requestAllPermissions()
+            }
+        }
 
         // 0. Ensure a valid macOS System Menu exists so the top-left menu bar is always active and responsive
         setupMainMenu()
@@ -96,8 +112,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 2e-2. Initialize Screen Warp Manager (Instant Multi-Screen Window Teleportation: ⌃⌥→ / ⌃⌥←)
         ScreenWarpManager.shared.setup()
 
-        // 2e-3. Floating Mini Watch Dock (World Clock strip below the menu bar; draggable) & Alarm Clock
-        MiniWatchDockPanelManager.shared.setup()
+        // 2e-3. Notch Dock & Alarm Clock. The World Clock watch strip is no longer its own
+        // panel: it renders inside the chat dock (RightSideChatDockView.watchStrip).
+        NotchDockPanelManager.shared.setup()
         _ = AlarmClockManager.shared
         _ = UnifiedCommandWindowManager.shared
 
@@ -147,10 +164,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("GENIE: applicationDidFinishLaunching completed")
     }
 
-    private var fileIPCTimer: Timer?
+    private var fileIPCSource: DispatchSourceFileSystemObject?
     private func setupFileIPCWatcher() {
-        let triggerPath = NSString(string: "~/.gemini/genie_action.trigger").expandingTildeInPath
-        fileIPCTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
+        let dirPath = NSString(string: "~/.gemini").expandingTildeInPath
+        let triggerPath = "\(dirPath)/genie_action.trigger"
+
+        // Ensure directory exists
+        try? FileManager.default.createDirectory(atPath: dirPath, withIntermediateDirectories: true)
+
+        let fd = open(dirPath, O_EVTONLY)
+        guard fd >= 0 else { return }
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write],
+            queue: DispatchQueue.global(qos: .userInitiated)
+        )
+
+        source.setEventHandler { [weak self] in
             guard FileManager.default.fileExists(atPath: triggerPath) else { return }
             do {
                 let content = try String(contentsOfFile: triggerPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -158,7 +189,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 Task { @MainActor in
                     print("GENIE IPC Action received: \(content)")
                     if content == "toggle-canvas" || content == "canvas" {
-                        SpatialPlaneManager.shared.toggleZoomOutPlane()
+                        FinderChatWindowManager.shared.toggle()
                     } else if content == "show-finder-chat" || content == "finder-chat" || content == "chat" || content == "mode-settings" || content == "settings" {
                         FinderChatWindowManager.shared.show()
                         NotificationCenter.default.post(name: NSNotification.Name("NexusSetWindowMode"), object: "combined")
@@ -171,12 +202,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         UnifiedCommandWindowManager.shared.toggle()
                     } else if content == "toggle-watch-dock" || content == "watch-dock" {
                         WorldClockViewModel.shared.dockSettings.isEnabled.toggle()
-                    } else if content == "watch-dock-bottom" {
-                        WorldClockViewModel.shared.dockSettings.position = .bottom
-                        MiniWatchDockPanelManager.shared.snapToConfiguredEdge()
-                    } else if content == "watch-dock-top" {
-                        WorldClockViewModel.shared.dockSettings.position = .top
-                        MiniWatchDockPanelManager.shared.snapToConfiguredEdge()
                     } else if content == "open-world-clock-settings" {
                         NotificationCenter.default.post(name: NSNotification.Name("NexusOpenSettingsInChat"), object: nil)
                         NotificationCenter.default.post(name: NSNotification.Name("NexusSelectSettingsTab"), object: UnifiedSettingsTab.worldClock)
@@ -202,12 +227,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 try? FileManager.default.removeItem(atPath: triggerPath)
             }
         }
+
+        source.setCancelHandler {
+            close(fd)
+        }
+
+        source.resume()
+        self.fileIPCSource = source
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             if url.host == "canvas" || url.absoluteString.contains("toggle-canvas") {
-                SpatialPlaneManager.shared.toggleZoomOutPlane()
+                FinderChatWindowManager.shared.toggle()
             }
             GenieiMessageExtensionManager.shared.handleURL(url)
         }
@@ -425,7 +457,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let targetFrame = calculateSnappedPopoverFrame(size: size, targetScreen: screen)
         appendDebugLog("SHOW_MENUBAR_POPOVER: targetFrame=\(targetFrame)\n")
 
-        let genieEnabled = UserDefaults.standard.object(forKey: PrefKey.genieAnimEnabled) == nil ? true : UserDefaults.standard.bool(forKey: PrefKey.genieAnimEnabled)
+        let genieEnabled = UserDefaults.standard.object(forKey: PrefKey.genieAnimEnabled) == nil ? false : UserDefaults.standard.bool(forKey: PrefKey.genieAnimEnabled)
         let originSetting = UserDefaults.standard.string(forKey: PrefKey.genieAnimOrigin) ?? "Top Glyph 🪔"
         let isDock = originSetting.contains("Dock")
 
@@ -637,7 +669,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func startAnimation() {
         animTimer?.invalidate()
-        let interval: TimeInterval = batteryMonitor.isCharging ? 0.033 : 0.05
+        let interval: TimeInterval = 0.08 // Sane ~12-15 FPS cadence for ambient status icon shimmer
         let timer = Timer(
             timeInterval: interval, target: self, selector: #selector(handleAnimationTick),
             userInfo: nil, repeats: true)
@@ -646,6 +678,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func handleAnimationTick() {
+        guard (statusItem?.isVisible == true && statusItem?.button?.window != nil) || CustomMenuBarManager.shared.isEnabled else {
+            return
+        }
         let speed = UserDefaults.standard.double(forKey: PrefKey.animSpeed)
         let baseSpeed = speed > 0 ? speed : 0.03
         let delta = CGFloat(baseSpeed * 0.45)
@@ -662,12 +697,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         button.action = nil
         button.clipsToBounds = false
 
-        let stripView = MenuBarAppStripView()
-        let hostingView = ClickableHostingView(rootView: stripView)
-        hostingView.frame = button.bounds
-        hostingView.autoresizingMask = [.width, .height]
-        hostingView.clipsToBounds = false
-        button.addSubview(hostingView)
+        let showMiniDock = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInMenuBar)
+        if showMiniDock {
+            let stripView = MenuBarAppStripView()
+            let hostingView = ClickableHostingView(rootView: stripView)
+            hostingView.frame = button.bounds
+            hostingView.autoresizingMask = [.width, .height]
+            hostingView.clipsToBounds = false
+            button.addSubview(hostingView)
+        } else {
+            statusItem.length = NSStatusItem.squareLength
+            let glyph = UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
+                ?? UserDefaults.standard.string(forKey: PrefKey.statusIconStyle)
+                ?? "Genie Lamp 🪔"
+            button.image = StatusIconRenderer.generateGlyphImage(glyph: glyph, size: 18, phase: self.phase)
+            button.imagePosition = .imageOnly
+            button.target = self
+            button.action = #selector(statusBarButtonClicked)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
     }
 
     func updateStatusItemWidth(_ width: CGFloat) {
@@ -679,6 +727,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         statusItem.isVisible = true
         statusItem.button?.clipsToBounds = false
+
+        let showMiniDock = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInMenuBar)
+        guard showMiniDock else {
+            if statusItem.length != NSStatusItem.squareLength {
+                statusItem.length = NSStatusItem.squareLength
+            }
+            return
+        }
+
         let targetW = max(50, ceil(width) + 8)
         if abs(statusItem.length - targetW) > 0.5 {
             statusItem.length = targetW
@@ -687,17 +744,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func renderIcon() {
         NotificationCenter.default.post(name: NSNotification.Name("NexusAnimTick"), object: self.phase)
+        let showMiniDock = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInMenuBar)
+        if !showMiniDock, let button = statusItem?.button {
+            let glyph = UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
+                ?? UserDefaults.standard.string(forKey: PrefKey.statusIconStyle)
+                ?? "Genie Lamp 🪔"
+            button.image = StatusIconRenderer.generateGlyphImage(glyph: glyph, size: 18, phase: self.phase)
+        }
     }
 
     @objc func statusBarButtonClicked(_ sender: NSStatusBarButton? = nil) {
         guard let button = sender ?? statusItem.button else { return }
-        let screenMouse = NSEvent.mouseLocation
-        let winPoint = button.window?.convertPoint(fromScreen: screenMouse) ?? screenMouse
-        let localPoint = button.convert(winPoint, from: nil)
-        appendDebugLog("STATUS_BTN_CLICKED: mouse=\(screenMouse), localPoint=\(localPoint)\n")
-        let event = NSApp.currentEvent
-        let isRight = event?.type == .rightMouseDown || (event?.modifierFlags.contains(.control) ?? false)
-        MenuBarActionDispatcher.shared.dispatchClick(at: localPoint, in: button, isRightClick: isRight, event: event ?? NSEvent())
+        let showMiniDock = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInMenuBar)
+        if showMiniDock {
+            let screenMouse = NSEvent.mouseLocation
+            let winPoint = button.window?.convertPoint(fromScreen: screenMouse) ?? screenMouse
+            let localPoint = button.convert(winPoint, from: nil)
+            appendDebugLog("STATUS_BTN_CLICKED: mouse=\(screenMouse), localPoint=\(localPoint)\n")
+            let event = NSApp.currentEvent
+            let isRight = event?.type == .rightMouseDown || event?.type == .rightMouseUp || (event?.modifierFlags.contains(.control) ?? false)
+            MenuBarActionDispatcher.shared.dispatchClick(at: localPoint, in: button, isRightClick: isRight, event: event ?? NSEvent())
+        } else {
+            let event = NSApp.currentEvent
+            let isRight = event?.type == .rightMouseDown
+                || event?.type == .rightMouseUp
+                || (event?.modifierFlags.contains(.control) ?? false)
+            if isRight {
+                MenuBarActionDispatcher.shared.showStatusMenu(in: button, event: event ?? NSEvent())
+            } else {
+                FinderChatWindowManager.shared.toggle()
+            }
+        }
     }
 
     private var isPinnedToDesktop: Bool {
@@ -1234,8 +1311,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("GENIE: applicationWillTerminate entered — invalidating all timers and monitors")
         animTimer?.invalidate()
         animTimer = nil
-        fileIPCTimer?.invalidate()
-        fileIPCTimer = nil
+        fileIPCSource?.cancel()
+        fileIPCSource = nil
         removeGlobalDismissMonitor()
         if let p = permanentKeyMonitor {
             NSEvent.removeMonitor(p)

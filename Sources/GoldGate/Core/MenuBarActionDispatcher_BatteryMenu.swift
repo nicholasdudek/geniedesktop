@@ -2,6 +2,11 @@ import AppKit
 import Foundation
 
 extension MenuBarActionDispatcher {
+    public func showStatusMenu(in view: NSView, event: NSEvent) {
+        let menu = makeCompleteBatteryPopoutMenu()
+        NSMenu.popUpContextMenu(menu, with: event, for: view)
+    }
+
     public func makeCompleteBatteryPopoutMenu() -> NSMenu {
         let menu = NSMenu(title: "Battery & Quick Launcher")
         let lang = UserDefaults.standard.string(forKey: PrefKey.appLanguage) ?? "English (US)"
@@ -305,6 +310,18 @@ extension MenuBarActionDispatcher {
         showTrashItem.state = showTrash ? NSControl.StateValue.on : NSControl.StateValue.off
         dockOptions.addItem(showTrashItem)
 
+        dockOptions.addItem(NSMenuItem.separator())
+
+        let showInMenuBar = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInMenuBar)
+        let showInMenuBarItem = NSMenuItem(
+            title: "Show Mini Dock in Menu Bar",
+            action: #selector(toggleShowMiniDockInMenuBar),
+            keyEquivalent: ""
+        )
+        showInMenuBarItem.target = self
+        showInMenuBarItem.state = showInMenuBar ? NSControl.StateValue.on : NSControl.StateValue.off
+        dockOptions.addItem(showInMenuBarItem)
+
         let dockOptionsSubItem = NSMenuItem(title: "Mini Dock Display Options ❯", action: nil, keyEquivalent: "")
         dockOptionsSubItem.image = NSImage(systemSymbolName: "slider.horizontal.3", accessibilityDescription: nil)
         dockOptionsSubItem.submenu = dockOptions
@@ -423,14 +440,7 @@ extension MenuBarActionDispatcher {
         menu.addItem(colorSubItem)
         
         menu.addItem(NSMenuItem.separator())
-        
-        // ── 5. Mini Dock Space-Saving Controls ──
-        let collapseTitle = isCollapsedIntoBattery ? "Expand Mini Dock from Battery" : "Collapse Mini Dock into Battery (Save Space)"
-        let collapseItem = NSMenuItem(title: collapseTitle, action: #selector(chevronToggle), keyEquivalent: "")
-        collapseItem.image = NSImage(systemSymbolName: "arrow.left.and.right.circle", accessibilityDescription: nil)
-        collapseItem.target = self
-        menu.addItem(collapseItem)
-        
+
         // Mini Dock Style Submenu
         let dockStyleMenu = NSMenu(title: "Mini Dock Style")
         let currentDockStyle = UserDefaults.standard.string(forKey: PrefKey.miniDockBackgroundStyle) ?? "Clear (Transparent)"
@@ -701,6 +711,15 @@ extension MenuBarActionDispatcher {
         UserDefaults.standard.set(next, forKey: PrefKey.dockAlwaysShowTrash)
         NotificationCenter.default.post(name: NSNotification.Name("NexusDockTrashChanged"), object: next)
         AppDelegate.shared?.renderIcon()
+    }
+
+    @objc public func toggleShowMiniDockInMenuBar() {
+        HapticFeedback.selection()
+        let current = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInMenuBar)
+        let next = !current
+        UserDefaults.standard.set(next, forKey: PrefKey.showMiniDockInMenuBar)
+        AppDelegate.shared?.setupStatusItemView()
+        NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockMenuBarChanged"), object: next)
     }
 
     @objc public func lockScreenAction() {

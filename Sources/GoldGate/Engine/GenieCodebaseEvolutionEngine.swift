@@ -155,6 +155,11 @@ public final class GenieCodebaseEvolutionEngine: ObservableObject {
     // MARK: - 3. Local Fine-Tuning & Custom Model Creation (Ollama / MLX)
     public func startLocalTraining() {
         guard !isTraining else { return }
+        // Training runs `ollama create`, an external binary.
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            trainingLogs = GenieCapabilities.unavailableMessage("Local fine-tuning") + "\n"
+            return
+        }
         isTraining = true
         trainingProgress = 0.05
         currentEpoch = 1
@@ -294,6 +299,12 @@ Your goal is to inspect, analyze, debug, benchmark, and evolve the codebase towa
 
     // MARK: - 5. Apply Evolution Patch & Verify with Swift Build
     public func applyEvolutionPatch(rec: CodeEvolutionRecommendation) async -> (success: Bool, message: String) {
+        // Verification runs `swift build` — a toolchain the sandboxed build
+        // cannot invoke, so the patch is not applied unverified.
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            return (false, GenieCapabilities.unavailableMessage("Applying code patches"))
+        }
+
         // Execute a swift build test to verify zero regressions
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/swift")

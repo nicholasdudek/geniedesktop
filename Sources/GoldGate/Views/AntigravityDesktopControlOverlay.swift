@@ -4,12 +4,14 @@ import SwiftUI
 // MARK: - Antigravity Desktop Control HUD View
 public struct AntigravityDesktopControlHUDView: View {
     @ObservedObject var agent = AntigravityDesktopAgent.shared
+    @ObservedObject var cursorEngine = CursorAutomationEngine.shared
+    @ObservedObject var splitManager = DualWorkspaceSplitManager.shared
     @State private var isPulsing: Bool = false
 
     public init() {}
 
     public var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             // Animated Glowing Status Beacon
             ZStack {
                 Circle()
@@ -43,7 +45,7 @@ public struct AntigravityDesktopControlHUDView: View {
                     .foregroundColor(Color.white.opacity(0.85))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .frame(maxWidth: 320, alignment: .leading)
+                    .frame(maxWidth: 280, alignment: .leading)
 
                 if agent.totalSteps > 1 {
                     GeometryReader { geo in
@@ -61,7 +63,96 @@ public struct AntigravityDesktopControlHUDView: View {
                 }
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 4)
+
+            // Cursor Automation Mode Selector Button
+            Button(action: {
+                HapticFeedback.selection()
+                // Cycle through cursor modes
+                switch cursorEngine.activeMode {
+                case .instantSnap:
+                    cursorEngine.activeMode = .directBackgroundAction
+                case .directBackgroundAction:
+                    cursorEngine.activeMode = .virtualAgentCursor
+                case .virtualAgentCursor:
+                    cursorEngine.activeMode = .smoothGlide
+                case .smoothGlide:
+                    cursorEngine.activeMode = .instantSnap
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: cursorEngine.activeMode.systemIcon)
+                        .font(.system(size: 10, weight: .bold))
+                    Text(cursorEngine.activeMode.badgeTitle)
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                }
+                .foregroundColor(cursorEngine.activeMode == .directBackgroundAction ? .orange : (cursorEngine.activeMode == .virtualAgentCursor ? .green : .cyan))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(0.10))
+                        .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.5))
+                )
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Cursor Automation Mode: Instant Snap, Direct Background Action, Virtual Agent Pointer, or Smooth Glide")
+
+            // Dual Workspace Split Desktop Toggle
+            Button(action: {
+                splitManager.toggleSplit()
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: splitManager.isSplitActive ? "rectangle.split.2x1.fill" : "rectangle.split.2x1")
+                        .font(.system(size: 11, weight: .bold))
+                    Text(splitManager.isSplitActive ? "Split: ON" : "Split")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                }
+                .foregroundColor(splitManager.isSplitActive ? .cyan : .white.opacity(0.9))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(splitManager.isSplitActive ? Color.cyan.opacity(0.25) : Color.white.opacity(0.12)))
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Dual Split Desktop Workspaces (Side-by-Side Agent Layout)")
+
+            // iPhone Mirroring Quick Summon
+            Button(action: {
+                HapticFeedback.selection()
+                iPhoneMirrorManager.shared.launchOrActivateApp()
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "iphone.gen2")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("iPhone")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                }
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.white.opacity(0.12)))
+            }
+            .buttonStyle(.plain)
+            .help("Activate iPhone Mirroring")
+
+            // Clear Command Deck Overlay Toggle
+            Button(action: {
+                HapticFeedback.selection()
+                NotificationCenter.default.post(name: NSNotification.Name("GenieToggleClearHTMLOverlay"), object: nil)
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("Deck")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                }
+                .foregroundColor(.cyan)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.cyan.opacity(0.18)))
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Autonomous Command Deck Overlay")
 
             // Intervene / Stop Execution Button
             Button(action: {
@@ -103,7 +194,7 @@ public struct AntigravityDesktopControlHUDView: View {
             }
             .shadow(color: Color.black.opacity(0.55), radius: 20, x: 0, y: 10)
         )
-        .frame(minWidth: 460)
+        .frame(minWidth: 620)
         .onAppear {
             isPulsing = true
         }
@@ -125,7 +216,7 @@ public final class AntigravityDesktopControlWindow: NSObject {
     public func show() {
         if hudWindow == nil {
             let panel = NSPanel(
-                contentRect: NSRect(x: 0, y: 0, width: 500, height: 60),
+                contentRect: NSRect(x: 0, y: 0, width: 640, height: 60),
                 styleMask: [.borderless, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
@@ -142,7 +233,7 @@ public final class AntigravityDesktopControlWindow: NSObject {
         guard let panel = hudWindow, let screen = NSScreen.main else { return }
 
         let screenFrame = screen.frame
-        let width: CGFloat = 500
+        let width: CGFloat = 640
         let height: CGFloat = 64
         let x = screenFrame.midX - (width / 2)
         let y = screenFrame.maxY - height - 40 // positioned elegantly below macOS top bar

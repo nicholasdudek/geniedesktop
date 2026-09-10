@@ -120,6 +120,10 @@ public final class GenieSleepPreventionManager: ObservableObject {
 
     // MARK: - Background Caffeinate Support
     private func startCaffeinateProcess() {
+        // Steps 1-3 above (two IOPMAssertions + a ProcessInfo activity) already
+        // hold the system awake natively. `caffeinate` is only a belt-and-braces
+        // fourth anchor, so the sandboxed build simply skips it and loses nothing.
+        guard GenieCapabilities.canSpawnSubprocesses else { return }
         guard caffeinateProcess == nil else { return }
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate")

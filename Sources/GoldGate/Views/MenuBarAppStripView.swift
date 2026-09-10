@@ -26,7 +26,7 @@ public struct MenuBarAppStripView: View {
     @AppStorage(PrefKey.batteryColorMode) var batteryColorMode: String = "Dynamic Level"
     @AppStorage(PrefKey.showBatteryPercentage) var showBatteryPercentage: Bool = true
     @AppStorage(PrefKey.isVelcroDetached) var isVelcroDetached: Bool = false
-    @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = true
+    @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = false
     @AppStorage(PrefKey.smokeStyle) var smokeStyle: String = "Mystical Cyan 🧞‍♂️"
     @AppStorage(PrefKey.statusIconGlyph) var statusIconGlyph: String = "Genie Lamp 🪔"
     @AppStorage(PrefKey.statusIconStyle) var statusIconStyle: String = "Genie Lamp 🪔"
@@ -84,11 +84,16 @@ public struct MenuBarAppStripView: View {
     @State private var isTrashHovered: Bool = false
     @State private var isLeoHovered: Bool = false
     @State private var isChatHovered: Bool = false
+    @State private var isSettingsHovered: Bool = false
     @State private var isChevronHovered: Bool = false
     @State private var isBatteryHovered: Bool = false
     @State private var isCloudHovered: Bool = false
     @State private var isSwitcherHovered: Bool = false
-    @AppStorage(PrefKey.isCollapsedIntoBattery) var isCollapsedIntoBattery: Bool = false
+    @State private var isNearScreenEdge: Bool = false
+    @AppStorage(PrefKey.dockAnimationStyle) var dockAnimationStyleRaw: String = "None"
+    @AppStorage(PrefKey.dockAnimationIntensity) var dockAnimationIntensity: Double = 0.7
+    @AppStorage(PrefKey.danceToMusicEnabled) var danceToMusicEnabled: Bool = false
+    @ObservedObject private var musicMonitor: MusicPlaybackMonitor = .shared
     @ObservedObject private var dispatcher = MenuBarActionDispatcher.shared
     @State private var draggingItemId: String? = nil
     @State private var dragOffset: CGFloat = 0.0
@@ -153,6 +158,8 @@ public struct MenuBarAppStripView: View {
             ids.append(contentsOf: dockManager.dockFolders.map { "folder_\($0.id)" })
         }
         if dockAlwaysShowTrash { ids.append("trash") }
+        ids.append("pill_chat")
+        ids.append("pill_settings")
         return ids
     }
 
@@ -160,23 +167,28 @@ public struct MenuBarAppStripView: View {
         guard isSystemMagnificationEnabled else {
             return (1.0, 0.0, 1.0)
         }
-        guard let hoveredId = hoveredItemId,
-              let hoveredIdx = allDockIds.firstIndex(of: hoveredId),
-              let myIdx = allDockIds.firstIndex(of: itemId) else {
+        guard let myIdx = allDockIds.firstIndex(of: itemId) else {
             return (1.0, 0.0, 1.0)
         }
-        let dist = abs(hoveredIdx - myIdx)
-        switch dist {
-        case 0:
-            // Gentle Apple menu bar micro-scale (strictly within 22pt bounds so zero edge clipping occurs)
-            return (1.10, 0.0, 100.0)
-        case 1:
-            return (1.04, 0.0, 60.0)
-        case 2:
-            return (1.01, 0.0, 30.0)
-        default:
-            return (1.0, 0.0, 1.0)
-        }
+        let hoveredIdx = hoveredItemId.flatMap { allDockIds.firstIndex(of: $0) }
+        let t = DockAnimationEngine.transform(
+            style: DockAnimationStyle(preferenceValue: dockAnimationStyleRaw),
+            index: myIdx,
+            hoveredIndex: hoveredIdx,
+            time: Date().timeIntervalSinceReferenceDate,
+            intensity: dockAnimationIntensity,
+            isMusicPlaying: musicMonitor.isMusicPlaying,
+            danceToMusic: danceToMusicEnabled,
+            anchorDown: true
+        )
+
+        // The menu bar is only ~22pt tall, so the engine's full-size dock motion is scaled down
+        // here — anything larger visibly clips against the menu bar's bounds.
+        let scale = 1.0 + (t.scale - 1.0) * 0.30
+        let yOffset = t.offset.height * 0.25
+        let distance = hoveredIdx.map { abs($0 - myIdx) } ?? Int.max
+        let zIndex: Double = distance == 0 ? 100.0 : (distance == 1 ? 60.0 : (distance == 2 ? 30.0 : 1.0))
+        return (max(0.9, min(1.14, scale)), yOffset, zIndex)
     }
 
     private func magnificationDisplacement(for itemId: String) -> CGFloat {
@@ -865,92 +877,14 @@ public struct MenuBarAppStripView: View {
 
 
     @ViewBuilder
-    private var miniDockPlugView: some View {
-        Button(action: {
-            HapticFeedback.selection()
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                if miniDockDisplayMode == "Auto-Hide" {
-                    miniDockDisplayMode = "Always Shown"
-                } else {
-                    miniDockDisplayMode = "Auto-Hide"
-                }
-                UserDefaults.standard.set(miniDockDisplayMode, forKey: PrefKey.miniDockDisplayMode)
-            }
-        }) {
-            HStack(spacing: 3) {
-                Image(systemName: "powerplug.fill")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(isChevronHovered ? .cyan : .white.opacity(0.70))
-                    .scaleEffect(isChevronHovered ? 1.15 : 1.0)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.white.opacity(0.45))
-            }
-            .padding(.horizontal, 5)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(isChevronHovered ? Color.white.opacity(0.18) : Color.white.opacity(0.06))
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-        .onHover { h in
-            withAnimation(.spring(response: 0.20, dampingFraction: 0.75)) {
-                isChevronHovered = h
-                if h {
-                    dismissTimer?.invalidate()
-                    dismissTimer = nil
-                    isStripHovered = true
-                }
-            }
-        }
-        .background(
-            GeometryReader { geo in
-                Color.clear.preference(key: ChevronFrameKey.self, value: geo.frame(in: .named("StripRoot")))
-            }
-        )
-        .help(LocalizedStrings.translateText("Hidden Mini Dock Plug — Click or hover to toggle running apps strip 🔌", lang: appLanguage))
-    }
-
-    private var isExpanded: Bool {
-        !isCollapsedIntoBattery || isStripHovered || isBatteryHovered
-    }
-
-    @ViewBuilder
-    private var dockCollapseToggleIndicator: some View {
-        if isCollapsedIntoBattery {
-            Button(action: {
-                HapticFeedback.selection()
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                    isCollapsedIntoBattery = false
-                    UserDefaults.standard.set(false, forKey: PrefKey.isCollapsedIntoBattery)
-                    NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockCollapse"), object: nil)
-                }
-            }) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 7.5, weight: .bold))
-                    .foregroundColor(.white.opacity(isChevronHovered ? 0.95 : 0.55))
-                    .frame(width: 8, height: 16)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(PlainButtonStyle())
-            .onHover { h in
-                withAnimation(.spring(response: 0.18, dampingFraction: 0.75)) {
-                    isChevronHovered = h
-                }
-            }
-            .help(LocalizedStrings.translateText("Expand Mini Dock from Battery 🔋", lang: appLanguage))
-        } else {
-            EmptyView()
-        }
-    }
-
-    @ViewBuilder
     private var appsClusterPillView: some View {
-        let showActiveApps = (!isHiddenMode || isStripHovered)
-        HStack(alignment: .center, spacing: 3.5) {
-            if showActiveApps {
+        // Smart edge reveal: in hidden/auto-hide mode, the dock has no visible handle to click —
+        // it simply appears when the cursor nears the screen edge it lives on (see isNearScreenEdge,
+        // driven by MenuBarActionDispatcher's edge-proximity monitor) and retreats when it leaves,
+        // the same way the real macOS Dock auto-reveals.
+        let showActiveApps = (!isHiddenMode || isStripHovered || isNearScreenEdge)
+        if showActiveApps {
+            HStack(alignment: .center, spacing: 3.5) {
                 // 1. Applications in exact bottom macOS Dock order (Finder, System Settings, Chrome, Stickies, Mail, Genie, etc.)
                 ForEach(activeDockItems) { item in
                     dockAppItemView(item: item)
@@ -975,45 +909,49 @@ public struct MenuBarAppStripView: View {
                 if dockAlwaysShowTrash {
                     trashItemView
                 }
-            } else if isHiddenMode {
-                miniDockPlugView
+
+                // 5. Vertical Divider before Chat & Settings
+                Rectangle()
+                    .fill(Color.white.opacity(0.20))
+                    .frame(width: 1, height: 16)
+                    .padding(.horizontal, 2)
+
+                // 6. Genie Chat Inside Pill Dock
+                chatPillItemView
+
+                // 7. Genie Settings Inside Pill Dock
+                settingsPillItemView
             }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 3.5)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(isStripHovered ? 0.16 : 0.08))
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(Color.white.opacity(isStripHovered ? 0.28 : 0.14), lineWidth: 0.8)
+                    )
+                    .shadow(color: Color.black.opacity(0.25), radius: 3, y: 1)
+            )
+        } else {
+            EmptyView()
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 3.5)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(isStripHovered ? 0.16 : 0.08))
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.white.opacity(isStripHovered ? 0.28 : 0.14), lineWidth: 0.8)
-                )
-                .shadow(color: Color.black.opacity(0.25), radius: 3, y: 1)
-        )
     }
 
     public var body: some View {
         HStack(alignment: .center, spacing: 6.0) {
-            // ── 1. Unified Running Apps Pill (Mini Dock with 1:1 bottom dock order) ──
-            if isExpanded {
-                appsClusterPillView
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.1, anchor: .trailing)
-                            .combined(with: .opacity)
-                            .combined(with: .offset(x: -25)),
-                        removal: .scale(scale: 0.1, anchor: .trailing)
-                            .combined(with: .opacity)
-                            .combined(with: .offset(x: -25))
-                    ))
-            }
-
-            // ── 2. Dock Expand Indicator (Only when collapsed into battery) ──
-            dockCollapseToggleIndicator
-
-            // ── 3. Standalone Battery Pill ──
-            if batteryEnabled {
-                batteryItemView
-            }
+            // ── Unified Running Apps Pill (Mini Dock with 1:1 bottom dock order) ──
+            // The real system battery item is left alone now (see PrefKey removal note in
+            // AppDefaultsManager) — Genie no longer draws its own battery pill here.
+            appsClusterPillView
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.1, anchor: .trailing)
+                        .combined(with: .opacity)
+                        .combined(with: .offset(x: -25)),
+                    removal: .scale(scale: 0.1, anchor: .trailing)
+                        .combined(with: .opacity)
+                        .combined(with: .offset(x: -25))
+                ))
         }
 
 
@@ -1054,16 +992,7 @@ public struct MenuBarAppStripView: View {
         .onPreferenceChange(AppFramesKey.self) { MenuBarActionDispatcher.shared.appFrames = $0 }
         .onPreferenceChange(FinderFrameKey.self) { MenuBarActionDispatcher.shared.finderFrame = $0 }
         .onPreferenceChange(TrashFrameKey.self) { MenuBarActionDispatcher.shared.trashFrame = $0 }
-        .onPreferenceChange(ChevronFrameKey.self) { MenuBarActionDispatcher.shared.chevronFrame = $0 }
-        .onPreferenceChange(BatteryFrameKey.self) { MenuBarActionDispatcher.shared.batteryFrame = $0 }
-        .onChange(of: isCollapsedIntoBattery) { _, collapsed in
-            MenuBarActionDispatcher.shared.isCollapsedIntoBattery = collapsed
-        }
         .onAppear {
-            batteryEnabled = true
-            UserDefaults.standard.set(true, forKey: PrefKey.batteryEnabled)
-            showBatteryPercentage = true
-            UserDefaults.standard.set(true, forKey: PrefKey.showBatteryPercentage)
             dockManager.refreshDockApps()
             BatteryMonitor.shared.refresh()
             if statusIconGlyph.isEmpty || statusIconGlyph == "Golden Gate Arch" || statusIconGlyph == "Leo Maltese 🐶" || statusIconGlyph == "Genie Person 🧞‍♂️" {
@@ -1076,25 +1005,30 @@ public struct MenuBarAppStripView: View {
             refreshApps()
             MenuBarActionDispatcher.shared.dockItems = self.activeDockItems
             MenuBarActionDispatcher.shared.displayApps = self.displayApps
-            MenuBarActionDispatcher.shared.isCollapsedIntoBattery = self.isCollapsedIntoBattery
+            MenuBarActionDispatcher.shared.startEdgeProximityMonitoring()
         }
         .onDisappear {
             hoverDebounceTimer?.invalidate()
             hoverDebounceTimer = nil
+            MenuBarActionDispatcher.shared.stopEdgeProximityMonitoring()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusAnimTick"))) { notif in
             if let p = notif.object as? CGFloat {
                 animPhase = p
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusToggleDockCollapse"))) { _ in
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
-                isCollapsedIntoBattery.toggle()
-            }
-        }
-        .onReceive(DistributedNotificationCenter.default().publisher(for: NSNotification.Name("com.user.nexus.toggleCollapse"))) { _ in
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
-                isCollapsedIntoBattery.toggle()
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusMenuBarEdgeProximity"))) { notif in
+            let near = (notif.object as? Bool) ?? false
+            if near {
+                dismissTimer?.invalidate()
+                dismissTimer = nil
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.80)) {
+                    isNearScreenEdge = true
+                }
+            } else {
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
+                    isNearScreenEdge = false
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusBatteryColorModeChanged"))) { notif in
@@ -1371,6 +1305,69 @@ public struct MenuBarAppStripView: View {
         }
     }
 
+    // MARK: - Inside-the-Pill Chat & Settings Actions
+    private var chatPillItemView: some View {
+        let cWave = magnificationWave(for: "pill_chat")
+        let isHovered = (hoveredItemId == "pill_chat" || isChatHovered)
+        return Button(action: {
+            HapticFeedback.selection()
+            FinderChatWindowManager.shared.toggle()
+        }) {
+            ZStack(alignment: .center) {
+                Circle()
+                    .fill(isHovered ? Color.cyan.opacity(0.35) : (FinderChatWindowManager.shared.isVisible ? Color.cyan.opacity(0.25) : Color.white.opacity(0.08)))
+                    .frame(width: 22, height: 22)
+
+                Image(systemName: FinderChatWindowManager.shared.isVisible ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(FinderChatWindowManager.shared.isVisible ? .cyan : (isHovered ? .white : .white.opacity(0.80)))
+                    .shadow(color: Color.cyan.opacity(FinderChatWindowManager.shared.isVisible ? 0.60 : 0.0), radius: 2)
+            }
+            .frame(width: 26, height: 26)
+            .scaleEffect(cWave.scale, anchor: .center)
+            .offset(x: magnificationDisplacement(for: "pill_chat"), y: cWave.yOffset)
+            .contentShape(Circle())
+        }
+        .buttonStyle(DockIconButtonStyle())
+        .zIndex(cWave.zIndex)
+        .onHover { h in
+            isChatHovered = h
+            handleItemHover(id: "pill_chat", hovering: h)
+        }
+        .help("Genie Chat 💬 — Click to open Chat Studio")
+    }
+
+    private var settingsPillItemView: some View {
+        let sWave = magnificationWave(for: "pill_settings")
+        let isHovered = (hoveredItemId == "pill_settings" || isSettingsHovered)
+        return Button(action: {
+            HapticFeedback.selection()
+            AppDelegate.shared?.showMenuBarSettingsDropdown(targetTab: .system)
+        }) {
+            ZStack(alignment: .center) {
+                Circle()
+                    .fill(isHovered ? Color.purple.opacity(0.35) : Color.white.opacity(0.08))
+                    .frame(width: 22, height: 22)
+
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(isHovered ? .white : Color.white.opacity(0.80))
+                    .shadow(color: Color.purple.opacity(isHovered ? 0.60 : 0.0), radius: 2)
+            }
+            .frame(width: 26, height: 26)
+            .scaleEffect(sWave.scale, anchor: .center)
+            .offset(x: magnificationDisplacement(for: "pill_settings"), y: sWave.yOffset)
+            .contentShape(Circle())
+        }
+        .buttonStyle(DockIconButtonStyle())
+        .zIndex(sWave.zIndex)
+        .onHover { h in
+            isSettingsHovered = h
+            handleItemHover(id: "pill_settings", hovering: h)
+        }
+        .help("Genie Settings ⚙️ — System Preferences & Configurations")
+    }
+
     // MARK: - Dedicated Native Battery Bar Gauge View
     @ViewBuilder
     private var batteryBarGaugeView: some View {
@@ -1431,11 +1428,6 @@ public struct MenuBarAppStripView: View {
                 MenuBarActionDispatcher.shared.cycleNextBatteryStyle()
             } else {
                 HapticFeedback.selection()
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                    isCollapsedIntoBattery.toggle()
-                    UserDefaults.standard.set(isCollapsedIntoBattery, forKey: PrefKey.isCollapsedIntoBattery)
-                    NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockCollapse"), object: nil)
-                }
             }
         }) {
             HStack(spacing: 4.0) {
@@ -1576,22 +1568,6 @@ public struct MenuBarAppStripView: View {
             }
 
             Divider()
-
-            Button(LocalizedStrings.translateText("Next Battery Style ❯", lang: appLanguage)) {
-                MenuBarActionDispatcher.shared.cycleNextBatteryStyle()
-            }
-            Button(action: {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                    isCollapsedIntoBattery.toggle()
-                    UserDefaults.standard.set(isCollapsedIntoBattery, forKey: PrefKey.isCollapsedIntoBattery)
-                    NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockCollapse"), object: nil)
-                }
-            }) {
-                HStack {
-                    Text(isCollapsedIntoBattery ? LocalizedStrings.translateText("Expand Mini Dock from Battery 🔋", lang: appLanguage) : LocalizedStrings.translateText("Slide Mini Dock into Battery (Save Space) 🔋", lang: appLanguage))
-                    if isCollapsedIntoBattery { Text("✓") }
-                }
-            }
             Divider()
             Button(action: {
                 desktopFilesManager.toggleDesktopFiles()
@@ -1665,54 +1641,8 @@ public struct MenuBarAppStripView: View {
     @ViewBuilder
     private var cloudMenuView: some View {
         Menu {
-            Section("⚡️ Google Gemini") {
-                ForEach(LocalModelManager.cloudModels.filter { $0.provider == .gemini }) { model in
-                    Button(action: {
-                        LocalModelManager.shared.selectModel(model.id)
-                        DesktopWindowManager.shared.switchToStation(.chat)
-                    }) {
-                        HStack {
-                            Text(model.displayName)
-                            if LocalModelManager.shared.effectiveModel == model.id {
-                                Text("✓")
-                            }
-                        }
-                    }
-                }
-            }
-            Section("🧠 Anthropic Claude") {
-                ForEach(LocalModelManager.cloudModels.filter { $0.provider == .claude }) { model in
-                    Button(action: {
-                        LocalModelManager.shared.selectModel(model.id)
-                        DesktopWindowManager.shared.switchToStation(.chat)
-                    }) {
-                        HStack {
-                            Text(model.displayName)
-                            if LocalModelManager.shared.effectiveModel == model.id {
-                                Text("✓")
-                            }
-                        }
-                    }
-                }
-            }
-            Section("❇️ OpenAI") {
-                ForEach(LocalModelManager.cloudModels.filter { $0.provider == .openai }) { model in
-                    Button(action: {
-                        LocalModelManager.shared.selectModel(model.id)
-                        DesktopWindowManager.shared.switchToStation(.chat)
-                    }) {
-                        HStack {
-                            Text(model.displayName)
-                            if LocalModelManager.shared.effectiveModel == model.id {
-                                Text("✓")
-                            }
-                        }
-                    }
-                }
-            }
-            Divider()
-            Section("💻 Local AI Models") {
-                ForEach(LocalModelManager.cloudModels.filter { $0.provider == .local }) { model in
+            Section("💻 Genie Local AI") {
+                ForEach(LocalModelManager.cloudModels) { model in
                     Button(action: {
                         LocalModelManager.shared.selectModel(model.id)
                         DesktopWindowManager.shared.switchToStation(.chat)
@@ -2014,9 +1944,6 @@ public struct MenuBarAppStripView: View {
         Button(LocalizedStrings.translateText("Applications...", lang: appLanguage)) {
             toggleApplicationsOverlay()
         }
-        Button(LocalizedStrings.translateText("Move Screen Like Webpage 🌐 (⌘⌥Space)", lang: appLanguage)) {
-            SpatialPlaneManager.shared.toggleZoomOutPlane()
-        }
         Divider()
         tuckedColorsAndFontsMenu
         Divider()
@@ -2073,18 +2000,6 @@ public struct MenuBarAppStripView: View {
                 miniDockDisplayMode = newMode
                 UserDefaults.standard.set(newMode, forKey: PrefKey.miniDockDisplayMode)
                 NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: newMode)
-            }
-        }
-        Button(action: {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                isCollapsedIntoBattery.toggle()
-                UserDefaults.standard.set(isCollapsedIntoBattery, forKey: PrefKey.isCollapsedIntoBattery)
-                NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockCollapse"), object: nil)
-            }
-        }) {
-            HStack {
-                Text(isCollapsedIntoBattery ? LocalizedStrings.translateText("Expand Mini Dock from Battery 🔋", lang: appLanguage) : LocalizedStrings.translateText("Slide into Battery to Save Space 🔋", lang: appLanguage))
-                if isCollapsedIntoBattery { Text("✓") }
             }
         }
         Divider()
@@ -2685,7 +2600,7 @@ let color: Color
         }
         .allowsHitTesting(false)
         .onAppear {
-            withAnimation(.easeOut(duration: 0.52)) {
+            withAnimation(.easeOut(duration: 0.26)) {
                 anim = 1.0
             }
         }

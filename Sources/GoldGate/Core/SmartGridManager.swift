@@ -1166,6 +1166,9 @@ public final class SmartGridManager: ObservableObject {
         // Guaranteed fallback via AppleScript System Events if AX failed
         if (!successPos || !successSize), let p = pid {
             moveWindowViaSystemEvents(pid: p, frame: frame)
+        } else if !successPos || !successSize {
+            // Log failure for non-pid calls
+            print("AX Error: Failed to set window frame for element \(element)")
         }
     }
 

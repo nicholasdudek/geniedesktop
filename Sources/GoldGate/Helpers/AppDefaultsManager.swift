@@ -20,7 +20,6 @@ public final class AppDefaultsManager {
             PrefKey.menuCompactMode: true,
             PrefKey.windowSizeMode: "normal",
             PrefKey.barFolderPath: defaultBarFolderPath,
-            PrefKey.isCollapsedIntoBattery: false,
             PrefKey.iconEnabled: true,
             PrefKey.statusIconStyle: "🪔",
             PrefKey.iconStyle: "Minimal Pill",
@@ -28,28 +27,31 @@ public final class AppDefaultsManager {
             PrefKey.showChargingBolt: true,
             PrefKey.batteryColorMode: "Dynamic Level",
             PrefKey.batteryNumberTheme: "Dynamic",
-            PrefKey.desktopPlaneEnabled: false,
+            PrefKey.desktopPlaneEnabled: true,
             PrefKey.appFormation: "Responsive Grid",
             PrefKey.chatGridPadding: 48.0,
             PrefKey.isVelcroDetached: false,
             PrefKey.menuBarSnapMode: "icon",
-            PrefKey.soundEnabled: true,
+            PrefKey.soundEnabled: false,
             PrefKey.hapticsEnabled: true,
             PrefKey.smokeEffectsEnabled: false,
+            PrefKey.cursorFxType: "None",
+            PrefKey.wallpaperFxEnabled: false,
+            PrefKey.ambientEntity: "None",
+            PrefKey.appPhysicsSimulation: "None",
             PrefKey.smokeStyle: "Mystical Cyan 🧞‍♂️",
             PrefKey.gridTransitionDirection: "Pull Up from Bottom",
             PrefKey.showPageIndicator: false,
             PrefKey.showAppNames: true,
-            PrefKey.windowGraphicsEnabled: true,
-            PrefKey.windowWallpaperEffect: true,
-            PrefKey.windowShaderFxEnabled: true,
+            PrefKey.windowGraphicsEnabled: false,
+            PrefKey.windowShaderFxEnabled: false,
             PrefKey.dropdownBgPreset: "wallpaper_mirror",
             PrefKey.dropdownBgOpacity: 0.40,
             PrefKey.dropdownBgBlur: 16.0,
             PrefKey.iconSize: 56.0,
             PrefKey.textSize: 10.5,
             PrefKey.spacing: 24.0,
-            PrefKey.enableMagnification: true,
+            PrefKey.enableMagnification: false,
             PrefKey.magnificationScale: 1.65,
             PrefKey.searchHotkeyChoice: "Option + Space (⌥ Space)",
             PrefKey.appLanguage: "English (US)",
@@ -58,7 +60,7 @@ public final class AppDefaultsManager {
             PrefKey.doubleControlTrigger: true,
             PrefKey.doubleOptionTrigger: false,
             PrefKey.batteryEnabled: true,
-            PrefKey.genieAnimEnabled: true,
+            PrefKey.genieAnimEnabled: false,
             PrefKey.sameWallpaperMode: true,
             PrefKey.bottomEdgeCursorTrigger: false,
             PrefKey.topEdgeCursorTrigger: false,
@@ -67,17 +69,23 @@ public final class AppDefaultsManager {
             PrefKey.dockRestPeriod: 0.65,
             PrefKey.soundVolume: 0.85,
             PrefKey.soundProfile: "Apple Modern",
-            PrefKey.notePrinterSoundEnabled: true,
+            PrefKey.notePrinterSoundEnabled: false,
             PrefKey.studioAlwaysOnTop: true,
             PrefKey.popoverFreePositionEnabled: true,
-            PrefKey.autoSelectLocalModel: true,
+            PrefKey.autoSelectLocalModel: false,
+            PrefKey.bundledLocalModel: "gemma4:4b",
+            PrefKey.selectedLocalModel: "gemma4:4b",
             PrefKey.localModelsEnabled: true,
             PrefKey.terminalAccessEnabled: true,
             PrefKey.terminalAutoExecute: false,
+            PrefKey.computerVisionToolsEnabled: true,
+            PrefKey.desktopManagementToolsEnabled: true,
+            PrefKey.fileCreationToolsEnabled: true,
+            PrefKey.homeFolderAccessEnabled: false,
+            PrefKey.fullDiskAccessRequested: false,
             PrefKey.webAccessEnabled: true,
             PrefKey.webAutoSearch: true,
             PrefKey.ollamaHost: "http://localhost:11434",
-            PrefKey.geminiApiKey: "AQ.Ab8RN6KQdZll5kIJEFdF5jHHFDp8s5NxF8kZTRItnCRHb84ltw",
             PrefKey.menuBarTimeFormat: "Date & Time (12-Hour)",
             PrefKey.menuBarFontFamily: "SF Pro (Apple Default)",
             PrefKey.menuBarFontWeight: "Medium",
@@ -89,47 +97,58 @@ public final class AppDefaultsManager {
             PrefKey.searchBarPlacement: "Centered Dynamic 🎯",
             PrefKey.appDisplayStage: 2,
             PrefKey.middleSplitRatio: 0.44,
-            PrefKey.menuBarAppleLogoColor: "White (Pure)",
-            PrefKey.menuBarLiquidBlur: 24.0,
-            PrefKey.menuBarLiquidGlassAlpha: 0.40,
             PrefKey.menuBarAppsPlacement: "Right Side (Classic Dock)",
             PrefKey.dockAlwaysShowFinder: true,
             PrefKey.dockAlwaysShowSettings: true,
             PrefKey.dockAlwaysShowTrash: true,
             PrefKey.dockAlwaysShowGenie: true,
+            PrefKey.showInDock: true,
             PrefKey.miniDockDisplayMode: "Always Hidden",
             PrefKey.rightEdgeDocksEnabled: true,
             PrefKey.miniDockBackgroundStyle: "Clear (Transparent)",
             PrefKey.hasCompletedInitialSetup: true,
             PrefKey.barModeRaw: "apps",
-            PrefKey.theatreModeEnabled: true,
             PrefKey.studioTheme: "System (Auto)",
             PrefKey.launchAtLogin: true,
-            PrefKey.customMenuBarEnabled: true,
+            PrefKey.customMenuBarEnabled: false,
             PrefKey.unifiedCommandWindowEnabled: true,
+            PrefKey.reverseStationScrollWheelDirection: true,
+            PrefKey.wheelSlideDownShowsTopStation: true,
+            PrefKey.clearHTMLOverlayEnabled: false,
             PrefKey.bareArrowAction: "Switch Desktops",
             PrefKey.desktopPreviewStyle: "Live Thumbnails (Windows)",
             PrefKey.menuBarFullScreenBehavior: "Auto-Hide on Hover",
-            PrefKey.instantDesktopSwitching: true,
             PrefKey.extendedDesktopEdgeGlideEnabled: true,
             PrefKey.preloadExtraDesktopInRAM: true,
-            PrefKey.isLeftChatDockOpen: false,
             PrefKey.isRightChatDockOpen: false,
             PrefKey.isRightAppsDockOpen: false,
             PrefKey.rightDocksCoexistMode: "Side-by-Side 📐",
             PrefKey.showMiniDockInChatBar: true,
+            PrefKey.showMiniDockInMenuBar: false,
             PrefKey.showAppsMiniMap: false,
             PrefKey.appIconTheme: "Apple Native Squircle",
             PrefKey.iconSnuggie: "Rounded Square",
             PrefKey.appIconTintColor: "Emerald",
             PrefKey.preventSystemSleep: true,
-            PrefKey.imessageExtensionActive: true,
-            PrefKey.dockAnimationStyle: "Classic Magnify 🔍",
+            PrefKey.dockAnimationStyle: "None",
             PrefKey.dockAnimationIntensity: 0.7,
-            PrefKey.danceToMusicEnabled: true,
+            PrefKey.dockBackgroundOpacity: 0.70,
+            PrefKey.danceToMusicEnabled: false,
             PrefKey.liquidGlassEnabled: true,
             PrefKey.thermalAutoStopEnabled: true,
-            PrefKey.thermalCPUAutoStopThreshold: 85.0
+            PrefKey.thermalCPUAutoStopThreshold: 85.0,
+            PrefKey.agentSandboxEnabled: true,
+            PrefKey.agentMemoryLimitMB: 4096,
+            PrefKey.hdmiPixelForkEnabled: true,
+            PrefKey.agentDedicatedUserEnabled: false,
+            PrefKey.streamBackForkEnabled: true,
+            PrefKey.streamBackPort: 9099,
+            PrefKey.sharedFolderBridgeEnabled: true,
+            PrefKey.agentBrainProvider: "local",
+            PrefKey.agentAdminPrivilegesEnabled: true,
+            PrefKey.activeAgentId: "genie-primary",
+            PrefKey.agentCloudSavingEnabled: true,
+            PrefKey.agentCloudVaultProvider: "icloud"
         ]
         UserDefaults.standard.register(defaults: defaults)
     }
@@ -143,7 +162,6 @@ public final class AppDefaultsManager {
         "nexus.menuCompactMode": "menuBar.isCompactModeEnabled",
         "nexus.windowSizeMode": "window.displaySizeMode",
         "nexus.barFolderPath": "folderBar.storageFolderPath",
-        "nexus.isCollapsedIntoBattery": "battery.isCollapsedIntoIcon",
         "nexus.desktopPlaneEnabled": "spatial.isDesktopPlaneEnabled",
         "nexus.isUniverse81Active": "spatial.isUniverse81Active",
         "nexus.appFormation": "canvas.applicationGridLayoutFormation",
@@ -208,11 +226,8 @@ public final class AppDefaultsManager {
             defaults.removeObject(forKey: PrefKey.popoverCustomY)
         }
 
-        // Initialize Gemini API Key with user requested default
-        let currentGeminiKey = defaults.string(forKey: PrefKey.geminiApiKey) ?? ""
-        if currentGeminiKey.isEmpty || currentGeminiKey == "AQ.Ab8RN6K6XUFX2BFihmrdf6MxilstIPFooUlLITjJsN_h3bownw" {
-            defaults.set("AQ.Ab8RN6KQdZll5kIJEFdF5jHHFDp8s5NxF8kZTRItnCRHb84ltw", forKey: PrefKey.geminiApiKey)
-        }
+        // The Gemini key lives in the Keychain now; move any plist copy across.
+        GenieKeychain.migrateLegacyGeminiKey(defaultsKey: PrefKey.geminiApiKey)
 
         // User requested: clean Apple white text and no pink/blue text overlays
         let currentText = defaults.string(forKey: PrefKey.menuBarTextColor) ?? ""
@@ -221,24 +236,45 @@ public final class AppDefaultsManager {
             defaults.set("Pure White ⚪️", forKey: PrefKey.menuBarActiveAppColor)
             defaults.set(false, forKey: PrefKey.menuBarColorsEnabled)
         }
-        defaults.set("Clear (Transparent)", forKey: PrefKey.menuBarBackgroundStyle)
-        defaults.set("Clear (Transparent)", forKey: PrefKey.miniDockBackgroundStyle)
-        defaults.set("Clear (Transparent)", forKey: PrefKey.miniDockStyle)
+        // Translucent by default, but only as a genuine default — forcing these every launch
+        // would stop the user's own choice in Settings from ever sticking.
+        // The menu bar itself stays clear — a tinted background there reads as a black bar
+        // overlaying the real macOS menu bar. Only the dock surfaces are translucent.
+        if defaults.object(forKey: PrefKey.menuBarBackgroundStyle) == nil {
+            defaults.set("Clear (Transparent)", forKey: PrefKey.menuBarBackgroundStyle)
+        }
+        if defaults.object(forKey: PrefKey.miniDockBackgroundStyle) == nil {
+            defaults.set("Dark Translucent", forKey: PrefKey.miniDockBackgroundStyle)
+        }
         defaults.set(false, forKey: PrefKey.showPageIndicator)
         defaults.set(false, forKey: PrefKey.isUniverse81Active)
-        defaults.set(false, forKey: PrefKey.desktopPlaneEnabled)
-        defaults.set(false, forKey: PrefKey.bottomEdgeCursorTrigger)
-        defaults.set(false, forKey: PrefKey.topEdgeCursorTrigger)
-        defaults.set(false, forKey: PrefKey.rightEdgeCursorTrigger)
-        defaults.set(false, forKey: PrefKey.bottomRightHotCorner)
+        if defaults.object(forKey: PrefKey.desktopPlaneEnabled) == nil || !defaults.bool(forKey: PrefKey.desktopPlaneEnabled) {
+            defaults.set(true, forKey: PrefKey.desktopPlaneEnabled)
+            defaults.set(true, forKey: "spatial.isDesktopPlaneEnabled")
+        }
+        // Edge/hot-corner triggers are user preferences, not launch state — force-setting them
+        // here ran on every launch and permanently pinned them off, so the right-edge cursor
+        // trigger could never fire no matter what the user chose in Settings.
+        if defaults.object(forKey: PrefKey.bottomEdgeCursorTrigger) == nil {
+            defaults.set(false, forKey: PrefKey.bottomEdgeCursorTrigger)
+        }
+        if defaults.object(forKey: PrefKey.topEdgeCursorTrigger) == nil {
+            defaults.set(false, forKey: PrefKey.topEdgeCursorTrigger)
+        }
+        if defaults.object(forKey: PrefKey.rightEdgeCursorTrigger) == nil {
+            defaults.set(true, forKey: PrefKey.rightEdgeCursorTrigger)
+        }
+        if defaults.object(forKey: PrefKey.bottomRightHotCorner) == nil {
+            defaults.set(false, forKey: PrefKey.bottomRightHotCorner)
+        }
         defaults.set(0, forKey: PrefKey.appDisplayStage)
         if defaults.object(forKey: PrefKey.customMenuBarEnabled) == nil {
-            defaults.set(true, forKey: PrefKey.customMenuBarEnabled)
+            defaults.set(false, forKey: PrefKey.customMenuBarEnabled)
         }
         if defaults.object(forKey: PrefKey.launchAtLogin) == nil {
             defaults.set(true, forKey: PrefKey.launchAtLogin)
         }
-        if defaults.bool(forKey: PrefKey.launchAtLogin) {
+        if defaults.bool(forKey: PrefKey.launchAtLogin) && LoginItemManager.shared.isEligibleForSystemRegistration {
             LoginItemManager.shared.setEnabled(true)
         }
         defaults.set(true, forKey: PrefKey.showMiniDesktopsInMenuBar)
@@ -249,6 +285,7 @@ public final class AppDefaultsManager {
         defaults.set(true, forKey: PrefKey.batteryEnabled)
         defaults.set(true, forKey: PrefKey.iconEnabled)
         defaults.set("Always Hidden", forKey: PrefKey.miniDockDisplayMode)
+        defaults.set(false, forKey: PrefKey.showMiniDockInMenuBar)
         defaults.set(true, forKey: PrefKey.rightEdgeDocksEnabled)
         defaults.set(true, forKey: PrefKey.showBatteryPercentage)
         defaults.set(true, forKey: PrefKey.showChargingBolt)
@@ -271,44 +308,50 @@ public final class AppDefaultsManager {
         defaults.set(true, forKey: PrefKey.menuCompactMode)
         defaults.set("normal", forKey: PrefKey.windowSizeMode)
         defaults.set(defaultBarFolderPath, forKey: PrefKey.barFolderPath)
-        defaults.set(false, forKey: PrefKey.isCollapsedIntoBattery)
         defaults.set(true, forKey: PrefKey.iconEnabled)
         defaults.set("🪔", forKey: PrefKey.statusIconStyle)
         defaults.set("Minimal Pill", forKey: PrefKey.iconStyle)
         defaults.set(true, forKey: PrefKey.showBatteryPercentage)
         defaults.set(true, forKey: PrefKey.showChargingBolt)
         defaults.set("Dynamic Level", forKey: PrefKey.batteryColorMode)
-        defaults.set(false, forKey: PrefKey.desktopPlaneEnabled)
+        defaults.set(true, forKey: PrefKey.desktopPlaneEnabled)
         defaults.set("Responsive Grid", forKey: PrefKey.appFormation)
         defaults.set(false, forKey: PrefKey.isVelcroDetached)
         defaults.set("icon", forKey: PrefKey.menuBarSnapMode)
-        defaults.set(true, forKey: PrefKey.soundEnabled)
+        if defaults.object(forKey: PrefKey.soundEnabled) == nil {
+            defaults.set(false, forKey: PrefKey.soundEnabled)
+        }
         defaults.set(true, forKey: PrefKey.hapticsEnabled)
         defaults.set(false, forKey: PrefKey.smokeEffectsEnabled)
+        defaults.set("None", forKey: PrefKey.cursorFxType)
+        defaults.set(false, forKey: PrefKey.wallpaperFxEnabled)
+        defaults.set("None", forKey: PrefKey.ambientEntity)
+        defaults.set("None", forKey: PrefKey.appPhysicsSimulation)
+        defaults.set(false, forKey: PrefKey.genieAnimEnabled)
         defaults.set("Mystical Cyan 🧞‍♂️", forKey: PrefKey.smokeStyle)
         defaults.set("Pull Up from Bottom", forKey: PrefKey.gridTransitionDirection)
         defaults.set(false, forKey: PrefKey.showPageIndicator)
         defaults.set(true, forKey: PrefKey.showAppNames)
-        defaults.set(true, forKey: PrefKey.windowGraphicsEnabled)
-        defaults.set(true, forKey: PrefKey.windowWallpaperEffect)
-        defaults.set(true, forKey: PrefKey.windowShaderFxEnabled)
+        defaults.set(false, forKey: PrefKey.windowGraphicsEnabled)
+        defaults.set(false, forKey: PrefKey.windowShaderFxEnabled)
         defaults.set("wallpaper_mirror", forKey: PrefKey.dropdownBgPreset)
         defaults.set(0.40, forKey: PrefKey.dropdownBgOpacity)
         defaults.set(16.0, forKey: PrefKey.dropdownBgBlur)
         defaults.set(56.0, forKey: PrefKey.iconSize)
         defaults.set(10.5, forKey: PrefKey.textSize)
         defaults.set(24.0, forKey: PrefKey.spacing)
-        defaults.set(true, forKey: PrefKey.enableMagnification)
+        defaults.set(false, forKey: PrefKey.enableMagnification)
         defaults.set(1.65, forKey: PrefKey.magnificationScale)
-        defaults.set("Classic Magnify 🔍", forKey: PrefKey.dockAnimationStyle)
+        defaults.set("None", forKey: PrefKey.dockAnimationStyle)
         defaults.set(0.7, forKey: PrefKey.dockAnimationIntensity)
-        defaults.set(true, forKey: PrefKey.danceToMusicEnabled)
+        defaults.set(0.70, forKey: PrefKey.dockBackgroundOpacity)
+        defaults.set(false, forKey: PrefKey.danceToMusicEnabled)
         defaults.set(true, forKey: PrefKey.liquidGlassEnabled)
         defaults.set(true, forKey: PrefKey.thermalAutoStopEnabled)
         defaults.set("Option + Space (⌥ Space)", forKey: PrefKey.searchHotkeyChoice)
         defaults.set(false, forKey: PrefKey.bottomEdgeCursorTrigger)
         defaults.set(false, forKey: PrefKey.topEdgeCursorTrigger)
-        defaults.set(false, forKey: PrefKey.rightEdgeCursorTrigger)
+        defaults.set(true, forKey: PrefKey.rightEdgeCursorTrigger)
         defaults.set(false, forKey: PrefKey.bottomRightHotCorner)
         defaults.set(0, forKey: PrefKey.appDisplayStage)
 

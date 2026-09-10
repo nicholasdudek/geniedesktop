@@ -184,6 +184,9 @@ public final class GitRepositoryManager: ObservableObject {
 
     // MARK: - Git Process Execution
     private func runGit(args: [String]) -> String {
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            return GenieCapabilities.unavailableMessage("Git integration")
+        }
         let process = Process()
         let pipe = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")

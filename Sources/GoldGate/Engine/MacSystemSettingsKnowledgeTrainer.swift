@@ -530,6 +530,13 @@ public final class MacSystemSettingsKnowledgeTrainer: ObservableObject {
 
     /// Execute a pro macOS `defaults write` command in background
     public func executeDefaultsTweak(command: String) async -> (output: String, success: Bool) {
+        // These tweaks are `defaults write` against other apps' domains, which
+        // a sandboxed app may not do at all — with or without a subprocess.
+        guard GenieCapabilities.canModifySystemPreferenceDomains,
+              GenieCapabilities.canSpawnSubprocesses else {
+            return (GenieCapabilities.unavailableMessage("System tweaks"), false)
+        }
+
         return await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()

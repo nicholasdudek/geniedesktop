@@ -257,11 +257,34 @@ public final class ContinuousStationScrollEngine: ObservableObject {
     public var parameters: StationPhysicsParameters = .default
     public var stationHeight: CGFloat = 900.0
 
+    /// When true, sliding/rolling the mouse wheel down reveals the top screen (Zenith / Dialogue Studio).
+    /// Defaults to true; user can reverse direction anytime via preferences.
+    public var slideDownShowsTopStation: Bool {
+        get {
+            UserDefaults.standard.object(forKey: PrefKey.wheelSlideDownShowsTopStation) as? Bool ?? true
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: PrefKey.wheelSlideDownShowsTopStation)
+        }
+    }
+
+    /// Explicit reverse toggle for wheel scrolling direction (up vs down).
+    public var reverseWheelDirection: Bool {
+        get {
+            UserDefaults.standard.bool(forKey: PrefKey.reverseStationScrollWheelDirection)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: PrefKey.reverseStationScrollWheelDirection)
+        }
+    }
+
     // ── Callbacks ──
 
     public var onStationChanged: ((CanvasStation) -> Void)?
     public var onOffsetChanged: ((CGFloat) -> Void)?
     public var onSettle: ((CanvasStation) -> Void)?
+    /// Analytical result of the most recent regenerative linear regression release calculation.
+    public private(set) var lastRegressionFit: RegressionFitResult = .zero
 
     // ── Internal Physics State ──
 
@@ -474,12 +497,17 @@ public final class ContinuousStationScrollEngine: ObservableObject {
             return
         }
 
-        // Inside bounds: Check if velocity warrants momentum coasting
-        if abs(currentVelocity) >= CGFloat(parameters.snapTransitionVelocity) {
+        // Inside bounds: Check if velocity warrants momentum coasting with intent validation
+        let isIntentConfident = lastRegressionFit.rSquared >= 0.50 || abs(currentVelocity) > CGFloat(parameters.flickVelocityThreshold)
+        if abs(currentVelocity) >= CGFloat(parameters.snapTransitionVelocity) && isIntentConfident {
             kineticState = .coastingMomentum
-            // Ballistic station projection
-            let projectedDistance = currentVelocity / CGFloat(parameters.fluidFrictionGamma)
-            let projectedPosition = currentOffset + projectedDistance
+            // Intent-aware regenerative ballistic station projection
+            let (_, regenDisplacement, _) = GenieRegenerativeLinearRegressionEngine.shared.projectBallisticDisplacement(
+                velocity: currentVelocity,
+                rSquared: lastRegressionFit.rSquared,
+                gamma: Double(parameters.fluidFrictionGamma)
+            )
+            let projectedPosition = currentOffset + regenDisplacement
             let projectedProgress = (stationHeight > 0) ? (projectedPosition / stationHeight) : 0.0
 
             // Apply directional bias if flicking with intent
@@ -505,7 +533,7 @@ public final class ContinuousStationScrollEngine: ObservableObject {
 
             startPhysicsLoopIfNeeded()
         } else {
-            // Low velocity release: Magnetically snap to nearest station
+            // Low velocity or low-confidence erratic release: Magnetically snap to nearest station
             targetStation = CanvasStation.nearest(normalizedProgress: normalizedProgress)
             kineticState = .snappingMagnetic
             startPhysicsLoopIfNeeded()
@@ -652,11 +680,18 @@ public final class ContinuousStationScrollEngine: ObservableObject {
         guard abs(rawDeltaY) > 0.05 else { return }
 
         // Respect macOS natural scrolling inversion preference
-        let direction: CGFloat
+        var direction: CGFloat
         if event.isDirectionInvertedFromDevice {
             direction = (rawDeltaY < 0) ? -1.0 : 1.0
         } else {
             direction = (rawDeltaY > 0) ? -1.0 : 1.0
+        }
+
+        // When slideDownShowsTopStation is active (default), rolling wheel DOWN shows Zenith (top screen).
+        // The reverseWheelDirection toggle allows flipping this direction at any time.
+        let shouldInvert = slideDownShowsTopStation != reverseWheelDirection
+        if shouldInvert {
+            direction = -direction
         }
 
         // Notch cadence booster: Consecutive rapid notches compound acceleration
@@ -746,20 +781,36 @@ public final class ContinuousStationScrollEngine: ObservableObject {
     }
 
     private func calculateReleaseVelocity(currentTimestamp: TimeInterval) -> CGFloat {
-        guard velocityHistory.count >= 2 else { return 0.0 }
-        let validSamples = velocityHistory.filter { currentTimestamp - $0.timestamp <= 0.10 }
-        guard validSamples.count >= 2,
-              let first = validSamples.first,
-              let last = validSamples.last else {
+        guard velocityHistory.count >= 2 else {
+            self.lastRegressionFit = .zero
+            return 0.0
+        }
+        let validSamples = velocityHistory
+            .filter { currentTimestamp - $0.timestamp <= 0.12 }
+            .map { KinematicSample(timestamp: $0.timestamp, position: $0.position) }
+
+        guard validSamples.count >= 2 else {
+            self.lastRegressionFit = .zero
             return 0.0
         }
 
-        let dt = CGFloat(last.timestamp - first.timestamp)
-        guard dt > 0.005 else { return 0.0 }
-        let dp = last.position - first.position
-        let instantaneousVelocity = dp / dt
+        let fit = GenieRegenerativeLinearRegressionEngine.shared.fit(
+            samples: validSamples,
+            referenceTimestamp: currentTimestamp
+        )
+        self.lastRegressionFit = fit
 
-        return instantaneousVelocity
+        // If regression successfully fit with valid timeSpan, return intent-adjusted velocity;
+        // otherwise fallback to instantaneous two-point delta.
+        if fit.timeSpan > 0.002 && abs(fit.adjustedVelocity) > 0.001 {
+            return fit.adjustedVelocity
+        } else if let first = validSamples.first, let last = validSamples.last {
+            let dt = CGFloat(last.timestamp - first.timestamp)
+            guard dt > 0.005 else { return 0.0 }
+            return (last.position - first.position) / dt
+        }
+
+        return 0.0
     }
 }
 
@@ -801,79 +852,5 @@ public struct ContinuousStationScrollBridge: NSViewRepresentable {
 
     public func updateNSView(_ nsView: ContinuousScrollCatcherView, context: Context) {
         nsView.engine = engine
-    }
-}
-
-// MARK: - Standalone Continuous 3-Station View Container
-
-/// Container view that lays out the 3 canvas stations vertically and translates smoothly with 1:1 tracking and magnetic snap springs.
-@MainActor
-public struct ContinuousStationCanvasContainer<ZenithView: View, HorizonView: View, NadirView: View>: View {
-    @ObservedObject public var engine: ContinuousStationScrollEngine
-    public let zenithContent: () -> ZenithView
-    public let horizonContent: () -> HorizonView
-    public let nadirContent: () -> NadirView
-
-    public init(
-        engine: ContinuousStationScrollEngine,
-        @ViewBuilder zenithContent: @escaping () -> ZenithView,
-        @ViewBuilder horizonContent: @escaping () -> HorizonView,
-        @ViewBuilder nadirContent: @escaping () -> NadirView
-    ) {
-        self.engine = engine
-        self.zenithContent = zenithContent
-        self.horizonContent = horizonContent
-        self.nadirContent = nadirContent
-    }
-
-    public init(
-        @ViewBuilder zenithContent: @escaping () -> ZenithView,
-        @ViewBuilder horizonContent: @escaping () -> HorizonView,
-        @ViewBuilder nadirContent: @escaping () -> NadirView
-    ) {
-        self.init(
-            engine: .shared,
-            zenithContent: zenithContent,
-            horizonContent: horizonContent,
-            nadirContent: nadirContent
-        )
-    }
-
-    public var body: some View {
-        GeometryReader { proxy in
-            let H = proxy.size.height
-            let W = proxy.size.width
-
-            ZStack {
-                // Station Layer Stack translated by -currentOffset
-                VStack(spacing: 0) {
-                    // Zenith: Top Station (Chat Studio)
-                    zenithContent()
-                        .frame(width: W, height: H)
-
-                    // Horizon: Center Station (Desktop Canvas)
-                    horizonContent()
-                        .frame(width: W, height: H)
-
-                    // Nadir: Bottom Station (Application Atelier)
-                    nadirContent()
-                        .frame(width: W, height: H)
-                }
-                // When currentOffset == 0, Horizon is centered at (0, 0)
-                // When currentOffset == -H, Zenith is centered at (0, 0)
-                // When currentOffset == +H, Nadir is centered at (0, 0)
-                .offset(y: -engine.currentOffset - H)
-
-                // Invisible Overlay Catching Trackpad & Mouse Scroll Gestures
-                ContinuousStationScrollBridge(engine: engine)
-                    .frame(width: W, height: H)
-            }
-            .onAppear {
-                engine.setStationHeight(H)
-            }
-            .onChange(of: proxy.size.height) { _, newHeight in
-                engine.setStationHeight(newHeight)
-            }
-        }
     }
 }

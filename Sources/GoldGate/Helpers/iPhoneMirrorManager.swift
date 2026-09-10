@@ -197,7 +197,7 @@ public final class iPhoneMirrorManager: ObservableObject {
                 }
             }
 
-            guard let cgImg = CGWindowListCreateImage(.null, .optionIncludingWindow, wid, [.bestResolution, .nominalResolution]) else {
+            guard let cgImg = safeCGWindowListCreateImage(.null, .optionIncludingWindow, wid, [.bestResolution, .nominalResolution]) else {
                 return
             }
 

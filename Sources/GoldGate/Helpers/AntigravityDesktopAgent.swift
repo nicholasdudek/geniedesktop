@@ -16,6 +16,16 @@ public enum DesktopAgentAction: Equatable {
     case wait(seconds: Double)
     case record(seconds: Double)
     case snapshot
+    case openiPhone
+    case tapIPhone(x: CGFloat, y: CGFloat)
+    case swipeHomeIPhone
+    case swipeControlCenterIPhone
+    case swipeNotificationCenterIPhone
+    case snapshotIPhone
+    case warp(x: CGFloat, y: CGFloat)
+    case setCursorMode(mode: CursorMode)
+    case splitDesktop(ratio: CGFloat?)
+    case setWorkspace(slot: Int)
 
     public var summary: String {
         switch self {
@@ -44,6 +54,27 @@ public enum DesktopAgentAction: Equatable {
             return "Record screen for \(Int(sec))s"
         case .snapshot:
             return "Capture screen polaroid"
+        case .openiPhone:
+            return "Activate iPhone Screen Mirroring"
+        case .tapIPhone(let x, let y):
+            return "Touch Tap iPhone at (\(Int(x)), \(Int(y)))"
+        case .swipeHomeIPhone:
+            return "Swipe iPhone Home Indicator"
+        case .swipeControlCenterIPhone:
+            return "Swipe iPhone Control Center"
+        case .swipeNotificationCenterIPhone:
+            return "Swipe iPhone Notification Center"
+        case .snapshotIPhone:
+            return "Capture iPhone Screen Frame"
+        case .warp(let x, let y):
+            return "2028 Warp Jump to (\(Int(x)), \(Int(y)))"
+        case .setCursorMode(let mode):
+            return "Set Cursor Mode: \(mode.badgeTitle)"
+        case .splitDesktop(let ratio):
+            let rStr = ratio != nil ? " at \(Int((ratio ?? 0.5) * 100))%" : ""
+            return "Split Desktop into 2 Workspaces\(rStr)"
+        case .setWorkspace(let slot):
+            return "Target Agent Workspace \(slot == 0 ? "A" : "B")"
         }
     }
 }
@@ -74,7 +105,7 @@ public final class AntigravityDesktopAgent: ObservableObject {
 
         for rawLine in lines {
             let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            if line.isEmpty || line.hasPrefix("#") || line.hasPrefix("//") {
+            if line.isEmpty || line.hasPrefix("#") || line.hasPrefix("//") || line.hasPrefix("```") || line.hasPrefix("~~~") {
                 continue
             }
 
@@ -131,6 +162,34 @@ public final class AntigravityDesktopAgent: ObservableObject {
                 actions.append(.record(seconds: sec))
             case "snapshot", "polaroid":
                 actions.append(.snapshot)
+            case "open_iphone", "openiphone":
+                actions.append(.openiPhone)
+            case "tap", "touch":
+                let coords = parseCoordinates(args)
+                actions.append(.tapIPhone(x: coords.x, y: coords.y))
+            case "swipe_home", "swipehome":
+                actions.append(.swipeHomeIPhone)
+            case "swipe_control_center", "control_center":
+                actions.append(.swipeControlCenterIPhone)
+            case "swipe_notification_center", "notification_center":
+                actions.append(.swipeNotificationCenterIPhone)
+            case "snapshot_iphone":
+                actions.append(.snapshotIPhone)
+            case "warp", "jump", "teleport":
+                let coords = parseCoordinates(args)
+                actions.append(.warp(x: coords.x, y: coords.y))
+            case "skip_cursor", "cursor_skip":
+                actions.append(.setCursorMode(mode: .skipCursor))
+            case "duplicate_cursor", "multi_cursor", "phantom_cursor":
+                actions.append(.setCursorMode(mode: .duplicateCursor))
+            case "warp_cursor", "cursor_warp":
+                actions.append(.setCursorMode(mode: .warpJump))
+            case "split_desktop", "split_workspace", "dual_workspace":
+                let ratio = Double(args).map { CGFloat($0) }
+                actions.append(.splitDesktop(ratio: ratio))
+            case "workspace", "set_workspace", "target_workspace":
+                let slot = (args.lowercased().contains("b") || args.contains("1")) ? 1 : 0
+                actions.append(.setWorkspace(slot: slot))
             default:
                 break
             }
@@ -168,6 +227,11 @@ public final class AntigravityDesktopAgent: ObservableObject {
     }
 
     // MARK: - Execution Engine
+    public func executeScript(_ text: String) {
+        let actions = parseScript(from: text)
+        executeScript(actions)
+    }
+
     public func executeScript(_ actions: [DesktopAgentAction]) {
         guard !actions.isEmpty else { return }
 
@@ -277,6 +341,74 @@ public final class AntigravityDesktopAgent: ObservableObject {
 
         case .snapshot:
             DesktopScreenRecorder.shared.captureSnapshot()
+
+        case .openiPhone:
+            iPhoneMirrorManager.shared.launchOrActivateApp()
+            try? await Task.sleep(nanoseconds: 800_000_000)
+
+        case .tapIPhone(let x, let y):
+            iPhoneMirrorManager.shared.refreshWindowInfo()
+            let bounds = iPhoneMirrorManager.shared.windowBounds
+            let pt: CGPoint
+            if bounds.width > 50 && bounds.height > 100 {
+                let screenX = bounds.origin.x + (x / 393.0) * bounds.width
+                let screenY = bounds.origin.y + (y / 852.0) * bounds.height
+                pt = CGPoint(x: screenX, y: screenY)
+            } else {
+                pt = CGPoint(x: x, y: y)
+            }
+            self.currentCursorPosition = pt
+            self.triggerClickRipple(at: pt)
+            synthesizeClick(at: pt, count: 1, isRight: false)
+
+        case .swipeHomeIPhone:
+            iPhoneMirrorManager.shared.refreshWindowInfo()
+            let bounds = iPhoneMirrorManager.shared.windowBounds
+            if bounds.width > 50 && bounds.height > 100 {
+                let start = CGPoint(x: bounds.midX, y: bounds.maxY - 15)
+                let end = CGPoint(x: bounds.midX, y: bounds.maxY - 140)
+                synthesizeDrag(from: start, to: end)
+            }
+
+        case .swipeControlCenterIPhone:
+            iPhoneMirrorManager.shared.refreshWindowInfo()
+            let bounds = iPhoneMirrorManager.shared.windowBounds
+            if bounds.width > 50 && bounds.height > 100 {
+                let start = CGPoint(x: bounds.maxX - 30, y: bounds.minY + 20)
+                let end = CGPoint(x: bounds.maxX - 30, y: bounds.minY + 220)
+                synthesizeDrag(from: start, to: end)
+            }
+
+        case .swipeNotificationCenterIPhone:
+            iPhoneMirrorManager.shared.refreshWindowInfo()
+            let bounds = iPhoneMirrorManager.shared.windowBounds
+            if bounds.width > 50 && bounds.height > 100 {
+                let start = CGPoint(x: bounds.minX + 40, y: bounds.minY + 20)
+                let end = CGPoint(x: bounds.minX + 40, y: bounds.minY + 220)
+                synthesizeDrag(from: start, to: end)
+            }
+
+        case .snapshotIPhone:
+            iPhoneMirrorManager.shared.saveToPolaroid()
+
+        case .warp(let x, let y):
+            let pt = CGPoint(x: x, y: y)
+            self.currentCursorPosition = pt
+            GenieCursorEngine2028.shared.warpCursor(to: pt)
+            self.triggerClickRipple(at: pt)
+
+        case .setCursorMode(let mode):
+            GenieCursorEngine2028.shared.activeMode = mode
+
+        case .splitDesktop(let ratio):
+            DualWorkspaceSplitManager.shared.isSplitActive = true
+            if let r = ratio {
+                DualWorkspaceSplitManager.shared.setRatio(r)
+            }
+
+        case .setWorkspace(let slot):
+            let targetName = (slot == 0) ? DualWorkspaceSplitManager.shared.slotA.agentName : DualWorkspaceSplitManager.shared.slotB.agentName
+            self.currentStepText = "Active on \(targetName)"
         }
     }
 
@@ -313,31 +445,52 @@ public final class AntigravityDesktopAgent: ObservableObject {
         }
     }
 
-    // MARK: - Synthetic Event Generators (CGEvent)
+    // MARK: - Synthetic Event Generators (CGEvent & 2028 Spatial Routing)
     private func synthesizeMouseMove(to pt: CGPoint) {
-        guard let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: pt, mouseButton: .left) else { return }
-        moveEvent.post(tap: .cghidEventTap)
+        let engine = GenieCursorEngine2028.shared
+        switch engine.activeMode {
+        case .instantSnap:
+            engine.warpCursor(to: pt)
+        case .directBackgroundAction:
+            // Skip moving hardware cursor pointer
+            break
+        case .virtualAgentCursor:
+            engine.updatePhantomCursor(
+                agentId: "agent-vscode-editor",
+                target: pt,
+                action: "Moving to (\(Int(pt.x)), \(Int(pt.y)))"
+            )
+        case .smoothGlide:
+            guard let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: pt, mouseButton: .left) else { return }
+            moveEvent.post(tap: .cghidEventTap)
+        @unknown default:
+            break
+        }
     }
 
     private func synthesizeClick(at pt: CGPoint, count: Int = 1, isRight: Bool = false) {
-        synthesizeMouseMove(to: pt)
-        usleep(30_000)
-
-        let downType: CGEventType = isRight ? .rightMouseDown : .leftMouseDown
-        let upType: CGEventType = isRight ? .rightMouseUp : .leftMouseUp
-        let btn: CGMouseButton = isRight ? .right : .left
-
-        for i in 1...count {
-            guard let down = CGEvent(mouseEventSource: nil, mouseType: downType, mouseCursorPosition: pt, mouseButton: btn),
-                  let up = CGEvent(mouseEventSource: nil, mouseType: upType, mouseCursorPosition: pt, mouseButton: btn) else { break }
-
-            down.setIntegerValueField(.mouseEventClickState, value: Int64(i))
-            up.setIntegerValueField(.mouseEventClickState, value: Int64(i))
-
-            down.post(tap: .cghidEventTap)
+        let engine = GenieCursorEngine2028.shared
+        switch engine.activeMode {
+        case .instantSnap:
+            engine.warpCursor(to: pt)
+            engine.skipCursorClick(at: pt, count: count, isRight: isRight)
+        case .directBackgroundAction:
+            engine.skipCursorClick(at: pt, count: count, isRight: isRight)
+        case .virtualAgentCursor:
+            engine.updatePhantomCursor(
+                agentId: "agent-vscode-editor",
+                target: pt,
+                action: "Clicking (\(Int(pt.x)), \(Int(pt.y)))",
+                isClicking: true
+            )
+            engine.skipCursorClick(at: pt, count: count, isRight: isRight)
+        case .smoothGlide:
+            guard let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: pt, mouseButton: .left) else { return }
+            moveEvent.post(tap: .cghidEventTap)
             usleep(25_000)
-            up.post(tap: .cghidEventTap)
-            usleep(35_000)
+            engine.skipCursorClick(at: pt, count: count, isRight: isRight)
+        @unknown default:
+            break
         }
     }
 
@@ -362,6 +515,13 @@ public final class AntigravityDesktopAgent: ObservableObject {
 
     private func synthesizeKey(name: String, modifiers: [String]) {
         let keyMap: [String: CGKeyCode] = [
+            "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5,
+            "z": 6, "x": 7, "c": 8, "v": 9, "b": 11,
+            "q": 12, "w": 13, "e": 14, "r": 15, "y": 16, "t": 17,
+            "1": 18, "2": 19, "3": 20, "4": 21, "6": 22, "5": 23,
+            "9": 25, "7": 26, "8": 28, "0": 29,
+            "o": 31, "u": 32, "i": 34, "p": 35, "l": 37,
+            "j": 38, "k": 40, "n": 45, "m": 46,
             "return": 36, "enter": 36,
             "tab": 48,
             "space": 49,
@@ -370,7 +530,11 @@ public final class AntigravityDesktopAgent: ObservableObject {
             "up": 126, "down": 125, "left": 123, "right": 124
         ]
 
-        let code = keyMap[name.lowercased()] ?? 36 // default return
+        guard let code = keyMap[name.lowercased()] else {
+            isCancelled = true
+            currentStepText = "Unsupported key: \(name). No key was sent."
+            return
+        }
 
         var flags: CGEventFlags = []
         for mod in modifiers {
@@ -399,30 +563,66 @@ public final class AntigravityDesktopAgent: ObservableObject {
     }
 
     private func synthesizeDrag(from: CGPoint, to: CGPoint) {
-        synthesizeMouseMove(to: from)
-        usleep(30_000)
-
-        guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: from, mouseButton: .left) else { return }
-        down.post(tap: .cghidEventTap)
-        usleep(40_000)
-
-        // Smooth intermediate interpolation steps
-        let steps = 12
-        for s in 1...steps {
-            let t = CGFloat(s) / CGFloat(steps)
-            let curr = CGPoint(x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t)
-            if let drag = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: curr, mouseButton: .left) {
-                drag.post(tap: .cghidEventTap)
-            }
+        let engine = GenieCursorEngine2028.shared
+        switch engine.activeMode {
+        case .instantSnap:
+            engine.warpCursor(to: from)
+            guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: from, mouseButton: .left) else { return }
+            down.post(tap: .cghidEventTap)
             usleep(15_000)
-        }
+            engine.warpCursor(to: to)
+            guard let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: to, mouseButton: .left) else { return }
+            up.post(tap: .cghidEventTap)
 
-        guard let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: to, mouseButton: .left) else { return }
-        up.post(tap: .cghidEventTap)
+        case .directBackgroundAction:
+            guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: from, mouseButton: .left),
+                  let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: to, mouseButton: .left) else { return }
+            down.post(tap: .cghidEventTap)
+            usleep(20_000)
+            up.post(tap: .cghidEventTap)
+
+        case .virtualAgentCursor:
+            engine.updatePhantomCursor(agentId: "agent-vscode-editor", target: from, action: "Drag Start", isDragging: true)
+            guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: from, mouseButton: .left) else { return }
+            down.post(tap: .cghidEventTap)
+            usleep(20_000)
+            engine.updatePhantomCursor(agentId: "agent-vscode-editor", target: to, action: "Drag End", isDragging: false)
+            guard let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: to, mouseButton: .left) else { return }
+            up.post(tap: .cghidEventTap)
+
+        case .smoothGlide:
+            guard let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: from, mouseButton: .left) else { return }
+            moveEvent.post(tap: .cghidEventTap)
+            usleep(30_000)
+            guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: from, mouseButton: .left) else { return }
+            down.post(tap: .cghidEventTap)
+            usleep(40_000)
+
+            let steps = 12
+            for s in 1...steps {
+                let t = CGFloat(s) / CGFloat(steps)
+                let curr = CGPoint(x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t)
+                if let drag = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: curr, mouseButton: .left) {
+                    drag.post(tap: .cghidEventTap)
+                }
+                usleep(15_000)
+            }
+
+            guard let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: to, mouseButton: .left) else { return }
+            up.post(tap: .cghidEventTap)
+        @unknown default:
+            break
+        }
     }
 
     private func triggerClickRipple(at pt: CGPoint) {
         self.clickRipplePosition = pt
+        GenieCursorEngine2028.shared.updatePhantomCursor(
+            agentId: "agent-vscode-editor",
+            target: pt,
+            action: "Action Ripple",
+            isClicking: true
+        )
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
             if self?.clickRipplePosition == pt {
                 self?.clickRipplePosition = nil

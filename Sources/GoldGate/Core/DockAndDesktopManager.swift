@@ -47,7 +47,7 @@ public final class DockAndDesktopManager: ObservableObject {
     @Published public var isHomeIconCreated: Bool = false
 
     private init() {
-        let savedDock = UserDefaults.standard.bool(forKey: PrefKey.showInDock)
+        let savedDock = UserDefaults.standard.object(forKey: PrefKey.showInDock) != nil ? UserDefaults.standard.bool(forKey: PrefKey.showInDock) : true
         self.isDockIconEnabled = savedDock
         checkExistingShortcuts()
     }
@@ -527,94 +527,63 @@ public final class DockAndDesktopManager: ObservableObject {
     public func pinToMacOSDock() {
         let appPath = primaryAppPath
         guard FileManager.default.fileExists(atPath: appPath) else { return }
+        guard GenieCapabilities.canModifySystemPreferenceDomains else { return }
 
         isDockIconEnabled = true
-
-        let xmlEntry = "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>\(appPath)</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>"
-
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-        proc.arguments = ["write", "com.apple.dock", "persistent-apps", "-array-add", xmlEntry]
-        try? proc.run()
-        proc.waitUntilExit()
-
-        let killProc = Process()
-        killProc.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
-        killProc.arguments = ["Dock"]
-        try? killProc.run()
+        GenieNativeSystem.addToDock(appPath: appPath)
     }
 
     public func removeFromMacOSDock() {
+        guard GenieCapabilities.canModifySystemPreferenceDomains else { return }
         isDockIconEnabled = false
 
-        let script = """
-        import plistlib, os, subprocess
-        p = os.path.expanduser('~/Library/Preferences/com.apple.dock.plist')
-        if os.path.exists(p):
-            with open(p, 'rb') as f:
-                d = plistlib.load(f)
-            apps = d.get('persistent-apps', [])
-            new_apps = [a for a in apps if 'genie' not in str(a).lower() and 'golden gate' not in str(a).lower() and 'gold gate' not in str(a).lower() and 'goldgate' not in str(a).lower()]
-            d['persistent-apps'] = new_apps
-            with open(p, 'wb') as f:
-                plistlib.dump(d, f)
-            subprocess.run(['killall', 'Dock'])
-        """
+        // Was an inline `python3 -c` that rewrote com.apple.dock.plist behind
+        // the Dock's back. CFPreferences is the supported path and needs no
+        // subprocess; the name matching is unchanged.
+        let needles = ["genie", "golden gate", "gold gate", "goldgate"]
+        let apps = GenieNativeSystem.dockPersistentApps()
+        let kept = apps.filter { entry in
+            let haystack = Self.dockEntryHaystack(entry)
+            return !needles.contains { haystack.contains($0) }
+        }
+        guard kept.count != apps.count else { return }
+        GenieNativeSystem.setDockPersistentApps(kept)
+    }
 
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-        proc.arguments = ["-c", script]
-        try? proc.run()
+    /// Lowercased label + URL + bundle id of a Dock tile, for name matching.
+    private static func dockEntryHaystack(_ entry: [String: Any]) -> String {
+        guard let tile = entry["tile-data"] as? [String: Any] else { return "" }
+        let label = (tile["file-label"] as? String) ?? ""
+        let bundleID = (tile["bundle-identifier"] as? String) ?? ""
+        let urlString = ((tile["file-data"] as? [String: Any])?["_CFURLString"] as? String) ?? ""
+        return "\(label) \(bundleID) \(urlString)".lowercased()
     }
 
     // MARK: - Synchronize Mini Dock App Order to macOS System Dock
     public func syncDockAppOrder(orderedIdentifiers: [String]) {
         guard !orderedIdentifiers.isEmpty else { return }
+        guard GenieCapabilities.canModifySystemPreferenceDomains else { return }
+
+        let order = orderedIdentifiers.map { $0.lowercased() }.filter { !$0.isEmpty }
+        guard !order.isEmpty else { return }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            let jsonString: String = {
-                if let data = try? JSONSerialization.data(withJSONObject: orderedIdentifiers, options: []),
-                   let str = String(data: data, encoding: .utf8) {
-                    return str
-                }
-                return "[]"
-            }()
+            let apps = GenieNativeSystem.dockPersistentApps()
+            guard !apps.isEmpty else { return }
 
-            let script = """
-import plistlib, os, subprocess, json
-p = os.path.expanduser('~/Library/Preferences/com.apple.dock.plist')
-if os.path.exists(p):
-    with open(p, 'rb') as f:
-        d = plistlib.load(f)
-    apps = d.get('persistent-apps', [])
-    if apps:
-        order = json.loads('\(jsonString)')
-        order_lower = [x.lower() for x in order]
-
-        def rank(entry):
-            try:
-                tile = entry.get('tile-data', {})
-                label = str(tile.get('file-label', '')).lower()
-                url_str = str(tile.get('file-data', {}).get('_CFURLString', '')).lower()
-                bundle_id = str(tile.get('bundle-identifier', '')).lower()
-                for idx, o in enumerate(order_lower):
-                    if o and (o in label or o in url_str or o in bundle_id):
-                        return idx
-            except Exception:
-                pass
-            return 9999
-
-        sorted_apps = sorted(apps, key=rank)
-        if sorted_apps != apps:
-            d['persistent-apps'] = sorted_apps
-            with open(p, 'wb') as f:
-                plistlib.dump(d, f)
-            subprocess.run(['killall', 'Dock'])
-"""
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-            proc.arguments = ["-c", script]
-            try? proc.run()
+            // Stable sort by first matching position in `order`, unmatched last —
+            // the same ranking the old Python did, without interpolating a JSON
+            // blob into a single-quoted Python literal.
+            let ranked = apps.enumerated().map { index, entry -> (Int, Int, [String: Any]) in
+                let haystack = Self.dockEntryHaystack(entry)
+                let rank = order.firstIndex(where: { haystack.contains($0) }) ?? 9999
+                return (rank, index, entry)
+            }
+            let sorted = ranked.sorted { lhs, rhs in
+                lhs.0 == rhs.0 ? lhs.1 < rhs.1 : lhs.0 < rhs.0
+            }
+            guard sorted.map(\.1) != Array(apps.indices) else { return }
+            GenieNativeSystem.setDockPersistentApps(sorted.map(\.2))
         }
     }
 

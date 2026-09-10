@@ -5,8 +5,8 @@ struct BrandLogoHeaderBadgeView: View {
     @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
 @ObservedObject private var brandManager = BrandLogoManager.shared
     @AppStorage(PrefKey.desktopPlaneEnabled) private var desktopPlaneEnabled: Bool = true
-    @AppStorage(PrefKey.genieAnimEnabled) private var genieAnimEnabled: Bool = true
-    @AppStorage(PrefKey.smokeEffectsEnabled) private var smokeEffectsEnabled: Bool = true
+    @AppStorage(PrefKey.genieAnimEnabled) private var genieAnimEnabled: Bool = false
+    @AppStorage(PrefKey.smokeEffectsEnabled) private var smokeEffectsEnabled: Bool = false
     @State private var showingPickerPopover: Bool = false
     @State private var isHovered: Bool = false
     @State private var isPressed: Bool = false

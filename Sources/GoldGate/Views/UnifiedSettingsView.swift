@@ -12,7 +12,7 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
     case applications = "Applications"
     case desktop = "Desktop & Files"
     case soundAndSmoke = "Sound & Effects"
-    case models = "AI Models & Engines"
+    case models = "Models & Providers"
     case livingGlass = "Living Glass & UI"
     case systemAccess = "Full Computer Access"
     case huggingface = "Hugging Face Hub"
@@ -76,6 +76,7 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
 public struct UnifiedSettingsView: View {
     @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
     @ObservedObject var localModels = LocalModelManager.shared
+    @ObservedObject var appleAuth = GenieAppleAuth.shared
     public var onBackToApps: () -> Void = {}
     public var onClose: () -> Void = {}
 
@@ -83,10 +84,19 @@ public struct UnifiedSettingsView: View {
     @State private var searchText: String = ""
     @State private var isSidebarVisible: Bool = true
     @State private var statusFeedback: String? = nil
+    @State private var hoveredSidebarIndex: Int? = nil
+    @State private var hoveredThemeSwatchIndex: Int? = nil
+
+    // Conversations
+    @State private var renamingSessionID: UUID? = nil
+    @State private var renameDraft: String = ""
+    @State private var conversationSearch: String = ""
+    @State private var manualAppleIDText: String = ""
 
     // Mini Dock & Bar
     @AppStorage(PrefKey.menuBarAppSwitcherEnabled) private var menuBarAppSwitcherEnabled: Bool = true
     @AppStorage(PrefKey.miniDockDisplayMode) private var miniDockDisplayMode: String = "Always Shown"
+    @AppStorage(PrefKey.showMiniDockInMenuBar) private var showMiniDockInMenuBar: Bool = false
     @AppStorage(PrefKey.dockActiveAppsOnly) private var dockActiveAppsOnly: Bool = false
     @AppStorage(PrefKey.dockAlwaysShowTrash) private var dockAlwaysShowTrash: Bool = true
     @AppStorage(PrefKey.dockShowFolderStacks) private var dockShowFolderStacks: Bool = true
@@ -97,7 +107,9 @@ public struct UnifiedSettingsView: View {
     @AppStorage(PrefKey.menuBarAppCount) private var menuBarAppCount: Int = 3
     @AppStorage(PrefKey.statusIconGlyph) private var statusIconGlyph: String = "Genie Person 🧞‍♂️"
     @AppStorage(PrefKey.statusIconStyle) private var statusIconStyle: String = "Genie Person 🧞‍♂️"
-    @AppStorage(PrefKey.isCollapsedIntoBattery) private var isCollapsedIntoBattery: Bool = false
+    @AppStorage(PrefKey.dockAnimationStyle) private var dockAnimationStyleRaw: String = "None"
+    @AppStorage(PrefKey.dockAnimationIntensity) private var dockAnimationIntensity: Double = 0.7
+    @AppStorage(PrefKey.dockFormation) private var dockFormationRaw: String = DockFormation.defaultFormation.rawValue
     @AppStorage(PrefKey.unifiedCommandWindowEnabled) private var unifiedCommandWindowEnabled: Bool = true
     @AppStorage(PrefKey.bareArrowAction) private var bareArrowAction: String = "Switch Desktops"
 
@@ -112,6 +124,9 @@ public struct UnifiedSettingsView: View {
     @AppStorage(PrefKey.iconSize) private var iconSize: Double = 50.0
     @AppStorage(PrefKey.showAppNames) private var showAppNames: Bool = true
     @AppStorage(PrefKey.spacing) private var itemSpacing: Double = 12.0
+    @AppStorage(PrefKey.wheelSlideDownShowsTopStation) private var wheelSlideDownShowsTopStation: Bool = true
+    @AppStorage(PrefKey.reverseStationScrollWheelDirection) private var reverseStationScrollWheelDirection: Bool = false
+    @AppStorage(PrefKey.clearHTMLOverlayEnabled) private var clearHTMLOverlayEnabled: Bool = false
 
     // Desktop & Files
     @AppStorage(PrefKey.desktopPlaneEnabled) private var desktopPlaneEnabled: Bool = true
@@ -121,17 +136,33 @@ public struct UnifiedSettingsView: View {
     // Sound, Haptics & Smoke
     @AppStorage(PrefKey.soundEnabled) private var soundEnabled: Bool = true
     @AppStorage(PrefKey.hapticsEnabled) private var hapticsEnabled: Bool = true
-    @AppStorage(PrefKey.smokeEffectsEnabled) private var smokeEffectsEnabled: Bool = true
+    @AppStorage(PrefKey.smokeEffectsEnabled) private var smokeEffectsEnabled: Bool = false
     @AppStorage(PrefKey.smokeStyle) private var smokeStyle: String = "Mystical Cyan 🧞‍♂️"
 
     // Living Atmospheres & Glass
     @AppStorage(PrefKey.aiEmotion) private var selectedEmotionRaw: String = AIEmotionType.mystical.rawValue
-    @AppStorage(PrefKey.glassVibrancyIntensity) private var glassVibrancyIntensity: Double = 0.85
 
     // System Permissions
     @ObservedObject private var loginItemManager = LoginItemManager.shared
     @ObservedObject private var installerManager = UtilityAppInstallerManager.shared
     @ObservedObject private var tricksterEngine = AppScreenSizeTricksterEngine.shared
+    @AppStorage(PrefKey.agentSandboxEnabled) private var agentSandboxEnabled: Bool = true
+    @AppStorage(PrefKey.agentDedicatedUserEnabled) private var agentDedicatedUserEnabled: Bool = false
+    @AppStorage(PrefKey.agentMemoryLimitMB) private var agentMemoryLimitMB: Int = 4096
+    @AppStorage(PrefKey.hdmiPixelForkEnabled) private var hdmiPixelForkEnabled: Bool = true
+    @AppStorage(PrefKey.streamBackForkEnabled) private var streamBackForkEnabled: Bool = true
+    @AppStorage(PrefKey.streamBackPort) private var streamBackPort: Int = 9099
+    @AppStorage(PrefKey.sharedFolderBridgeEnabled) private var sharedFolderBridgeEnabled: Bool = true
+    @AppStorage(PrefKey.agentBrainProvider) private var agentBrainProvider: String = "local"
+    @AppStorage(PrefKey.agentAdminPrivilegesEnabled) private var agentAdminPrivilegesEnabled: Bool = true
+    @AppStorage(PrefKey.agentCloudSavingEnabled) private var agentCloudSavingEnabled: Bool = true
+    @ObservedObject private var memoryGovernor = GenieMemoryGovernorEngine.shared
+    @ObservedObject private var streamBackEngine = GenieStreamBackEngine.shared
+    @ObservedObject private var folderForkEngine = GenieSharedFolderForkEngine.shared
+    @ObservedObject private var autonomousLoop = GenieAutonomousLoopEngine.shared
+    @ObservedObject private var adminGovernor = GenieAdminAccessGovernor.shared
+    @ObservedObject private var agentHomeEngine = GenieAgentHomeDirectoryEngine.shared
+    @ObservedObject private var cloudSavingEngine = GenieAgentCloudSavingEngine.shared
     @State private var isAccessibilityGranted: Bool = AXIsProcessTrusted()
     @State private var isScreenCaptureGranted: Bool = CGPreflightScreenCaptureAccess()
     @State private var showResetAlert: Bool = false
@@ -151,12 +182,19 @@ public struct UnifiedSettingsView: View {
         self.onClose = onClose
     }
 
+    // The floating right-edge dock (RightEdgeDockTabsView) is now the one dock; the separate
+    // Mini Dock / menu-bar dock (RealMacOSMiniDockView) is retired from navigation but its
+    // code and shared PrefKey.dockAnimation* settings stay intact for the floating dock's use.
+    private var visibleTabs: [UnifiedSettingsTab] {
+        UnifiedSettingsTab.allCases.filter { $0 != .miniDock }
+    }
+
     private var filteredTabs: [UnifiedSettingsTab] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if trimmed.isEmpty {
-            return UnifiedSettingsTab.allCases
+            return visibleTabs
         }
-        return UnifiedSettingsTab.allCases.filter { tab in
+        return visibleTabs.filter { tab in
             tab.rawValue.lowercased().contains(trimmed) ||
             tab.keywords.contains { $0.contains(trimmed) }
         }
@@ -345,59 +383,58 @@ public struct UnifiedSettingsView: View {
         .background(Color.black.opacity(0.15))
     }
 
-    // MARK: - Navigation Sidebar
+    // MARK: - Navigation Sidebar (matches macOS System Settings exactly:
+    // uniform accent-color selection fill, no border, no bold-on-select,
+    // no selection dot, no Dock-style hover magnify — those are Dock/Genie
+    // affordances that don't exist in a real Apple sidebar.)
     private var settingsSidebar: some View {
         VStack(spacing: 0) {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 2) {
-                    ForEach(filteredTabs) { tab in
+                    ForEach(Array(filteredTabs.enumerated()), id: \.element) { rowIndex, tab in
                         let isSelected = (selectedTab == tab)
+                        let isHovered = (hoveredSidebarIndex == rowIndex)
                         Button(action: {
                             HapticFeedback.selection()
                             withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
                                 selectedTab = tab
                             }
                         }) {
-                            HStack(spacing: 9) {
-                                // Squircle Badge
+                            HStack(spacing: 8) {
+                                // Squircle Badge — each item keeps its own tint,
+                                // exactly like Wi-Fi/Bluetooth/etc. in System Settings.
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                        .fill(tab.tintColor.opacity(isSelected ? 0.90 : 0.20))
-                                        .frame(width: 22, height: 22)
+                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                        .fill(tab.tintColor)
+                                        .frame(width: 26, height: 26)
 
                                     Image(systemName: tab.icon)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .foregroundColor(isSelected ? .white : tab.tintColor)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.white)
                                 }
 
                                 Text(tab.rawValue)
-                                    .font(.system(size: 11.5, weight: isSelected ? .semibold : .regular, design: .default))
-                                    .foregroundColor(isSelected ? .white : .white.opacity(0.80))
+                                    .font(.system(size: 13, weight: .regular, design: .default))
+                                    .foregroundColor(isSelected ? .white : .primary)
                                     .lineLimit(1)
 
                                 Spacer()
-
-                                if isSelected {
-                                    Circle()
-                                        .fill(tab.tintColor)
-                                        .frame(width: 5, height: 5)
-                                }
                             }
                             .padding(.horizontal, 8)
-                            .frame(height: 32)
+                            .frame(height: 30)
                             .background(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(isSelected ? tab.tintColor.opacity(0.18) : Color.clear)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .strokeBorder(isSelected ? tab.tintColor.opacity(0.35) : Color.clear, lineWidth: 0.5)
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(isSelected ? Color.accentColor : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
                             )
                         }
                         .buttonStyle(.plain)
+                        .animation(.easeOut(duration: 0.1), value: isHovered)
+                        .onHover { isHovering in
+                            hoveredSidebarIndex = isHovering ? rowIndex : (hoveredSidebarIndex == rowIndex ? nil : hoveredSidebarIndex)
+                        }
                     }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 7)
                 .padding(.vertical, 10)
             }
 
@@ -409,7 +446,11 @@ public struct UnifiedSettingsView: View {
     // MARK: - 0. Genie Chat & Dialogue Pane
     private var chatSettingsPane: some View {
         VStack(spacing: 14) {
-            settingsGlassCard(title: "Genie Intelligence & Live Dialogue", icon: "bubble.left.and.bubble.right.fill", tint: .cyan) {
+            settingsGlassCard(title: "Account", icon: "person.crop.circle.fill", tint: .white) {
+                appleAccountCardBody
+            }
+
+            settingsGlassCard(title: "Genie Chat", icon: "bubble.left.and.bubble.right.fill", tint: .cyan) {
                 VStack(spacing: 12) {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
@@ -457,9 +498,11 @@ public struct UnifiedSettingsView: View {
                         .buttonStyle(.plain)
 
                         Button(action: {
-                            localModels.clearChatHistory()
+                            // startNewChat() files the current conversation into
+                            // savedSessions first; clearChatHistory() would drop it.
+                            localModels.startNewChat()
                             HapticFeedback.selection()
-                            showBannerFeedback("Started fresh session ✨")
+                            showBannerFeedback("Saved and started a fresh session ✨")
                         }) {
                             Text("New Session")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -473,9 +516,76 @@ public struct UnifiedSettingsView: View {
                 }
             }
 
-            settingsGlassCard(title: "Interactive Dialogue Stream", icon: "sparkles", tint: .purple) {
-                CompactChatStreamView(emotion: .mystical, showHeader: false)
-                    .frame(height: 280)
+            settingsGlassCard(title: "Conversations", icon: "bubble.left.and.text.bubble.right.fill", tint: .cyan) {
+                conversationsCardBody
+            }
+
+            settingsGlassCard(title: "Chat Controls & Model Runtime", icon: "slider.horizontal.3", tint: .purple) {
+                VStack(spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Dedicated Floating Window")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text("Full ProMotion liquid glass conversation view")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.60))
+                        }
+                        Spacer()
+                        Button(action: {
+                            HapticFeedback.selection()
+                            FinderChatWindowManager.shared.toggle()
+                            showBannerFeedback("Opened Genie Chat Window ✨")
+                        }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "arrow.up.right.square.fill")
+                                    .font(.system(size: 11))
+                                Text("Open Chat")
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.cyan))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Divider().opacity(0.12)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Agentic Tool Execution")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Polyglot, AirDrop, Local Net, App Docs")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.60))
+                        }
+                        Spacer()
+                        Text("Active ⚡️")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color.green.opacity(0.15)))
+                    }
+
+                    Divider().opacity(0.12)
+
+                    HStack {
+                        Text("Global Hotkey")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("⌘⌥C")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.85))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.12)))
+                    }
+                }
             }
         }
     }
@@ -507,6 +617,30 @@ public struct UnifiedSettingsView: View {
                             HapticFeedback.selection()
                             NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockStyleChanged"), object: newStyle)
                             AppDelegate.shared?.renderIcon()
+                        }
+                    }
+
+                    Divider().opacity(0.20)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Dock Formation Architecture")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text(DockFormation(preferenceValue: dockFormationRaw).subtitle)
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.60))
+                        }
+                        Spacer()
+                        Picker("", selection: $dockFormationRaw) {
+                            ForEach(DockFormation.allCases) { formation in
+                                Text(formation.rawValue).tag(formation.rawValue)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 220)
+                        .onChange(of: dockFormationRaw) { _, _ in
+                            HapticFeedback.selection()
                         }
                     }
 
@@ -560,6 +694,21 @@ public struct UnifiedSettingsView: View {
                     Divider().opacity(0.20)
 
                     HStack {
+                        Text("Show Mini Dock in Menu Bar")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Toggle("", isOn: $showMiniDockInMenuBar)
+                            .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.16, green: 0.80, blue: 0.98)))
+                            .onChange(of: showMiniDockInMenuBar) { _, val in
+                                UserDefaults.standard.set(val, forKey: PrefKey.showMiniDockInMenuBar)
+                                AppDelegate.shared?.setupStatusItemView()
+                            }
+                    }
+
+                    Divider().opacity(0.20)
+
+                    HStack {
                         Text("Display Mode")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.white)
@@ -575,35 +724,49 @@ public struct UnifiedSettingsView: View {
                     Divider().opacity(0.20)
 
                     HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Slide into Battery (Save Space 🔋)")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white)
-                            Text("When ON, smoothly collapses the mini dock app switcher into the battery icon capsule. Hovering or clicking unfolds the dock smoothly.")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white.opacity(0.60))
-                        }
-                        Spacer()
-                        Toggle("", isOn: $isCollapsedIntoBattery)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
-                            .onChange(of: isCollapsedIntoBattery) { _, newVal in
-                                HapticFeedback.selection()
-                                UserDefaults.standard.set(newVal, forKey: PrefKey.isCollapsedIntoBattery)
-                                NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockCollapse"), object: nil)
-                            }
-                    }
-
-                    Divider().opacity(0.20)
-
-                    HStack {
                         Text("Running App Slots in Dock")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
                         Stepper("\(menuBarAppCount) apps", value: $menuBarAppCount, in: 1...6)
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    }
+
+                    Divider().opacity(0.20)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Icon Animation")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text(DockAnimationStyle(preferenceValue: dockAnimationStyleRaw).subtitle)
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.60))
+                        }
+                        Spacer()
+                        Picker("", selection: $dockAnimationStyleRaw) {
+                            ForEach(DockAnimationStyle.allCases, id: \.rawValue) { style in
+                                Text(style.rawValue).tag(style.rawValue)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 190)
+                        .onChange(of: dockAnimationStyleRaw) { _, _ in
+                            HapticFeedback.selection()
+                        }
+                    }
+
+                    HStack {
+                        Text("Animation Intensity")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Slider(value: $dockAnimationIntensity, in: 0.0...1.0)
+                            .frame(width: 150)
+                        Text(String(format: "%.0f%%", dockAnimationIntensity * 100))
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.65))
+                            .frame(width: 34, alignment: .trailing)
                     }
                 }
             }
@@ -1114,6 +1277,82 @@ public struct UnifiedSettingsView: View {
                 }
             }
 
+            settingsGlassCard(title: "Mouse Wheel & Station Navigation", icon: "computermouse.fill", tint: .indigo) {
+                VStack(spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Slide Wheel Down Shows Top Screen")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Rolling or sliding the mouse wheel downward reveals the Zenith screen (Dialogue Studio & Search).")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $wheelSlideDownShowsTopStation)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .onChange(of: wheelSlideDownShowsTopStation) { _, newVal in
+                                HapticFeedback.selection()
+                                showBannerFeedback(newVal ? "Slide down opens Top Screen ⬆️" : "Standard wheel direction restored ⬇️")
+                            }
+                    }
+
+                    Divider().opacity(0.20)
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Reverse Wheel Scroll Direction")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Invert wheel up vs down scrolling across all canvas stations.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $reverseStationScrollWheelDirection)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .onChange(of: reverseStationScrollWheelDirection) { _, newVal in
+                                HapticFeedback.selection()
+                                showBannerFeedback(newVal ? "Scroll wheel direction reversed 🔄" : "Standard wheel direction ↕️")
+                            }
+                    }
+                }
+            }
+
+            settingsGlassCard(title: "Clear HTML Overlay & Solutions", icon: "safari.fill", tint: .purple) {
+                VStack(spacing: 10) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Floating Transparent HTML Overlay")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                            Text("Loads transparent WebKit canvas connected to Swift with clickable solutions and image actions.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                        Spacer()
+                        Button(action: {
+                            HapticFeedback.selection()
+                            GenieClearHTMLOverlayManager.shared.toggle()
+                        }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "sparkles")
+                                Text(GenieClearHTMLOverlayManager.shared.isVisible ? "Hide Overlay" : "Launch Overlay")
+                            }
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(Color.purple.opacity(0.40)))
+                            .overlay(Capsule().stroke(Color.purple.opacity(0.60), lineWidth: 0.8))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
             settingsGlassCard(title: "App Grid Dimensions & Layout", icon: "square.grid.2x2", tint: .indigo) {
                 VStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 6) {
@@ -1335,12 +1574,12 @@ public struct UnifiedSettingsView: View {
                             Text("Unified Memory Architecture")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white)
-                            Text("Detected: 48 GB Unified Memory • PyTorch Metal (MPS) Ready")
+                            Text("Detected: \(LocalModelManager.detectedRAMString) Unified Memory • PyTorch Metal (MPS) Ready")
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundColor(.green.opacity(0.90))
                         }
                         Spacer()
-                        Text("48 GB RAM")
+                        Text("\(LocalModelManager.detectedRAMString) RAM")
                             .font(.system(size: 10, weight: .heavy, design: .monospaced))
                             .foregroundColor(.black)
                             .padding(.horizontal, 7)
@@ -1382,7 +1621,7 @@ public struct UnifiedSettingsView: View {
                 }
             }
 
-            settingsGlassCard(title: "Available AI Engines & Providers", icon: "sparkles", tint: Color(red: 0.85, green: 0.47, blue: 0.36)) {
+            settingsGlassCard(title: "Available Models & Providers", icon: "sparkles", tint: Color(red: 0.85, green: 0.47, blue: 0.36)) {
                 VStack(spacing: 14) {
                     ForEach(AIModelProvider.allCases) { provider in
                         let models = LocalModelManager.cloudModels.filter { $0.provider == provider }
@@ -1451,68 +1690,6 @@ public struct UnifiedSettingsView: View {
                         }
                     }
 
-                    if localModels.localModelsEnabled && !localModels.availableModels.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "desktopcomputer")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.cyan)
-                                Text("Ollama / LM Studio (Discovered Local Models)")
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(.cyan)
-                                Spacer()
-                            }
-                            .padding(.top, 4)
-
-                            VStack(spacing: 6) {
-                                ForEach(localModels.availableModels) { model in
-                                    HStack(spacing: 8) {
-                                        VStack(alignment: .leading, spacing: 1) {
-                                            Text(model.displayName)
-                                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                                .foregroundColor(.white)
-                                            Text("\(model.source) • \(model.displaySize)")
-                                                .font(.system(size: 9.5))
-                                                .foregroundColor(.white.opacity(0.50))
-                                        }
-
-                                        Spacer()
-
-                                        if localModels.effectiveModel == model.name {
-                                            Text("Active ✓")
-                                                .font(.system(size: 9.5, weight: .bold))
-                                                .foregroundColor(.green)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(Capsule().fill(Color.green.opacity(0.18)))
-                                        } else {
-                                            Button("Select") {
-                                                localModels.selectModel(model.name)
-                                                HapticFeedback.selection()
-                                                showBannerFeedback("Selected \(model.displayName) ✨")
-                                            }
-                                            .font(.system(size: 9.5, weight: .semibold))
-                                            .foregroundColor(.white.opacity(0.85))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 3)
-                                            .background(Capsule().fill(Color.white.opacity(0.10)))
-                                            .buttonStyle(.plain)
-                                        }
-                                    }
-                                    .padding(.vertical, 3)
-
-                                    if model.name != localModels.availableModels.last?.name {
-                                        Divider().opacity(0.12)
-                                    }
-                                }
-                            }
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(Color.white.opacity(0.04))
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -1523,23 +1700,6 @@ public struct UnifiedSettingsView: View {
         VStack(spacing: 14) {
             settingsGlassCard(title: "Living Glass UI & Vibrancy", icon: "sparkles", tint: .cyan) {
                 VStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Glass Blur Specular Intensity")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white)
-                            Spacer()
-                            Text("\(Int(glassVibrancyIntensity * 100))%")
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundColor(.cyan)
-                        }
-
-                        Slider(value: $glassVibrancyIntensity, in: 0.3...1.0)
-                            .accentColor(.cyan)
-                    }
-
-                    Divider().opacity(0.20)
-
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("ProMotion 120 FPS Native Metal Rendering")
@@ -1720,6 +1880,344 @@ public struct UnifiedSettingsView: View {
                                 .overlay(Capsule().stroke(Color.cyan.opacity(0.35), lineWidth: 0.5))
                         }
                         .padding(.vertical, 2)
+                    }
+                }
+            }
+
+            settingsGlassCard(title: "Autonomous Agent, RAM Governor & HDMI Forking", icon: "cpu.fill", tint: .green) {
+                VStack(spacing: 12) {
+                    // RAM Partition Governor
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("RAM Partition Ceiling (ulimit)")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.white)
+                                Text("Hard limit per agent process. Drops background neural training frames under critical memory pressure.")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.white.opacity(0.55))
+                            }
+                            Spacer()
+                            Text("\(agentMemoryLimitMB) MB")
+                                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                                .foregroundColor(.green)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Color.green.opacity(0.15)))
+                                .overlay(Capsule().stroke(Color.green.opacity(0.4), lineWidth: 0.5))
+                        }
+                        HStack(spacing: 8) {
+                            Text("1 GB")
+                                .font(.system(size: 9.5))
+                                .foregroundColor(.white.opacity(0.4))
+                            Slider(value: Binding(
+                                get: { Double(agentMemoryLimitMB) },
+                                set: { agentMemoryLimitMB = Int($0) }
+                            ), in: 1024...16384, step: 512)
+                            .tint(.green)
+                            Text("16 GB")
+                                .font(.system(size: 9.5))
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                        HStack(spacing: 12) {
+                            Text("Resident: \(memoryGovernor.currentProcessResidentMB) MB")
+                                .font(.system(size: 9.5, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                            Text("Host Free: \(memoryGovernor.hostAvailableMemoryMB) MB")
+                                .font(.system(size: 9.5, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                            Text("Pressure: \(memoryGovernor.currentPressureLevel.rawValue.capitalized)")
+                                .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                                .foregroundColor(memoryGovernor.currentPressureLevel == .critical ? .red : (memoryGovernor.currentPressureLevel == .warning ? .yellow : .green))
+                        }
+                    }
+
+                    Divider().opacity(0.20)
+
+                    // Zero-Copy HDMI Forking
+                    Toggle(isOn: $hdmiPixelForkEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Zero-Copy GPU Pixel Forking to HDMI")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("Forks hardware HDMI/UVC pixel buffers in Unified Memory: Channel 1 to live display at zero latency, Channel 2 to AI neural ring buffer.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: .green))
+
+                    Divider().opacity(0.20)
+
+                    // Agent User & Toolchain Isolation
+                    Toggle(isOn: $agentDedicatedUserEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Dedicated macOS Agent User (genie-agent)")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("Confines toolchain to /Users/genie-agent/.local/bin. Automatically strips SSH, AWS, and GitHub tokens from execution subshells.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: .green))
+                }
+            }
+
+            settingsGlassCard(title: "Stream-Back Fork, Zero-Copy Folder Sharing & Brain Mode", icon: "arrow.triangle.2.circlepath.circle.fill", tint: .cyan) {
+                VStack(spacing: 12) {
+                    // Stream-Back Fork (Channel 3)
+                    Toggle(isOn: $streamBackForkEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Channel 3 Upstream Video Stream-Back")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("Streams Genie's agent display, terminal & actions live to http://127.0.0.1:\(streamBackPort)/stream or external HDMI display.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                    .onChange(of: streamBackForkEnabled) { enabled in
+                        if enabled {
+                            streamBackEngine.startStreamServer(port: streamBackPort)
+                        } else {
+                            streamBackEngine.stopStreamServer()
+                        }
+                    }
+
+                    if streamBackForkEnabled {
+                        HStack(spacing: 12) {
+                            Text("Port: \(streamBackPort)")
+                                .font(.system(size: 9.5, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.5))
+                            Text("Clients: \(streamBackEngine.activeClientsCount)")
+                                .font(.system(size: 9.5, design: .monospaced))
+                                .foregroundColor(.cyan)
+                            Text("FPS: \(String(format: "%.1f", streamBackEngine.averageFPS))")
+                                .font(.system(size: 9.5, design: .monospaced))
+                                .foregroundColor(.green)
+                            Spacer()
+                            Button("Test Feed") {
+                                streamBackEngine.pushSyntheticFrame(text: "Live Test Feed Triggered from Settings")
+                            }
+                            .buttonStyle(.borderless)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.cyan)
+                        }
+                    }
+
+                    Divider().opacity(0.20)
+
+                    // Zero-Copy APFS Folder Sharing
+                    Toggle(isOn: $sharedFolderBridgeEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Zero-Copy APFS Folder Forking & Live Bridge")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("Darwin clonefile(2) creates instantaneous copy-on-write forks (0 RAM & 0 extra disk). Syncs to /Users/Shared/Genie/Bridge.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: .cyan))
+
+                    HStack(spacing: 12) {
+                        Text("Active Forks: \(folderForkEngine.totalForksCreated)")
+                            .font(.system(size: 9.5, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.5))
+                        Text("Bridge Files: \(folderForkEngine.bridgeAssetCount)")
+                            .font(.system(size: 9.5, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.5))
+                        Spacer()
+                        Button("Open Bridge Folder") {
+                            let url = URL(fileURLWithPath: GenieSharedFolderForkEngine.defaultBridgePath)
+                            NSWorkspace.shared.open(url)
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.cyan)
+                    }
+
+                    Divider().opacity(0.20)
+
+                    // Brain Provider: Local Apple Silicon vs Cloud API
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Autonomous Brain Mode (Local + API Options)")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("Select whether the autonomous actuator plans actions locally via Apple Silicon or offloads to Cloud multimodal models.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.55))
+
+                        Picker("", selection: Binding(
+                            get: { autonomousLoop.brainProvider },
+                            set: { autonomousLoop.setProvider($0) }
+                        )) {
+                            ForEach(GenieBrainProvider.allCases) { provider in
+                                HStack {
+                                    Image(systemName: provider.iconName)
+                                    Text(provider.displayName)
+                                }
+                                .tag(provider)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+
+                        HStack {
+                            Text("Active Provider: \(autonomousLoop.brainProvider.displayName)")
+                                .font(.system(size: 9.5, design: .monospaced))
+                                .foregroundColor(.cyan)
+                            Spacer()
+                            Button(autonomousLoop.isLoopActive ? "Stop Loop" : "Start Auto Loop") {
+                                if autonomousLoop.isLoopActive {
+                                    autonomousLoop.stopAutonomousLoop()
+                                } else {
+                                    autonomousLoop.startAutonomousLoop()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(autonomousLoop.isLoopActive ? .red : .green)
+                            .font(.system(size: 10, weight: .bold))
+                        }
+                    }
+                }
+            }
+
+            // MARK: - The 3 Pillars Card
+            settingsGlassCard(title: "The 3 Pillars: Admin Authority, Agent Homes & Cloud Vault", icon: "shield.lefthalf.filled", tint: .indigo) {
+                VStack(spacing: 12) {
+                    // Pillar 1: Admin Authority
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text("Pillar 1: macOS Administrator Authority")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.white)
+                                Text(adminGovernor.isAdminAvailable ? "ADMIN ACTIVE 🛡️" : "STANDARD 🔒")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(adminGovernor.isAdminAvailable ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
+                                    .foregroundColor(adminGovernor.isAdminAvailable ? .green : .orange)
+                                    .cornerRadius(4)
+                            }
+                            Text("Enables Genie to inspect user access rights, partition agent boundaries, and run audited admin tasks.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $agentAdminPrivilegesEnabled)
+                            .toggleStyle(SwitchToggleStyle(tint: .indigo))
+                    }
+
+                    HStack {
+                        Text("Audit Log: /Users/Shared/Genie/Audit/admin_audit.log (\(adminGovernor.totalPrivilegedCommandsExecuted) executed)")
+                            .font(.system(size: 9.5, design: .monospaced))
+                            .foregroundColor(.indigo)
+                        Spacer()
+                        Button("Inspect Access") {
+                            _ = adminGovernor.inspectUserAccess()
+                            NSSound.beep()
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.system(size: 10))
+                    }
+
+                    Divider().opacity(0.20)
+
+                    // Pillar 2: Multi-Agent Homes & Human Review
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Pillar 2: Multi-Agent Home & Review System")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text("\(agentHomeEngine.registeredAgents.count) Agents Provisioned")
+                                .font(.system(size: 9.5, weight: .medium))
+                                .foregroundColor(.cyan)
+                        }
+                        Text("Every agent has an isolated home folder at /Users/Shared/Genie/Agents/<id>/ with a dedicated review queue.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.55))
+
+                        HStack {
+                            Picker("Active Agent", selection: Binding(
+                                get: { agentHomeEngine.activeAgent?.id ?? "genie-primary" },
+                                set: { agentHomeEngine.setActiveAgent(id: $0) }
+                            )) {
+                                ForEach(agentHomeEngine.registeredAgents) { agent in
+                                    Text("\(agent.name) (\(agent.role))").tag(agent.id)
+                                }
+                            }
+                            .pickerStyle(MenuPickerStyle())
+
+                            Spacer()
+
+                            Button("Review Work (\(agentHomeEngine.pendingReviews.count))") {
+                                if let active = agentHomeEngine.activeAgent {
+                                    agentHomeEngine.openAgentReviewInFinder(agentId: active.id)
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.purple)
+                            .font(.system(size: 10, weight: .bold))
+
+                            Button("Open Home") {
+                                if let active = agentHomeEngine.activeAgent {
+                                    agentHomeEngine.openAgentHomeInFinder(agentId: active.id)
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .font(.system(size: 10))
+                        }
+                    }
+
+                    Divider().opacity(0.20)
+
+                    // Pillar 3: Hybrid Dual Saving
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text("Pillar 3: Hybrid Dual Saving (Home + Cloud)")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.white)
+                                Text(cloudSavingEngine.syncStatus.rawValue)
+                                    .font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.2))
+                                    .foregroundColor(.cyan)
+                                    .cornerRadius(4)
+                            }
+                            Text("Maintains zero-latency local APFS saving while continuously mirroring artifacts and review queues to Cloud Vault.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.55))
+                        }
+                        Spacer()
+                        Toggle("", isOn: $agentCloudSavingEnabled)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    }
+
+                    HStack {
+                        Text("Synced Files: \(cloudSavingEngine.totalSyncedFiles)")
+                            .font(.system(size: 9.5, design: .monospaced))
+                            .foregroundColor(.blue)
+                        Spacer()
+                        Button(cloudSavingEngine.isSyncing ? "Syncing..." : "Sync to Cloud Now") {
+                            Task { @MainActor in
+                                await cloudSavingEngine.syncAllAgentsToCloud()
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.system(size: 10))
+                        .disabled(cloudSavingEngine.isSyncing)
+
+                        Button("Open Cloud Vault") {
+                            cloudSavingEngine.openCloudVaultInFinder()
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.system(size: 10))
                     }
                 }
             }
@@ -1924,6 +2422,352 @@ public struct UnifiedSettingsView: View {
     }
 
     // MARK: - Reusable Liquid Glass Settings Card
+    // MARK: - Account (Sign in with Apple)
+
+    @ViewBuilder
+    private var appleAccountCardBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if appleAuth.isSignedIn {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.green)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(appleAuth.displayName.isEmpty ? "Nicholas Dudek" : appleAuth.displayName)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text(appleAuth.email.isEmpty ? "nicholas.dudek@icloud.com" : appleAuth.email)
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.70))
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                        Button(action: {
+                            appleAuth.signOut()
+                            HapticFeedback.selection()
+                            showBannerFeedback("Signed out of Apple Account")
+                        }) {
+                            Text("Sign Out")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundColor(.white.opacity(0.85))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Capsule().fill(Color.white.opacity(0.10)))
+                                .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.5))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // iChat & iMessage Control Banner
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
+                        Text("iChat & Apple Messages Control Active")
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundColor(.white.opacity(0.90))
+                        Spacer()
+                        Button(action: {
+                            let pingText = "🧞 [Genie Mac Ping]: Apple ID iChat & iMessage control connected!"
+                            let ok = GeniePhoneBridgeManager.shared.sendiMessage(message: pingText)
+                            HapticFeedback.selection()
+                            showBannerFeedback(ok ? "✓ Sent ping to \(appleAuth.email)" : "⚠️ Sent, check Messages.app")
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "paperplane.fill")
+                                    .font(.system(size: 9))
+                                Text("Ping iPhone")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .foregroundColor(.cyan)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.cyan.opacity(0.15)))
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: {
+                            GenieiMessageExtensionManager.shared.openConversation()
+                            HapticFeedback.selection()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "message.fill")
+                                    .font(.system(size: 9))
+                                Text("Open Messages")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .foregroundColor(.white.opacity(0.85))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.10)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(8)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.05)))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.10), lineWidth: 0.5))
+                }
+            } else {
+                Text("Sign in with your Apple Account to enable Genie's autonomous iChat and Apple Messages control, desktop remote commands, and personalized greetings.")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(.white.opacity(0.65))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // 1. One-Click System Discovered Apple ID Button
+                if let discovered = GenieAppleAuth.discoverSystemAppleAccount() {
+                    Button(action: {
+                        appleAuth.signInWithAppleID(email: discovered.email, displayName: discovered.displayName, source: "system_click")
+                        HapticFeedback.selection()
+                        showBannerFeedback("Logged in as \(discovered.email)")
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "apple.logo")
+                                .font(.system(size: 13, weight: .semibold))
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Log In as \(discovered.displayName)")
+                                    .font(.system(size: 11.5, weight: .semibold))
+                                Text(discovered.email + " (macOS iCloud)")
+                                    .font(.system(size: 9.5))
+                                    .opacity(0.7)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.system(size: 13))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.white))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // 2. Standard Apple Sign-In Sheet
+                Button(action: {
+                    appleAuth.signIn()
+                    HapticFeedback.selection()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "apple.logo")
+                            .font(.system(size: 12, weight: .medium))
+                        Text(appleAuth.state == .signingIn ? "Signing in…" : "Sign in with Apple (Sheet)")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.white.opacity(0.90))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.white.opacity(0.12)))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color.white.opacity(0.20), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .disabled(appleAuth.state == .signingIn)
+
+                // 3. Manual Apple ID Entry Option
+                HStack(spacing: 6) {
+                    TextField("Enter Apple ID / iCloud email…", text: $manualAppleIDText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.08)))
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.15), lineWidth: 0.5))
+
+                    Button(action: {
+                        let trimmed = manualAppleIDText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmed.isEmpty {
+                            appleAuth.signInWithAppleID(email: trimmed, displayName: NSFullUserName())
+                            HapticFeedback.selection()
+                            showBannerFeedback("Logged in as \(trimmed)")
+                            manualAppleIDText = ""
+                        }
+                    }) {
+                        Text("Connect")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(manualAppleIDText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+
+            if case .failed(let message) = appleAuth.state {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                    Text(message)
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange.opacity(0.90))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    // MARK: - Conversations (name, reopen, delete)
+
+    private var filteredSessions: [SavedChatSession] {
+        let q = conversationSearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let all = localModels.savedSessions.sorted { $0.updatedAt > $1.updatedAt }
+        guard !q.isEmpty else { return all }
+        return all.filter { $0.title.lowercased().contains(q) }
+    }
+
+    @ViewBuilder
+    private var conversationsCardBody: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.45))
+                TextField("Search conversations", text: $conversationSearch)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white)
+                if !conversationSearch.isEmpty {
+                    Button(action: { conversationSearch = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.45))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.white.opacity(0.07)))
+
+            if filteredSessions.isEmpty {
+                HStack {
+                    Spacer()
+                    Text(localModels.savedSessions.isEmpty
+                         ? "No saved conversations yet. Start a chat, then hit New Session to file it here."
+                         : "No conversation matches “\(conversationSearch)”.")
+                        .font(.system(size: 10.5))
+                        .foregroundColor(.white.opacity(0.50))
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .padding(.vertical, 14)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(filteredSessions) { session in
+                        conversationRow(session)
+                        if session.id != filteredSessions.last?.id {
+                            Divider().opacity(0.12)
+                        }
+                    }
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.04)))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func conversationRow(_ session: SavedChatSession) -> some View {
+        HStack(spacing: 8) {
+            if renamingSessionID == session.id {
+                TextField("Conversation name", text: $renameDraft, onCommit: { commitRename(session) })
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.white.opacity(0.10)))
+
+                Button("Save") { commitRename(session) }
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.cyan))
+                    .buttonStyle(.plain)
+
+                Button("Cancel") { renamingSessionID = nil }
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.75))
+                    .buttonStyle(.plain)
+            } else {
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 5) {
+                        Text(session.title.isEmpty ? "Untitled conversation" : session.title)
+                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        if session.id == localModels.currentSessionId {
+                            Text("Open")
+                                .font(.system(size: 8.5, weight: .bold))
+                                .foregroundColor(.green)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1.5)
+                                .background(Capsule().fill(Color.green.opacity(0.18)))
+                        }
+                    }
+                    Text("\(session.messages.count) messages • \(session.updatedAt.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(.white.opacity(0.50))
+                }
+
+                Spacer()
+
+                Button(action: {
+                    renameDraft = session.title
+                    renamingSessionID = session.id
+                }) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.80))
+                        .padding(5)
+                        .background(Circle().fill(Color.white.opacity(0.10)))
+                }
+                .buttonStyle(.plain)
+                .help("Rename this conversation")
+
+                Button(action: {
+                    localModels.loadSession(session)
+                    HapticFeedback.selection()
+                    FinderChatWindowManager.shared.show()
+                    showBannerFeedback("Opened “\(session.title)” 💬")
+                }) {
+                    Text("Open")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.85))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.white.opacity(0.10)))
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    localModels.deleteSession(id: session.id)
+                    HapticFeedback.selection()
+                    showBannerFeedback("Deleted conversation 🗑")
+                }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.red.opacity(0.85))
+                        .padding(5)
+                        .background(Circle().fill(Color.red.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .help("Delete this conversation")
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func commitRename(_ session: SavedChatSession) {
+        localModels.renameSession(id: session.id, to: renameDraft)
+        renamingSessionID = nil
+        HapticFeedback.selection()
+        showBannerFeedback("Renamed conversation ✏️")
+    }
+
     private func settingsGlassCard<Content: View>(title: String, icon: String, tint: Color, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 5) {

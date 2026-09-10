@@ -10,13 +10,27 @@ struct GenieAppMain {
         let app = NSApplication.shared
 
         if CommandLine.arguments.contains("--smoke-test") {
+            var finished = false
             Task { @MainActor in
                 await GenieSmokeTester.runAllTests()
-                CFRunLoopStop(CFRunLoopGetMain())
-                exit(0)
+                finished = true
             }
-            CFRunLoopRun()
-            return
+            while !finished {
+                RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+            }
+            exit(0)
+        }
+
+        if CommandLine.arguments.contains("--benchmark") {
+            var finished = false
+            Task { @MainActor in
+                await GenieSmokeTester.runBenchmarks()
+                finished = true
+            }
+            while !finished {
+                RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+            }
+            exit(0)
         }
 
         terminateConflictingInstances()

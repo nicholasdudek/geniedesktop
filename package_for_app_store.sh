@@ -19,10 +19,16 @@ killall "Gold Gate" 2>/dev/null || true
 killall "Golden Gate Studio" 2>/dev/null || true
 sleep 0.5
 
-# 2. Build Release binary
+# 2. Build Release binary — Genie Lite flavour
+#
+# GENIE_MAS=1 compiles out every subsystem the sandbox or the App Store Review
+# Guidelines forbid (see GenieCapabilities.swift). It builds into its own
+# scratch directory: the Developer ID build differs only by a compile-time
+# define, so a shared .build would silently hand us the wrong binary.
 cd "$PROJECT_DIR"
-echo "==> Building Release executable with SwiftPM..."
-swift build -c release
+MAS_BUILD_DIR="$PROJECT_DIR/.build-mas"
+echo "==> Building Release executable with SwiftPM (Genie Lite / GENIE_MAS)..."
+GENIE_MAS=1 swift build -c release -j 4 --scratch-path "$MAS_BUILD_DIR"
 
 # 3. Generate and compile Assets.xcassets (Asset Catalog)
 echo "==> Compiling Asset Catalog..."
@@ -34,8 +40,29 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/$APP_NAME.app/Contents/MacOS"
 mkdir -p "$BUILD_DIR/$APP_NAME.app/Contents/Resources"
 
-cp "$PROJECT_DIR/.build/release/Genie" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/Genie"
+GENIE_BINARY=""
+for candidate in \
+    "$MAS_BUILD_DIR/release/Genie" \
+    "$MAS_BUILD_DIR/out/Products/Release/Genie"; do
+    if [ -f "$candidate" ]; then GENIE_BINARY="$candidate"; break; fi
+done
+
+if [ -z "$GENIE_BINARY" ]; then
+    echo "ERROR: no Genie binary produced in $MAS_BUILD_DIR." >&2
+    exit 1
+fi
+
+# Refuse to package a Developer ID binary as the App Store build. Without this
+# the mistake is invisible until App Review rejects the submission.
+if ! strings "$GENIE_BINARY" | grep -q "GENIE-BUILD-FLAVOUR:MAS"; then
+    echo "ERROR: $GENIE_BINARY is not a Genie Lite build." >&2
+    echo "       Expected marker GENIE-BUILD-FLAVOUR:MAS (set GENIE_MAS=1)." >&2
+    exit 1
+fi
+echo "==> Verified Genie Lite build marker."
+cp "$GENIE_BINARY" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/Genie"
 cp "$PROJECT_DIR/Sources/GoldGate/Info.plist" "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Delete :NSSystemAdministrationUsageDescription" "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist" 2>/dev/null || true
 
 # Copy compiled Assets.car
 if [ -f "$PROJECT_DIR/build/compiled_assets/Assets.car" ]; then
@@ -112,13 +139,23 @@ fi
 # 7. Sign the App Bundle
 if [ -n "$APP_IDENTITY" ]; then
     echo "==> Code signing inner executable..."
-    codesign --force --options runtime --sign "$APP_IDENTITY" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+    codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign "$APP_IDENTITY" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
     echo "==> Code signing App Bundle with Hardened Runtime & Sandbox entitlements..."
     codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign "$APP_IDENTITY" "$BUILD_DIR/$APP_NAME.app"
 else
     echo "==> Ad-Hoc code signing App Bundle..."
-    codesign --force --options runtime --sign - "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+    codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign - "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
     codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign - "$BUILD_DIR/$APP_NAME.app"
+fi
+
+# 7b. Verify the signature actually carries the sandbox entitlement.
+echo "==> Verifying sandbox entitlement on the signed bundle..."
+if codesign -d --entitlements :- "$BUILD_DIR/$APP_NAME.app" 2>/dev/null | \
+   grep -A1 "com.apple.security.app-sandbox" | grep -q "<true/>"; then
+    echo "==> app-sandbox: enabled."
+else
+    echo "ERROR: signed bundle is not sandboxed — App Store will reject it." >&2
+    exit 1
 fi
 
 # 8. Build Installer Package (.pkg) for App Store Connect

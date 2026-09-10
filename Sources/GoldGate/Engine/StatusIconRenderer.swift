@@ -71,11 +71,13 @@ final class StatusIconRenderer {
 
     // MARK: - Individual Component Renderers for Menu Bar Strip
     static func generateGlyphImage(glyph: String? = nil, size: CGFloat = 18, phase: CGFloat = 0) -> NSImage {
-        let selectedGlyph = glyph
+        let rawGlyph = glyph
             ?? UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
             ?? UserDefaults.standard.string(forKey: PrefKey.statusIconStyle)
             ?? "Genie Lamp 🪔"
+        let selectedGlyph = rawGlyph.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Genie Lamp 🪔" : rawGlyph
 
+        let isMonochrome = selectedGlyph.hasPrefix("Simple") || selectedGlyph.contains("Modern") || selectedGlyph == "Monochrome"
         let img = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return true }
             ctx.saveGState()
@@ -83,7 +85,7 @@ final class StatusIconRenderer {
             ctx.restoreGState()
             return true
         }
-        img.isTemplate = false
+        img.isTemplate = isMonochrome
         return img
     }
 
@@ -196,7 +198,7 @@ final class StatusIconRenderer {
             drawAnimatedLeoMaltese(ctx: ctx, size: size, phase: phase)
         case "Genie Person", "Genie Person 🧞‍♂️", "Genie 🧞", "Genie Spirit", "Genie Spirit 🧞‍♂️", "Genie":
             drawEmojiIcon("🧞‍♂️", size: size)
-        case "Genie Lamp", "Genie Lamp 🪔":
+        case "Genie Lamp", "Genie Lamp 🪔", "🪔":
             drawAnimatedGenieLamp(ctx: ctx, size: size, phase: phase)
         case "Crystal Ball", "Crystal Ball 🔮":
             drawSymbolIcon(named: "circle.hexagongrid.fill", color: NSColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1.0), size: size)

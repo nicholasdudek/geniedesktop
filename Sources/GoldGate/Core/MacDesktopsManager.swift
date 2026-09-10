@@ -353,7 +353,6 @@ public final class MacDesktopsManager: ObservableObject {
                 let arrowCode: CGKeyCode = (delta > 0) ? 124 : 123
                 let count = abs(delta)
                 DispatchQueue.global(qos: .userInteractive).async {
-                    // System Events keystroke simulation (built-in macOS space glide)
                     let script = """
                     tell application "System Events"
                         repeat \(count) times
@@ -366,7 +365,6 @@ public final class MacDesktopsManager: ObservableObject {
                         var error: NSDictionary?
                         appleScript.executeAndReturnError(&error)
                     } else {
-                        // Direct HID CGEvent post fallback
                         for _ in 0..<count {
                             Self.postKeyComboDirect(keyCode: arrowCode, flags: .maskControl)
                             usleep(60_000)
@@ -376,11 +374,21 @@ public final class MacDesktopsManager: ObservableObject {
             }
         }
 
-        // 4. Transition settle: update spaces and notify without stealing focus
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.isSwitchingSpace = false
-            self?.refreshSpaces()
-            NotificationCenter.default.post(name: NSNotification.Name("NexusDidSwitchSpace"), object: index)
+        // 4. Transition settle: verify the switch actually happened and notify
+        verifySpaceSwitch(targetIndex: safeIndex, attempts: 5)
+    }
+
+    private func verifySpaceSwitch(targetIndex: Int, attempts: Int) {
+        Task { @MainActor in
+            for i in 0..<attempts {
+                refreshSpaces()
+                if self.currentSpaceIndex == targetIndex {
+                    break
+                }
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            }
+            self.isSwitchingSpace = false
+            NotificationCenter.default.post(name: NSNotification.Name("NexusDidSwitchSpace"), object: targetIndex)
         }
     }
 
@@ -674,7 +682,7 @@ public final class MacDesktopsManager: ObservableObject {
 
             // Fallback 1: CGWindowListCreateImage on active screen bounds
             let screenBounds = activeScreen.frame
-            if let cgFallback = CGWindowListCreateImage(screenBounds, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution, .nominalResolution]) {
+            if let cgFallback = safeCGWindowListCreateImage(screenBounds, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution, .nominalResolution]) {
                 let nsImg = NSImage(cgImage: cgFallback, size: NSSize(width: 160, height: 100))
                 self.desktopLivePreviews[activeIndex] = nsImg
                 return
@@ -764,249 +772,6 @@ public final class MacDesktopsManager: ObservableObject {
     }
 }
 
-// MARK: - Desktop Spaces Navigator Bar View (Sleek, Proportional & Multi-Monitor Enabled)
-
-public struct DesktopSpacesNavigatorBar: View {
-    @ObservedObject var manager: MacDesktopsManager = .shared
-    @ObservedObject var wallpaperManager: WallpaperManager = .shared
-    @ObservedObject var gridManager: SmartGridManager = .shared
-    @AppStorage(PrefKey.desktopSpacesEnabled) private var desktopSpacesEnabled: Bool = true
-
-
-    public init() {}
-
-    public var body: some View {
-        HStack(spacing: 6) {
-            // ── 1. Desktop Spaces Strip (Sleek 16:10 Screen Thumbnails) ──
-            HStack(spacing: 4) {
-
-                // Compact Screen Preview Cards
-                HStack(spacing: 4) {
-                    let cur = manager.currentSpaceIndex
-                    let displaySpaces = manager.displayOrderIndices()
-                    ForEach(displaySpaces, id: \.self) { slotIndex in
-                        let isCurrent = (slotIndex == cur)
-                        Button(action: {
-                            manager.switchToDesktop(index: slotIndex)
-                        }) {
-                            ZStack(alignment: .bottomTrailing) {
-                                // 16:10 Proportional Screen Display Thumbnail
-                                ZStack(alignment: .top) {
-                                    if let live = manager.desktopLivePreviews[slotIndex] {
-                                        Image(nsImage: live)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 38, height: 24)
-                                            .clipped()
-                                    } else if let wp = wallpaperManager.activeWallpaperImage {
-                                        Image(nsImage: wp)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 38, height: 24)
-                                            .clipped()
-                                            .opacity(isCurrent ? 1.0 : 0.65)
-                                    } else {
-                                        LinearGradient(
-                                            colors: isCurrent ? [Color.cyan.opacity(0.7), Color.blue.opacity(0.9)] : [Color.gray.opacity(0.3), Color.black.opacity(0.5)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                        .frame(width: 38, height: 24)
-                                    }
-
-                                    // Top Menu Bar Hairline
-                                    HStack {
-                                        Capsule().fill(Color.white.opacity(0.7)).frame(width: 5, height: 1)
-                                        Spacer()
-                                        Capsule().fill(Color.white.opacity(0.7)).frame(width: 7, height: 1)
-                                    }
-                                    .padding(.horizontal, 2)
-                                    .padding(.top, 1.5)
-                                }
-                                .frame(width: 38, height: 24)
-                                .cornerRadius(4)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .strokeBorder(isCurrent ? Color.cyan : Color.white.opacity(0.20), lineWidth: isCurrent ? 1.5 : 0.7)
-                                )
-                                .shadow(color: isCurrent ? Color.cyan.opacity(0.45) : Color.black.opacity(0.15), radius: isCurrent ? 3 : 1)
-
-                                // Desktop Number Badge Overlaid in Bottom-Right
-                                HStack(spacing: 1.5) {
-                                    if isCurrent {
-                                        Circle()
-                                            .fill(Color.cyan)
-                                            .frame(width: 3.5, height: 3.5)
-                                    }
-                                    Text("\(slotIndex)")
-                                        .font(.system(size: 7, weight: .heavy, design: .rounded))
-                                        .foregroundColor(isCurrent ? .cyan : .white.opacity(0.85))
-                                }
-                                .padding(.horizontal, 2.5)
-                                .padding(.vertical, 0.8)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.black.opacity(0.65))
-                                )
-                                .padding(1.5)
-                            }
-                            .frame(width: 38, height: 24)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Switch to Desktop \(slotIndex)")
-                    }
-                }
-
-                // 3x3 Continuous Canvas & Above-Level Cursor Button
-                Button(action: {
-                    SpatialPlaneManager.shared.toggleZoomOutPlane()
-                }) {
-                    HStack(spacing: 2.5) {
-                        Image(systemName: "square.grid.3x3.fill")
-                            .font(.system(size: 8, weight: .bold))
-                        Text("Canvas")
-                            .font(.system(size: 7.5, weight: .heavy, design: .rounded))
-                    }
-                    .foregroundColor(.cyan)
-                    .padding(.horizontal, 4.5)
-                    .padding(.vertical, 3.5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(Color.cyan.opacity(0.18))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .strokeBorder(Color.cyan.opacity(0.35), lineWidth: 0.6)
-                    )
-                }
-                .buttonStyle(.plain)
-                .help("Continuous 9-Desktop Canvas & Above-Level Cursor (⌘⌥Space)")
-            }
-            .padding(.horizontal, 3)
-            .padding(.vertical, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.30))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
-            )
-
-            // ── 2. Multi-Monitor / Other Screens Selector ──
-            if gridManager.connectedScreens.count > 1 {
-                HStack(spacing: 2) {
-                    ForEach(gridManager.connectedScreens) { mon in
-                        let isSelected = gridManager.selectedScreenIndex == mon.id
-                        Button(action: {
-                            HapticFeedback.selection()
-                            gridManager.selectedScreenIndex = mon.id
-                            gridManager.lastStatusMessage = "Targeting \(mon.name)"
-                        }) {
-                            HStack(spacing: 2) {
-                                Image(systemName: "display")
-                                    .font(.system(size: 7.5, weight: isSelected ? .bold : .regular))
-                                Text(mon.shortName)
-                                    .font(.system(size: 8, weight: isSelected ? .bold : .semibold, design: .rounded))
-                            }
-                            .foregroundColor(isSelected ? .white : .secondary)
-                            .padding(.horizontal, 4.5)
-                            .frame(height: 22)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .fill(isSelected ? Color.teal : Color.clear)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .help("\(mon.name) (\(mon.resolution)) — Click to target this monitor")
-                    }
-                }
-                .padding(2)
-                .background(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(Color.primary.opacity(0.04))
-                )
-            }
-
-            // ── 3. 3 Screen Choices Pill ([ 1 Screen ], [ 2x2 ], [ 4x3 ]) ──
-            HStack(spacing: 2) {
-                ForEach(GridScreenChoice.allCases) { choice in
-                    let isSelected = gridManager.activeChoice == choice
-                    Button(action: {
-                        HapticFeedback.selection()
-                        gridManager.activeChoice = choice
-                        gridManager.bringAllToScreen(choice: choice)
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: choice.icon)
-                                .font(.system(size: 7.5, weight: isSelected ? .bold : .regular))
-                            Text(choice.rawValue)
-                                .font(.system(size: 8.5, weight: isSelected ? .bold : .semibold, design: .rounded))
-                        }
-                        .foregroundColor(isSelected ? .white : .secondary)
-                        .padding(.horizontal, 6)
-                        .frame(height: 22)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(isSelected ? Color.accentColor : Color.clear)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help("\(choice.description) — Click to tile all windows")
-                }
-            }
-            .padding(2)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.primary.opacity(0.05))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.8)
-            )
-
-            // ── 3. Bring All to Screen Shortcut Button ──
-            Button(action: {
-                gridManager.bringAllToScreen()
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "macwindow.on.rectangle")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.cyan)
-
-                    Text("Bring All")
-                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    Text("⌘⌥Space")
-                        .font(.system(size: 7, weight: .bold, design: .monospaced))
-                        .foregroundColor(.cyan)
-                        .padding(.horizontal, 3.5)
-                        .padding(.vertical, 1.5)
-                        .background(
-                            Capsule()
-                                .fill(Color.cyan.opacity(0.16))
-                        )
-                }
-                .padding(.horizontal, 7)
-                .frame(height: 24)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.cyan.opacity(0.10))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .strokeBorder(Color.cyan.opacity(0.35), lineWidth: 0.8)
-                )
-            }
-            .buttonStyle(.plain)
-            .help("Bring All to Screen: Auto-tile and raise all windows cleanly on screen (Shortcut: ⌘ + ⌥ + Space or ⌘ + ⌥ + B)")
-        }
-        .onAppear {
-            manager.captureCurrentDesktopLivePreview()
-        }
-    }
-}
 
 // MARK: - Mini Desktop Icons Menu Bar Widget (16:10 Screen Thumbnails)
 public struct MiniMenuBarDesktopSpacesView: View {
@@ -1084,25 +849,7 @@ public struct MiniMenuBarDesktopSpacesView: View {
         .help("Add New Desktop Space (+)")
     }
 
-    @ViewBuilder
-    private var spatialPlaneZoomButton: some View {
-        Button(action: {
-            SpatialPlaneManager.shared.toggleZoomOutPlane()
-        }) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-                    .fill(Color.cyan.opacity(0.18))
-                    .frame(width: 26, height: 20)
 
-                Image(systemName: "square.grid.3x3.fill")
-                    .font(.system(size: 9.0, weight: .bold))
-                    .foregroundColor(.cyan)
-            }
-            .frame(width: 28, height: 22)
-        }
-        .buttonStyle(.plain)
-        .help("Spatial Canvas Overview (⌘⌥Space)")
-    }
 
     private func computeDragXDisplacement(slotIndex: Int, displaySpaces: [Int]) -> CGFloat {
         guard let draggingIdx = draggingSlotIndex,
@@ -1132,7 +879,6 @@ public struct MiniMenuBarDesktopSpacesView: View {
                 }
 
                 addDesktopButton
-                spatialPlaneZoomButton
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 3.5)
@@ -1596,312 +1342,3 @@ public struct MiniMenuBarDesktopSpacesView: View {
     }
 }
 
-// MARK: - Genie Panoramic Spaces Bar HUD (The Revolutionary macOS Desktop Manager)
-public struct GenieSpacesBarHUDView: View {
-    @ObservedObject var manager: MacDesktopsManager = .shared
-    @ObservedObject var wallpaperManager: WallpaperManager = .shared
-    @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
-    @State private var hoveredCardIndex: Int? = nil
-    @State private var isPlusHovered: Bool = false
-    @State private var draggingIndex: Int? = nil
-    @State private var dragOffset: CGFloat = 0.0
-    @State private var editingSpaceIndex: Int? = nil
-    @State private var tempTitle: String = ""
-
-
-    public init() {}
-
-    public var body: some View {
-        let displaySpaces = manager.displayOrderIndices()
-
-        VStack(spacing: 8) {
-            // Header Bar
-            HStack(spacing: 10) {
-                HStack(spacing: 5) {
-                    Image(systemName: "macwindow.on.rectangle")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.cyan)
-
-                    Text(LocalizedStrings.translateText("Genie Desktop Manager", lang: appLanguage))
-                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    Text("\(manager.spaces.count) Spaces")
-                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                        .foregroundColor(.cyan)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1.5)
-                        .background(Capsule().fill(Color.cyan.opacity(0.18)))
-                }
-
-                Spacer()
-
-                Button(action: {
-                    SmartGridManager.shared.bringAllToScreen()
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "rectangle.3.group")
-                            .font(.system(size: 10, weight: .semibold))
-                        Text("Tile All")
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.08)))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 8)
-
-            // Horizontal Panoramic Spaces Cards Strip
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(displaySpaces, id: \.self) { slotIndex in
-                        let isCurrent = (slotIndex == manager.currentSpaceIndex)
-                        let isHovered = (hoveredCardIndex == slotIndex)
-                        let isDraggingThis = (draggingIndex == slotIndex)
-
-                        let dragDisplacement = computeCardDragDisplacement(slotIndex: slotIndex, displaySpaces: displaySpaces)
-                        let totalOffset = isDraggingThis ? dragOffset : dragDisplacement
-
-                        hudSpaceCard(
-                            slotIndex: slotIndex,
-                            isCurrent: isCurrent,
-                            isHovered: isHovered,
-                            isDraggingThis: isDraggingThis,
-                            totalOffset: totalOffset,
-                            displaySpaces: displaySpaces
-                        )
-                    }
-
-                    // [+] Add Desktop Card
-                    Button(action: {
-                        HapticFeedback.heavy()
-                        manager.createDesktop()
-                    }) {
-                        VStack(spacing: 5) {
-                            Text("New Space")
-                                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-                                .foregroundColor(.cyan)
-
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(isPlusHovered ? Color.cyan.opacity(0.18) : Color.white.opacity(0.05))
-                                    .frame(width: 80, height: 75)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                            .strokeBorder(isPlusHovered ? Color.cyan : Color.white.opacity(0.20), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
-                                    )
-
-                                Image(systemName: "plus")
-                                    .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(isPlusHovered ? .cyan : .white.opacity(0.65))
-                            }
-                            .frame(width: 80, height: 75)
-                        }
-                        .scaleEffect(isPlusHovered ? 1.05 : 1.0)
-                    }
-                    .buttonStyle(.plain)
-                    .onHover { isPlusHovered = $0 }
-                    .help("Add New Desktop Space (+)")
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-            }
-        }
-        .padding(.vertical, 4)
-        .background(
-            VisualEffectBlur(material: .menu, blendingMode: .behindWindow, state: .active)
-                .overlay(Color.black.opacity(0.25))
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.8)
-        )
-        .shadow(color: Color.black.opacity(0.35), radius: 12, y: 4)
-    }
-
-    private func computeCardDragDisplacement(slotIndex: Int, displaySpaces: [Int]) -> CGFloat {
-        guard let dragIdx = draggingIndex,
-              let fromPos = displaySpaces.firstIndex(of: dragIdx),
-              let myPos = displaySpaces.firstIndex(of: slotIndex) else { return 0 }
-        let cardWidth: CGFloat = 132.0
-        let offsetSlots = Int(round(dragOffset / cardWidth))
-        let targetPos = max(0, min(displaySpaces.count - 1, fromPos + offsetSlots))
-        if targetPos > fromPos && myPos > fromPos && myPos <= targetPos {
-            return -cardWidth
-        } else if targetPos < fromPos && myPos < fromPos && myPos >= targetPos {
-            return cardWidth
-        }
-        return 0
-    }
-
-    @ViewBuilder
-    private func hudSpaceCard(
-        slotIndex: Int,
-        isCurrent: Bool,
-        isHovered: Bool,
-        isDraggingThis: Bool,
-        totalOffset: CGFloat,
-        displaySpaces: [Int]
-    ) -> some View {
-        VStack(spacing: 5) {
-            // Workspace Name Tag
-            if editingSpaceIndex == slotIndex {
-                TextField("Workspace", text: $tempTitle, onCommit: {
-                    if let sp = manager.spaces.first(where: { $0.index == slotIndex }) {
-                        manager.setWorkspaceName(for: sp, name: tempTitle)
-                    }
-                    editingSpaceIndex = nil
-                })
-                .textFieldStyle(.plain)
-                .font(.system(size: 10.5, weight: .bold))
-                .frame(width: 110)
-                .padding(2)
-                .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.12)))
-            } else {
-                Text(spaceTitle(for: slotIndex))
-                    .font(.system(size: 10.5, weight: isCurrent ? .bold : .medium, design: .rounded))
-                    .foregroundColor(isCurrent ? .cyan : .secondary)
-                    .lineLimit(1)
-                    .onTapGesture(count: 2) {
-                        let targetSpace = manager.spaces.first(where: { $0.index == slotIndex })
-                        if let sp = targetSpace {
-                            tempTitle = manager.workspaceName(for: sp)
-                            editingSpaceIndex = slotIndex
-                        }
-                    }
-            }
-
-            // 16:10 Thumbnail Card
-            ZStack(alignment: .topTrailing) {
-                Button(action: {
-                    if draggingIndex == nil {
-                        HapticFeedback.selection()
-                        manager.switchToDesktop(index: slotIndex)
-                    }
-                }) {
-                    ZStack(alignment: .bottomTrailing) {
-                        hudThumbnailCard(slotIndex: slotIndex, isCurrent: isCurrent)
-
-                        // Desktop Index Badge
-                        HStack(spacing: 2) {
-                            if isCurrent {
-                                Circle().fill(Color.cyan).frame(width: 4, height: 4)
-                            }
-                            Text(String(slotIndex))
-                                .font(.system(size: 8, weight: .heavy, design: .rounded))
-                                .foregroundColor(isCurrent ? .cyan : .white)
-                        }
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1.5)
-                        .background(Capsule().fill(Color.black.opacity(0.75)))
-                        .padding(3)
-                    }
-                    .frame(width: 120, height: 75)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .strokeBorder(isCurrent ? Color.cyan : Color.white.opacity(isHovered ? 0.40 : 0.15), lineWidth: isCurrent ? 2.0 : 0.8)
-                    )
-                    .shadow(color: isCurrent ? Color.cyan.opacity(0.50) : Color.black.opacity(0.25), radius: isCurrent ? 5 : 2)
-                }
-                .buttonStyle(.plain)
-
-                // Close Button on Card (shown on hover if >1 desktop)
-                if isHovered && manager.spaces.count > 1 {
-                    Button(action: {
-                        HapticFeedback.heavy()
-                        manager.closeDesktop(index: slotIndex)
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.white)
-                            .background(Circle().fill(Color.red))
-                    }
-                    .buttonStyle(.plain)
-                    .offset(x: 4, y: -4)
-                    .transition(.scale.combined(with: .opacity))
-                }
-            }
-        }
-        .scaleEffect(isDraggingThis ? 1.12 : (isHovered ? 1.05 : 1.0))
-        .offset(x: totalOffset)
-        .zIndex(isDraggingThis ? 50 : 1)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 4)
-                .onChanged { val in
-                    if draggingIndex == nil {
-                        draggingIndex = slotIndex
-                        HapticFeedback.selection()
-                    }
-                    withAnimation(.spring(response: 0.22, dampingFraction: 0.8)) {
-                        dragOffset = val.translation.width
-                    }
-                }
-                .onEnded { val in
-                    if let dragIdx = draggingIndex,
-                       let fromPos = displaySpaces.firstIndex(of: dragIdx) {
-                        let cardWidth: CGFloat = 132.0
-                        let offsetSlots = Int(round(val.translation.width / cardWidth))
-                        let targetPos = max(0, min(displaySpaces.count - 1, fromPos + offsetSlots))
-                        if targetPos != fromPos {
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.78)) {
-                                manager.reorderDesktops(fromIndex: fromPos, toIndex: targetPos)
-                            }
-                        }
-                    }
-                    withAnimation(.spring(response: 0.25, dampingFraction: 0.78)) {
-                        draggingIndex = nil
-                        dragOffset = 0
-                    }
-                }
-        )
-        .onHover { h in
-            withAnimation(.spring(response: 0.20, dampingFraction: 0.72)) {
-                hoveredCardIndex = h ? slotIndex : nil
-            }
-        }
-    }
-
-    private func spaceTitle(for slotIndex: Int) -> String {
-        if let sp = manager.spaces.first(where: { $0.index == slotIndex }) {
-            return manager.workspaceName(for: sp)
-        }
-        return "Desktop \(slotIndex)"
-    }
-
-    @ViewBuilder
-    private func hudThumbnailCard(slotIndex: Int, isCurrent: Bool) -> some View {
-        let ratio = MacDesktopsManager.resolvedAspectRatio()
-        let hudW: CGFloat = 120
-        let hudH: CGFloat = max(45, hudW / ratio)
-
-        if let live = manager.desktopLivePreviews[slotIndex] {
-            Image(nsImage: live)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: hudW, height: hudH)
-                .clipped()
-        } else if let wp = wallpaperManager.activeWallpaperImage {
-            Image(nsImage: wp)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: hudW, height: hudH)
-                .clipped()
-                .opacity(isCurrent ? 1.0 : 0.65)
-        } else {
-            let c1 = isCurrent ? Color.cyan.opacity(0.6) : Color.black.opacity(0.6)
-            let c2 = isCurrent ? Color.blue.opacity(0.8) : Color.gray.opacity(0.3)
-            LinearGradient(
-                colors: [c1, c2],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .frame(width: hudW, height: hudH)
-        }
-    }
-}

@@ -22,21 +22,14 @@ def test_atmospheric_shader_engine_variables():
     assert "H: CGFloat" in content
     assert "canvasWidth: W" in content
 
-def test_swift_dom_engine_variables():
-    swift_dom_file = ENGINE_DIR / "SwiftDOMEngine.swift" if (ENGINE_DIR / "SwiftDOMEngine.swift").exists() else ENGINE_DIR / "SwiftDOM.swift"
-    content = swift_dom_file.read_text()
+def test_skylight_neural_governor_engine_variables():
+    governor_file = ENGINE_DIR / "SkyLightNeuralGovernorEngine.swift"
+    content = governor_file.read_text()
     
-    assert "func buildUniverseTree(screenWidth: CGFloat, screenHeight: CGFloat, forceUniverse81: Bool? = nil)" in content
-    assert "func build9GridTree(screenWidth: CGFloat, screenHeight: CGFloat)" in content
-    assert "gridDimension" in content
-    assert "buildGridHierarchy" in content
-    assert "isUniverse81" in content
-    assert "canvasSize" in content
-    assert "viewportSize" in content
-    
-    # Assert backward-compatible overloads
-    assert "func buildUniverseTree(screenW: CGFloat, screenH: CGFloat)" in content
-    assert "func build9GridTree(screenW: CGFloat, screenH: CGFloat)" in content
+    assert "class SkyLightNeuralGovernorEngine" in content
+    assert "class SkyLightNativeBridge" in content
+    assert "func startAntiAppNapGovernor()" in content
+    assert "func stopAntiAppNapGovernor()" in content
 
 def test_spatial_plane_manager_variables():
     content = (CORE_DIR / "SpatialPlaneManager.swift").read_text()

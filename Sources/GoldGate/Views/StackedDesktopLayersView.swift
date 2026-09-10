@@ -10,11 +10,14 @@ extension MacDesktopsManager {
         if let s = saved, !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return s
         }
+        if let agent = AgentVirtualSpaceManager.shared.spaceForDesktop(space.index) {
+            return agent.name
+        }
         switch space.index {
-        case 1: return "Primary • Main"
-        case 2: return "Code • Dev"
-        case 3: return "Design • Creative"
-        case 4: return "Research • Web"
+        case 1: return "Desktop Views Center 🛸"
+        case 2: return "VS Code Editor Agent 💻"
+        case 3: return "Browser Research Agent 🌐"
+        case 4: return "Terminal & Build Agent ⚡️"
         case 5: return "Focus • Terminal"
         default: return "Workspace \(space.index)"
         }
@@ -52,13 +55,19 @@ extension MacDesktopsManager {
 
 public struct StackedDesktopLayersDeckView: View {
     @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
-@ObservedObject var manager: MacDesktopsManager = .shared
-    @ObservedObject var wallpaperManager: WallpaperManager = .shared
+    @ObservedObject var manager: MacDesktopsManager = .shared
+    @ObservedObject var agentSpaceManager: AgentVirtualSpaceManager = .shared
     @State private var isHoveringDeck: Bool = false
     @State private var editingSpaceIndex: Int? = nil
     @State private var tempName: String = ""
 
     public init() {}
+
+    private var deckHeight: CGFloat {
+        let count = max(manager.spaces.count, 1)
+        let spacing: CGFloat = isHoveringDeck ? 44.0 : 20.0
+        return 76.0 + CGFloat(count - 1) * spacing
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -82,7 +91,6 @@ public struct StackedDesktopLayersDeckView: View {
 
                 Spacer()
 
-                // + Stack New Layer Button
                 Button(action: {
                     manager.createDesktop()
                 }) {
@@ -108,167 +116,22 @@ public struct StackedDesktopLayersDeckView: View {
                 .help("Create and stack a new WindowServer hardware desktop space")
             }
 
+            // ── Desktop Views Center Observatory Hub ──
+            DesktopViewsCenterObservatoryView()
+
             // ── 3D / Spatial Stacked Card Deck ──
-            // Desktops are visually stacked on top of each other!
-            // The active layer rises to the top, while inactive layers stack underneath with depth offsets.
             ZStack(alignment: .top) {
                 ForEach(Array(manager.spaces.enumerated()), id: \.element.id) { idx, space in
-                    let isCurrent = space.index == manager.currentSpaceIndex
-                    let isLocked = manager.isWorkspaceLocked(for: space)
-                    let fanMultiplier: CGFloat = isHoveringDeck ? 44.0 : 20.0
-
-                    // Spatial Layer Card
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            // Layer Indicator Badge
-                            HStack(spacing: 3) {
-                                Image(systemName: isLocked ? "lock.fill" : (isCurrent ? "lock.open.fill" : "square.stack.3d.up"))
-                                    .font(.system(size: 8.5, weight: .bold))
-                                    .foregroundColor(isCurrent ? .cyan : (isLocked ? .orange : .secondary))
-
-                                Text("Layer \(space.index)")
-                                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
-                                    .foregroundColor(isCurrent ? .cyan : .secondary)
-                            }
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(isCurrent ? Color.cyan.opacity(0.18) : Color.black.opacity(0.35))
-                            )
-
-                            // Workspace Name (Double click or tap to rename)
-                            if editingSpaceIndex == space.index {
-                                TextField("Workspace Name", text: $tempName, onCommit: {
-                                    manager.setWorkspaceName(for: space, name: tempName)
-                                    editingSpaceIndex = nil
-                                })
-                                .textFieldStyle(.plain)
-                                .font(.system(size: 11, weight: .bold))
-                                .frame(width: 140)
-                                .padding(2)
-                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.1)))
-                            } else {
-                                Text(manager.workspaceName(for: space))
-                                    .font(.system(size: 11, weight: isCurrent ? .bold : .medium, design: .rounded))
-                                    .foregroundColor(isCurrent ? .primary : .secondary)
-                                    .lineLimit(1)
-                                    .onTapGesture(count: 2) {
-                                        tempName = manager.workspaceName(for: space)
-                                        editingSpaceIndex = space.index
-                                    }
-                            }
-
-                            Spacer()
-
-                            // Lock / Unlock Button
-                            Button(action: {
-                                manager.toggleWorkspaceLock(for: space)
-                            }) {
-                                Image(systemName: isLocked ? "lock.shield.fill" : "lock.open")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundColor(isLocked ? .orange : .secondary.opacity(0.6))
-                                    .padding(4)
-                                    .background(Circle().fill(Color.primary.opacity(0.05)))
-                            }
-                            .buttonStyle(.plain)
-                            .help(isLocked ? "Unlock Workspace Protection" : "Lock / Protect Workspace")
-
-                            // Unlock & Switch Button
-                            Button(action: {
-                                manager.unlockAndSwitch(to: space)
-                            }) {
-                                Text(isCurrent ? "Active" : "Unlock")
-                                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                                    .foregroundColor(isCurrent ? .black : .white)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 2.5)
-                                    .background(
-                                        Capsule()
-                                            .fill(isCurrent ? Color.cyan : Color.white.opacity(0.15))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        // Preview Thumbnail Row
-                        HStack(spacing: 8) {
-                            ZStack(alignment: .bottomTrailing) {
-                                if let live = manager.desktopLivePreviews[space.index] {
-                                    Image(nsImage: live)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 68, height: 42)
-                                        .clipped()
-                                } else if let wp = wallpaperManager.activeWallpaperImage {
-                                    Image(nsImage: wp)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 68, height: 42)
-                                        .clipped()
-                                } else {
-                                    LinearGradient(
-                                        colors: [Color.cyan.opacity(0.6), Color.blue.opacity(0.8)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                    .frame(width: 68, height: 42)
-                                }
-
-                                // Hairline top bar
-                                VStack {
-                                    HStack {
-                                        Circle().fill(Color.white.opacity(0.7)).frame(width: 2.5, height: 2.5)
-                                        Circle().fill(Color.white.opacity(0.7)).frame(width: 2.5, height: 2.5)
-                                        Spacer()
-                                    }
-                                    .padding(2.5)
-                                    Spacer()
-                                }
-                            }
-                            .frame(width: 68, height: 42)
-                            .cornerRadius(5)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .strokeBorder(isCurrent ? Color.cyan : Color.white.opacity(0.15), lineWidth: isCurrent ? 1.5 : 0.6)
-                            )
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(isCurrent ? "🔓 Unlocked & Focused" : (isLocked ? "🔒 Locked Layer" : "Ready to Unlock"))
-                                    .font(.system(size: 9.5, weight: .semibold))
-                                    .foregroundColor(isCurrent ? .cyan : (isLocked ? .orange : .secondary))
-
-                                Text("Switch instantly to Desktop \(space.index) (Hardware WindowServer)")
-                                    .font(.system(size: 8.5))
-                                    .foregroundColor(.secondary.opacity(0.8))
-                                    .lineLimit(2)
-                            }
-                            Spacer()
-                        }
-                    }
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color(nsColor: .windowBackgroundColor).opacity(isCurrent ? 0.95 : 0.80))
+                    StackedDesktopLayerCardView(
+                        idx: idx,
+                        space: space,
+                        isHoveringDeck: isHoveringDeck,
+                        editingSpaceIndex: $editingSpaceIndex,
+                        tempName: $tempName
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(isCurrent ? Color.cyan.opacity(0.85) : Color.white.opacity(0.12), lineWidth: isCurrent ? 1.5 : 0.8)
-                    )
-                    .shadow(
-                        color: isCurrent ? Color.cyan.opacity(0.40) : Color.black.opacity(0.25),
-                        radius: isCurrent ? 8 : 4,
-                        y: isCurrent ? 4 : 2
-                    )
-                    .offset(y: CGFloat(idx) * fanMultiplier)
-                    .zIndex(isCurrent ? 100 : Double(manager.spaces.count - idx))
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        manager.unlockAndSwitch(to: space)
-                    }
                 }
             }
-            .frame(height: 72 + CGFloat(manager.spaces.count - 1) * (isHoveringDeck ? 44.0 : 20.0))
+            .frame(height: deckHeight)
             .padding(.top, 4)
             .onHover { hovering in
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
@@ -288,11 +151,429 @@ public struct StackedDesktopLayersDeckView: View {
     }
 }
 
+// MARK: - Desktop Views Center Observatory View
+
+public struct DesktopViewsCenterObservatoryView: View {
+    @ObservedObject var manager: MacDesktopsManager = .shared
+    @ObservedObject var agentSpaceManager: AgentVirtualSpaceManager = .shared
+    @ObservedObject var splitManager: DualWorkspaceSplitManager = .shared
+    @ObservedObject var partitionManager: DualDesktopPartitionManager = .shared
+
+    public init() {}
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                Image(systemName: "viewfinder.circle.fill")
+                    .foregroundColor(.cyan)
+                    .font(.system(size: 11, weight: .bold))
+                Text("Desktop Views Center")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                Spacer()
+                Text("Central Observatory")
+                    .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+
+            // Split Desktop Workspaces Toggle Button
+            Button(action: {
+                splitManager.toggleSplit()
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: splitManager.isSplitActive ? "rectangle.split.2x1.fill" : "rectangle.split.2x1")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(splitManager.isSplitActive ? .cyan : .secondary)
+                    Text(splitManager.isSplitActive ? "Dual Workspaces Active (\(Int(splitManager.splitRatio * 100)):\(Int((1 - splitManager.splitRatio) * 100)))" : "Split Desktop (2 Workspaces)")
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        .foregroundColor(splitManager.isSplitActive ? .cyan : .primary)
+                    Spacer()
+                    Text(splitManager.isSplitActive ? "Exit Split" : "Split Screen")
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundColor(splitManager.isSplitActive ? .cyan : .secondary)
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(splitManager.isSplitActive ? Color.cyan.opacity(0.15) : Color.primary.opacity(0.04))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(splitManager.isSplitActive ? Color.cyan.opacity(0.4) : Color.primary.opacity(0.06), lineWidth: 0.8)
+                )
+            }
+            .buttonStyle(.plain)
+
+            // Dual Partition Desktops with Separate MenuBars Toggle Button
+            Button(action: {
+                partitionManager.togglePartition()
+                if partitionManager.isPartitionActive {
+                    DualDesktopPartitionWindow.shared.show()
+                } else {
+                    DualDesktopPartitionWindow.shared.close()
+                }
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: partitionManager.isPartitionActive ? "menubar.rectangle" : "menubar.arrow.up.rectangle")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(partitionManager.isPartitionActive ? .yellow : .secondary)
+                    Text(partitionManager.isPartitionActive ? "Dual Desktops (2 MenuBars Active)" : "Dual Desktops (Separate MenuBars)")
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        .foregroundColor(partitionManager.isPartitionActive ? .yellow : .primary)
+                    Spacer()
+                    Text(partitionManager.isPartitionActive ? "Exit Desktops" : "Launch 2 Bars")
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundColor(partitionManager.isPartitionActive ? .yellow : .secondary)
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(partitionManager.isPartitionActive ? Color.yellow.opacity(0.15) : Color.primary.opacity(0.04))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(partitionManager.isPartitionActive ? Color.yellow.opacity(0.4) : Color.primary.opacity(0.06), lineWidth: 0.8)
+                )
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Dual Split Desktop Workspaces so agents operate concurrently side-by-side")
+
+            // Quick Agent Desktop Grid (VS Code, Browser, Terminal, Center)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                ForEach(agentSpaceManager.spaces) { agent in
+                    DesktopViewsCenterAgentCard(agent: agent)
+                }
+            }
+        }
+        .padding(7)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(0.03))
+        )
+    }
+}
+
+// MARK: - Observatory Agent Badge Card
+
+public struct DesktopViewsCenterAgentCard: View {
+    let agent: AgentVirtualSpace
+    @ObservedObject var manager: MacDesktopsManager = .shared
+
+    private var isFocused: Bool {
+        manager.currentSpaceIndex == agent.assignedDesktopIndex
+    }
+
+    private var statusColor: Color {
+        switch agent.status {
+        case .running: return .green
+        case .awaitingApproval: return .orange
+        case .completed: return .cyan
+        case .idle: return .gray.opacity(0.5)
+        }
+    }
+
+    public var body: some View {
+        Button(action: {
+            HapticFeedback.selection()
+            manager.switchToDesktop(index: agent.assignedDesktopIndex)
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: agent.agentType.icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(isFocused ? .cyan : .primary)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text(agent.name)
+                            .font(.system(size: 9.5, weight: isFocused ? .bold : .medium, design: .rounded))
+                            .foregroundColor(isFocused ? .cyan : .primary)
+                            .lineLimit(1)
+                        Circle()
+                            .fill(statusColor)
+                            .frame(width: 4, height: 4)
+                    }
+                    Text("Desktop \(agent.assignedDesktopIndex)")
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(isFocused ? Color.cyan.opacity(0.16) : Color.primary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(isFocused ? Color.cyan.opacity(0.4) : Color.clear, lineWidth: 0.8)
+            )
+        }
+        .buttonStyle(.plain)
+        .help("View \(agent.name) on Desktop \(agent.assignedDesktopIndex)")
+    }
+}
+
+// MARK: - Individual Stacked Desktop Layer Card
+
+public struct StackedDesktopLayerCardView: View {
+    let idx: Int
+    let space: MacDesktopSpace
+    let isHoveringDeck: Bool
+    @Binding var editingSpaceIndex: Int?
+    @Binding var tempName: String
+
+    @ObservedObject var manager: MacDesktopsManager = .shared
+    @ObservedObject var agentSpaceManager: AgentVirtualSpaceManager = .shared
+
+    private var isCurrent: Bool {
+        space.index == manager.currentSpaceIndex
+    }
+
+    private var isLocked: Bool {
+        manager.isWorkspaceLocked(for: space)
+    }
+
+    private var fanOffset: CGFloat {
+        let spacing: CGFloat = isHoveringDeck ? 44.0 : 20.0
+        return CGFloat(idx) * spacing
+    }
+
+    private var cardZIndex: Double {
+        isCurrent ? 100 : Double(manager.spaces.count - idx)
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Top Row: Indicator, Title, Lock/Unlock, Active Switch
+            HStack {
+                HStack(spacing: 3) {
+                    Image(systemName: isLocked ? "lock.fill" : (isCurrent ? "lock.open.fill" : "square.stack.3d.up"))
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundColor(isCurrent ? .cyan : (isLocked ? .orange : .secondary))
+
+                    Text("Layer \(space.index)")
+                        .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                        .foregroundColor(isCurrent ? .cyan : .secondary)
+                }
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule()
+                        .fill(isCurrent ? Color.cyan.opacity(0.18) : Color.black.opacity(0.35))
+                )
+
+                if editingSpaceIndex == space.index {
+                    TextField("Workspace Name", text: $tempName, onCommit: {
+                        manager.setWorkspaceName(for: space, name: tempName)
+                        editingSpaceIndex = nil
+                    })
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, weight: .bold))
+                    .frame(width: 140)
+                    .padding(2)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.1)))
+                } else {
+                    Text(manager.workspaceName(for: space))
+                        .font(.system(size: 11, weight: isCurrent ? .bold : .medium, design: .rounded))
+                        .foregroundColor(isCurrent ? .primary : .secondary)
+                        .lineLimit(1)
+                        .onTapGesture(count: 2) {
+                            tempName = manager.workspaceName(for: space)
+                            editingSpaceIndex = space.index
+                        }
+                }
+
+                Spacer()
+
+                Button(action: {
+                    manager.toggleWorkspaceLock(for: space)
+                }) {
+                    Image(systemName: isLocked ? "lock.shield.fill" : "lock.open")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(isLocked ? .orange : .secondary.opacity(0.6))
+                        .padding(4)
+                        .background(Circle().fill(Color.primary.opacity(0.05)))
+                }
+                .buttonStyle(.plain)
+                .help(isLocked ? "Unlock Workspace Protection" : "Lock / Protect Workspace")
+
+                Button(action: {
+                    manager.unlockAndSwitch(to: space)
+                }) {
+                    Text(isCurrent ? "Active" : "Unlock")
+                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                        .foregroundColor(isCurrent ? .black : .white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2.5)
+                        .background(
+                            Capsule()
+                                .fill(isCurrent ? Color.cyan : Color.white.opacity(0.15))
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Preview Thumbnail & Agent Meta Row
+            HStack(spacing: 8) {
+                StackedDesktopThumbnailView(spaceIndex: space.index, isCurrent: isCurrent)
+
+                DesktopLayerAgentMetaView(
+                    agent: agentSpaceManager.spaceForDesktop(space.index),
+                    isCurrent: isCurrent,
+                    isLocked: isLocked,
+                    spaceIndex: space.index
+                )
+                Spacer()
+            }
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(isCurrent ? 0.95 : 0.80))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(isCurrent ? Color.cyan.opacity(0.85) : Color.white.opacity(0.12), lineWidth: isCurrent ? 1.5 : 0.8)
+        )
+        .shadow(
+            color: isCurrent ? Color.cyan.opacity(0.40) : Color.black.opacity(0.25),
+            radius: isCurrent ? 8 : 4,
+            y: isCurrent ? 4 : 2
+        )
+        .offset(y: fanOffset)
+        .zIndex(cardZIndex)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            manager.unlockAndSwitch(to: space)
+        }
+    }
+}
+
+// MARK: - Thumbnail Preview Box
+
+public struct StackedDesktopThumbnailView: View {
+    let spaceIndex: Int
+    let isCurrent: Bool
+
+    @ObservedObject var manager: MacDesktopsManager = .shared
+    @ObservedObject var wallpaperManager: WallpaperManager = .shared
+
+    public var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            if let live = manager.desktopLivePreviews[spaceIndex] {
+                Image(nsImage: live)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 68, height: 42)
+                    .clipped()
+            } else if let wp = wallpaperManager.activeWallpaperImage {
+                Image(nsImage: wp)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 68, height: 42)
+                    .clipped()
+            } else {
+                LinearGradient(
+                    colors: [Color.cyan.opacity(0.6), Color.blue.opacity(0.8)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(width: 68, height: 42)
+            }
+
+            VStack {
+                HStack {
+                    Circle().fill(Color.white.opacity(0.7)).frame(width: 2.5, height: 2.5)
+                    Circle().fill(Color.white.opacity(0.7)).frame(width: 2.5, height: 2.5)
+                    Spacer()
+                }
+                .padding(2.5)
+                Spacer()
+            }
+        }
+        .frame(width: 68, height: 42)
+        .cornerRadius(5)
+        .overlay(
+            RoundedRectangle(cornerRadius: 5)
+                .strokeBorder(isCurrent ? Color.cyan : Color.white.opacity(0.15), lineWidth: isCurrent ? 1.5 : 0.6)
+        )
+    }
+}
+
+// MARK: - Layer Agent Metadata View
+
+public struct DesktopLayerAgentMetaView: View {
+    let agent: AgentVirtualSpace?
+    let isCurrent: Bool
+    let isLocked: Bool
+    let spaceIndex: Int
+
+    private var statusColor: Color {
+        guard let agent = agent else { return .secondary }
+        switch agent.status {
+        case .running: return .green
+        case .awaitingApproval: return .orange
+        case .completed: return .cyan
+        case .idle: return .secondary
+        }
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let agent = agent {
+                HStack(spacing: 4) {
+                    Text(agent.name)
+                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                        .foregroundColor(isCurrent ? .cyan : .primary)
+                        .lineLimit(1)
+
+                    Text(agent.status.rawValue)
+                        .font(.system(size: 7.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(statusColor)
+                        .padding(.horizontal, 3.5)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(Color.primary.opacity(0.06)))
+                }
+
+                Text(agent.activeTask.isEmpty ? "Assigned to Desktop \(spaceIndex)" : agent.activeTask)
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+
+                if !agent.assignedTools.isEmpty {
+                    HStack(spacing: 3) {
+                        ForEach(agent.assignedTools.prefix(3), id: \.self) { tool in
+                            Text(tool)
+                                .font(.system(size: 7, weight: .medium, design: .monospaced))
+                                .foregroundColor(.cyan.opacity(0.85))
+                                .padding(.horizontal, 3)
+                                .padding(.vertical, 0.5)
+                                .background(RoundedRectangle(cornerRadius: 2.5).fill(Color.cyan.opacity(0.12)))
+                        }
+                    }
+                }
+            } else {
+                Text(isCurrent ? "🔓 Unlocked & Focused" : (isLocked ? "🔒 Locked Layer" : "Ready to Unlock"))
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundColor(isCurrent ? .cyan : (isLocked ? .orange : .secondary))
+
+                Text("Switch instantly to Desktop \(spaceIndex) (Hardware WindowServer)")
+                    .font(.system(size: 8.5))
+                    .foregroundColor(.secondary.opacity(0.8))
+                    .lineLimit(2)
+            }
+        }
+    }
+}
+
 // MARK: - Compact Stacked Desktop Layers Pill for Bar
 
 public struct CompactStackedDesktopLayersBarView: View {
     @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
-@ObservedObject var manager: MacDesktopsManager = .shared
+    @ObservedObject var manager: MacDesktopsManager = .shared
     @State private var showDeckPopover: Bool = false
 
     public init() {}

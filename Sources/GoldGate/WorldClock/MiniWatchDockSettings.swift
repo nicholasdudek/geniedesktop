@@ -1,21 +1,6 @@
 import SwiftUI
 import Foundation
 
-/// Where the Mini Watch Dock is pinned on the main screen.
-public enum MiniWatchDockPosition: String, CaseIterable, Codable, Identifiable {
-    case top = "Top"
-    case bottom = "Bottom"
-    
-    public var id: String { rawValue }
-    
-    public var icon: String {
-        switch self {
-        case .top: return "rectangle.topthird.inset.filled"
-        case .bottom: return "rectangle.bottomthird.inset.filled"
-        }
-    }
-}
-
 /// Diameter presets for the mini watch faces in the dock.
 public enum MiniWatchDockDialSize: String, CaseIterable, Codable, Identifiable {
     case small = "Small"
@@ -41,10 +26,10 @@ public enum MiniWatchDockDialSize: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-/// User preferences for the Mini Watch Dock, edited from the Settings menu.
+/// User preferences for the watch strip inside the chat dock, edited from the Settings menu.
+/// Older saved payloads carried a `position` key; the synthesized decoder simply ignores it.
 public struct MiniWatchDockSettings: Codable, Equatable {
     public var isEnabled: Bool
-    public var position: MiniWatchDockPosition
     public var dialSize: MiniWatchDockDialSize
     public var showSeconds: Bool
     public var showCityLabels: Bool
@@ -53,7 +38,6 @@ public struct MiniWatchDockSettings: Codable, Equatable {
     
     public init(
         isEnabled: Bool = false,
-        position: MiniWatchDockPosition = .bottom,
         dialSize: MiniWatchDockDialSize = .medium,
         showSeconds: Bool = false,
         showCityLabels: Bool = true,
@@ -61,7 +45,6 @@ public struct MiniWatchDockSettings: Codable, Equatable {
         showLocalTime: Bool = true
     ) {
         self.isEnabled = isEnabled
-        self.position = position
         self.dialSize = dialSize
         self.showSeconds = showSeconds
         self.showCityLabels = showCityLabels

@@ -481,7 +481,7 @@ print("Rotated Index of 0 in [4,5,6,7,0,1,2]:", search_rotated([4,5,6,7,0,1,2], 
                     Button(action: {
                         tinyEngine.installAndLaunchOllamaEngine()
                     }) {
-                        Text(tinyEngine.isInstallingOllamaCLI ? "Installing Engine..." : "Setup Engine via Brew")
+                        Text(tinyEngine.isInstallingOllamaCLI ? "Installing Engine..." : (GenieCapabilities.canInstallExternalRuntimes ? "Setup Engine via Brew" : "Get Engine (Free)"))
                             .font(.system(size: 9.5, weight: .bold))
                             .foregroundColor(.black)
                             .padding(.horizontal, 8)
@@ -729,6 +729,13 @@ print("Rotated Index of 0 in [4,5,6,7,0,1,2]:", search_rotated([4,5,6,7,0,1,2], 
     private func runCommand(_ cmd: String) {
         isRunningCommand = true
         terminalOutput += "\n$ \(cmd)\n"
+
+        // No shell in the sandboxed build (Guideline 2.5.1).
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            terminalOutput += GenieCapabilities.unavailableMessage("The terminal") + "\n"
+            isRunningCommand = false
+            return
+        }
 
         DispatchQueue.global(qos: .userInitiated).async {
             let task = Process()

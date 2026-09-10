@@ -41,16 +41,46 @@ public final class GenieiMessageExtensionManager: ObservableObject {
     private let interactionDebounceSeconds: TimeInterval = 3.5
 
     private init() {
+        if let stored = UserDefaults.standard.string(forKey: "genie.apple_id"), !stored.isEmpty {
+            self.nicholasAppleID = stored
+        } else if let detected = GenieAppleAuth.discoverSystemAppleAccount()?.email, !detected.isEmpty {
+            self.nicholasAppleID = detected
+        }
+        knownContacts["me"] = self.nicholasAppleID
+        knownContacts["self"] = self.nicholasAppleID
+
         self.lastObservedRowID = Self.queryMaxChatDBRowID()
-        installExtensionFiles()
+        Task.detached(priority: .utility) { [weak self] in
+            await self?.installExtensionFilesAsync()
+        }
         startWatcher()
     }
 
+    /// Dynamically updates the Apple ID identity used for iChat and iMessage control
+    public func updateAppleID(_ newAppleID: String) {
+        let clean = newAppleID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        self.nicholasAppleID = clean
+        knownContacts["me"] = clean
+        knownContacts["self"] = clean
+        UserDefaults.standard.set(clean, forKey: "genie.apple_id")
+        GeniePhoneBridgeManager.shared.appleID = clean
+        print("🧞 [Genie Messages] Updated active Apple ID for iChat/iMessage: \(clean)")
+    }
+
     // MARK: - Dedicated Extension Files Installation
+    private func installExtensionFilesAsync() async {
+        installAppleMessagesScript()
+        exportGenieContactCard(toDesktop: false)
+        await MainActor.run {
+            self.isExtensionInstalled = true
+        }
+    }
+
     /// Installs Genie's Apple Messages extension script, desktop contact card (vCard), and shortcuts
     public func installExtensionFiles() {
         installAppleMessagesScript()
-        exportGenieContactCard()
+        exportGenieContactCard(toDesktop: false)
         self.isExtensionInstalled = true
     }
 
@@ -114,11 +144,11 @@ public final class GenieiMessageExtensionManager: ObservableObject {
         let appSupportDir = "\(NSHomeDirectory())/Library/Application Support/Genie"
         try? FileManager.default.createDirectory(atPath: appSupportDir, withIntermediateDirectories: true)
         let appSupportURL = URL(fileURLWithPath: "\(appSupportDir)/Genie AI.vcf")
-        try? vcard.write(to: appSupportURL, atomically: true, encoding: .utf8)
+        try? vcard.write(to: appSupportURL, atomically: false, encoding: .utf8)
 
         if toDesktop {
             let desktopURL = URL(fileURLWithPath: "\(NSHomeDirectory())/Desktop/Genie AI.vcf")
-            try? vcard.write(to: desktopURL, atomically: true, encoding: .utf8)
+            try? vcard.write(to: desktopURL, atomically: false, encoding: .utf8)
             return desktopURL
         }
         return appSupportURL
@@ -153,6 +183,12 @@ public final class GenieiMessageExtensionManager: ObservableObject {
 
     // MARK: - Database Poller
     private func pollChatDB() {
+        // Reading ~/Library/Messages/chat.db needs Full Disk Access, which is
+        // not grantable to a sandboxed app, and the read itself goes through
+        // the sqlite3 binary. Neither is available to Genie Lite.
+        guard GenieCapabilities.canReadForeignAppContainers,
+              GenieCapabilities.canSpawnSubprocesses else { return }
+
         let chatDBPath = ("~/Library/Messages/chat.db" as NSString).expandingTildeInPath
         guard FileManager.default.fileExists(atPath: chatDBPath) else { return }
 
@@ -390,10 +426,19 @@ public final class GenieiMessageExtensionManager: ObservableObject {
         return (recipient: resolvedRecipient, body: body)
     }
 
-    // MARK: - Direct iMessage Transmission via AppleScript
+    // MARK: - Direct iMessage & iChat Transmission via AppleScript
     @discardableResult
     public func sendiMessageDirect(to recipient: String, message: String) -> Bool {
-        let target = recipient.isEmpty ? self.nicholasAppleID : recipient
+        let cleanRecipient = recipient.trimmingCharacters(in: .whitespacesAndNewlines)
+        let target: String
+        if cleanRecipient.isEmpty || cleanRecipient.lowercased() == "me" || cleanRecipient.lowercased() == "self" || cleanRecipient.lowercased() == "ichat" || cleanRecipient.lowercased() == "imessage" {
+            target = self.nicholasAppleID
+        } else if let match = knownContacts[cleanRecipient.lowercased()] {
+            target = match
+        } else {
+            target = cleanRecipient
+        }
+
         let escapedMsg = message
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
@@ -407,7 +452,14 @@ public final class GenieiMessageExtensionManager: ObservableObject {
                 send "\(escapedMsg)" to targetBuddyObj
                 return "OK"
             on error errMsg
-                return "ERROR: " & errMsg
+                try
+                    set targetService to first service whose service type is iMessage
+                    set theBuddy to buddy "\(target)" of targetService
+                    send "\(escapedMsg)" to theBuddy
+                    return "OK"
+                on error err2
+                    return "ERROR: " & err2
+                end try
             end try
         end tell
         """
@@ -424,6 +476,17 @@ public final class GenieiMessageExtensionManager: ObservableObject {
             }
         }
         return false
+    }
+
+    /// Opens Messages (iChat) conversation directly to the specified recipient or active Apple ID
+    public func openConversation(with recipient: String? = nil) {
+        let raw = recipient?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let target = raw.isEmpty ? self.nicholasAppleID : (knownContacts[raw.lowercased()] ?? raw)
+        if let url = URL(string: "imessage://\(target)") {
+            NSWorkspace.shared.open(url)
+        } else if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.MobileSMS") ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.iChat") {
+            NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+        }
     }
 
     public func sendiMessageReply(to sender: String, message: String) {
@@ -495,6 +558,9 @@ public final class GenieiMessageExtensionManager: ObservableObject {
 
     // MARK: - Shell Command Helper
     private func runShellCommand(_ cmd: String) -> String {
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            return GenieCapabilities.unavailableMessage("This command")
+        }
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/zsh")
         proc.arguments = ["-c", cmd]
@@ -513,6 +579,8 @@ public final class GenieiMessageExtensionManager: ObservableObject {
 
     // MARK: - Helper to Query Max Chat DB Row ID
     nonisolated public static func queryMaxChatDBRowID() -> Int64 {
+        guard GenieCapabilities.canReadForeignAppContainers,
+              GenieCapabilities.canSpawnSubprocesses else { return 0 }
         let chatDBPath = ("~/Library/Messages/chat.db" as NSString).expandingTildeInPath
         guard FileManager.default.fileExists(atPath: chatDBPath) else { return 0 }
 

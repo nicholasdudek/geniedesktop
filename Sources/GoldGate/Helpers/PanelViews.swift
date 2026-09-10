@@ -7,7 +7,7 @@ class MenuBarPopoverPanel: NSPanel, NSWindowDelegate {
     init(contentRect: NSRect) {
         super.init(
             contentRect: contentRect,
-            styleMask: [.borderless, .resizable],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
@@ -19,7 +19,7 @@ class MenuBarPopoverPanel: NSPanel, NSWindowDelegate {
         self.isMovableByWindowBackground = true
         self.minSize = NSSize(width: 460, height: 44)
         self.maxSize = NSSize(width: 2200, height: 1600)
-        self.showsResizeIndicator = true
+        self.showsResizeIndicator = false
         self.collectionBehavior = [
             .canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle, .stationary,
         ]
@@ -49,6 +49,26 @@ class MenuBarPopoverPanel: NSPanel, NSWindowDelegate {
             return true
         }
         return super.performKeyEquivalent(with: event)
+    }
+
+    override func orderFront(_ sender: Any?) {
+        super.orderFront(sender)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusMenuBarPanelVisibilityChanged"), object: true)
+    }
+
+    override func orderFrontRegardless() {
+        super.orderFrontRegardless()
+        NotificationCenter.default.post(name: NSNotification.Name("NexusMenuBarPanelVisibilityChanged"), object: true)
+    }
+
+    override func makeKeyAndOrderFront(_ sender: Any?) {
+        super.makeKeyAndOrderFront(sender)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusMenuBarPanelVisibilityChanged"), object: true)
+    }
+
+    override func orderOut(_ sender: Any?) {
+        super.orderOut(sender)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusMenuBarPanelVisibilityChanged"), object: false)
     }
 
     override func keyDown(with event: NSEvent) {
@@ -229,7 +249,6 @@ class NexusHostingView<Content: View>: NSHostingView<Content> {
                 } else {
                     if avgDeltaY > 0.030 {
                         NotificationCenter.default.post(name: NSNotification.Name("NexusThreeFingerDragUp"), object: nil)
-                        SpatialPlaneManager.shared.toggleZoomOutPlane()
                         touchStartPositions.removeAll()
                     } else if avgDeltaY < -0.030 {
                         NotificationCenter.default.post(name: NSNotification.Name("NexusThreeFingerDragDown"), object: nil)

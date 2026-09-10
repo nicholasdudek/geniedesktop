@@ -220,7 +220,7 @@ public final class TinyFolderAppPocketEngine: ObservableObject {
     }
 
     private func captureThumbnail(for windowId: CGWindowID, bounds: CGRect) {
-        if let imgRef = CGWindowListCreateImage(bounds, .optionIncludingWindow, windowId, [.bestResolution]) {
+        if let imgRef = safeCGWindowListCreateImage(bounds, .optionIncludingWindow, windowId, [.bestResolution]) {
             let nsImg = NSImage(cgImage: imgRef, size: activeFolderSize)
             self.liveThumbnailMap[windowId] = nsImg
         }

@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import IOKit.ps
 import Network
 
 // MARK: - 📱 Genie Phone Remote Bridge & Desktop Node Identity Manager
@@ -18,7 +19,7 @@ public final class GeniePhoneBridgeManager: ObservableObject {
     @Published public private(set) var clientAccessCount: Int = 0
 
     // ── Apple Messages (iMessage) & iPhone Sync ──────────────────────────────
-    @Published public var appleID: String = "nicholas.dudek@icloud.com"
+    @Published public var appleID: String = UserDefaults.standard.string(forKey: "genie.apple_id") ?? (GenieAppleAuth.discoverSystemAppleAccount()?.email ?? "nicholas.dudek@icloud.com")
     @Published public private(set) var isMessageWatcherActive: Bool = false
     @Published public private(set) var imessageRelayedCount: Int = 0
     @Published public private(set) var lastiMessageReceived: String = "None"
@@ -363,7 +364,7 @@ public final class GeniePhoneBridgeManager: ObservableObject {
 
     // MARK: - Native iMessage Transmission
     @discardableResult
-    public func sendiMessage(to recipient: String = "nicholas.dudek@icloud.com", message: String) -> Bool {
+    public func sendiMessage(to recipient: String = "", message: String) -> Bool {
         let cleanRecipient = recipient.isEmpty ? self.appleID : recipient
         let success = GenieiMessageExtensionManager.shared.sendiMessageDirect(to: cleanRecipient, message: message)
         if success {
@@ -403,6 +404,8 @@ public final class GeniePhoneBridgeManager: ObservableObject {
     }
 
     private static func queryMaxChatDBRowID() -> Int64 {
+        guard GenieCapabilities.canReadForeignAppContainers,
+              GenieCapabilities.canSpawnSubprocesses else { return 0 }
         let chatDBPath = ("~/Library/Messages/chat.db" as NSString).expandingTildeInPath
         guard FileManager.default.fileExists(atPath: chatDBPath) else { return 0 }
 
@@ -473,22 +476,37 @@ public final class GeniePhoneBridgeManager: ObservableObject {
         return "🧞 [Genie Live Reply]\nReceived: \"\(clean)\"\nMac workspace active (Battery: \(battery))."
     }
 
+    /// Battery summary read straight from IOKit rather than by parsing the
+    /// second line of `pmset -g batt`. Same information, no subprocess, and it
+    /// keeps working in the sandboxed build.
     public static func quickBatteryStatus() -> String {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
-        proc.arguments = ["-g", "batt"]
-        let pipe = Pipe()
-        proc.standardOutput = pipe
-        try? proc.run()
-        proc.waitUntilExit()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        if let str = String(data: data, encoding: .utf8) {
-            let lines = str.components(separatedBy: "\n")
-            if lines.count > 1 {
-                return lines[1].trimmingCharacters(in: .whitespacesAndNewlines)
-            }
+        guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue()
+                as? [CFTypeRef],
+              let first = sources.first,
+              let info = IOPSGetPowerSourceDescription(snapshot, first)?
+                .takeUnretainedValue() as? [String: Any] else {
+            return "Normal"
         }
-        return "Normal"
+
+        let capacity = info[kIOPSCurrentCapacityKey as String] as? Int
+        let maxCapacity = info[kIOPSMaxCapacityKey as String] as? Int ?? 100
+        let state = info[kIOPSPowerSourceStateKey as String] as? String
+        let isCharging = info[kIOPSIsChargingKey as String] as? Bool ?? false
+
+        guard let capacity, maxCapacity > 0 else { return "Normal" }
+        let percent = Int((Double(capacity) / Double(maxCapacity)) * 100.0)
+
+        let plugged = state == (kIOPSACPowerValue as String)
+        let status: String
+        if isCharging {
+            status = "charging"
+        } else if plugged {
+            status = "charged"
+        } else {
+            status = "discharging"
+        }
+        return "\(percent)%; \(status)"
     }
 
     // MARK: - Native Hardware Input Actions
@@ -500,11 +518,11 @@ public final class GeniePhoneBridgeManager: ObservableObject {
             usleep(20_000)
             up.post(tap: .cghidEventTap)
         } else {
-            let script = "tell application \"System Events\" to key code 36"
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            p.arguments = ["-e", script]
-            try? p.run()
+            // In-process Apple Event instead of spawning /usr/bin/osascript:
+            // `com.apple.systemevents` is entitled in both distribution profiles.
+            var errorInfo: NSDictionary?
+            NSAppleScript(source: "tell application \"System Events\" to key code 36")?
+                .executeAndReturnError(&errorInfo)
         }
     }
 
@@ -568,7 +586,7 @@ public final class GeniePhoneBridgeManager: ObservableObject {
     public static func captureScreenJPEG(quality: CGFloat = 0.60) -> Data? {
         guard let screen = NSScreen.main else { return nil }
         let rect = screen.frame
-        guard let cgImage = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution, .nominalResolution]) else {
+        guard let cgImage = safeCGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution, .nominalResolution]) else {
             return nil
         }
         let bitmap = NSBitmapImageRep(cgImage: cgImage)

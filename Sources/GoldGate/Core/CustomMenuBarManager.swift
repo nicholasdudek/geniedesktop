@@ -479,15 +479,15 @@ public final class CustomMenuBarWindow: NSWindow {
 
     // While the Unified Command Window hosts the strip, refuse to come on screen no matter who asks.
     public override func orderFront(_ sender: Any?) {
-        if CustomMenuBarManager.shared.isSuppressedByUnifiedWindow { return }
+        if CustomMenuBarManager.shared.shouldHideBar { return }
         super.orderFront(sender)
     }
     public override func orderFrontRegardless() {
-        if CustomMenuBarManager.shared.isSuppressedByUnifiedWindow { return }
+        if CustomMenuBarManager.shared.shouldHideBar { return }
         super.orderFrontRegardless()
     }
     public override func makeKeyAndOrderFront(_ sender: Any?) {
-        if CustomMenuBarManager.shared.isSuppressedByUnifiedWindow { return }
+        if CustomMenuBarManager.shared.shouldHideBar { return }
         super.makeKeyAndOrderFront(sender)
     }
 
@@ -611,6 +611,7 @@ public struct CustomMenuBarView: View {
     @State private var showControlCenterPopover: Bool = false
     @AppStorage(PrefKey.menuBarAppsPlacement) var appsPlacement: String = "Right Side (Classic Dock)"
     @AppStorage(PrefKey.miniDockDisplayMode) var miniDockDisplayMode: String = "Always Shown"
+    @AppStorage(PrefKey.showMiniDockInMenuBar) var showMiniDockInMenuBar: Bool = false
     @AppStorage(PrefKey.standardMenusSlidIn) var standardMenusSlidIn: Bool = true
     @AppStorage(PrefKey.appleControlsSlidIn) var appleControlsSlidIn: Bool = false
     @AppStorage(PrefKey.menuBarFullScreenBehavior) var fullScreenBehavior: String = "Auto-Hide on Hover"
@@ -1288,13 +1289,10 @@ public struct CustomMenuBarView: View {
             }
             .buttonStyle(.plain)
             .onHover { isSecondaryControlHovered = $0 }
-            .help("Spatial & Display Control (Aspect Ratio, Multi-Display & 3x3 Canvas)")
+            .help("Display Control (Aspect Ratio, Multi-Display & Window Warp)")
             .contextMenu {
-                Button("Open Spatial & Display Control") {
+                Button("Open Display Control") {
                     SecondaryControlCenterPopoverManager.shared.show(screen: screen)
-                }
-                Button("Toggle 3x3 Spatial Canvas") {
-                    SpatialPlaneManager.shared.toggleZoomOutPlane()
                 }
                 Divider()
                 Button("Warp Window to Next Display") {
@@ -1398,7 +1396,23 @@ public struct CustomMenuBarView: View {
         let isClearMode = miniDockBackgroundStyle.contains("Clear") || miniDockBackgroundStyle == "Transparent"
         return HStack(spacing: 6) {
             // ── Mini Dock Strip (Genie Launcher, Running Apps, Folder, Trash, Chevron, Battery Pill) ──
-            MenuBarAppStripView()
+            if showMiniDockInMenuBar {
+                MenuBarAppStripView()
+            } else {
+                Button(action: {
+                    HapticFeedback.selection()
+                    FinderChatWindowManager.shared.toggle()
+                }) {
+                    Image(nsImage: StatusIconRenderer.generateGlyphImage(glyph: statusIconGlyph.isEmpty ? "Genie Lamp 🪔" : statusIconGlyph, size: 16, phase: 0))
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 16, height: 16)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .contextMenu {
+                    menuBarContextMenu
+                }
+            }
 
             // ── Clear Transparent Holder for System Controls & Icon Clock (No text) ──
             HStack(spacing: 5) {
@@ -1940,6 +1954,33 @@ public final class CustomMenuBarManager: ObservableObject {
     /// True while the Unified Command Window is showing; the strip lives inside that window instead.
     public private(set) var isSuppressedByUnifiedWindow: Bool = false
 
+    private var hoverTimer: Timer?
+    private var isPointerNearBar = false
+    private var lastHoverDate = Date.distantPast
+
+    public var shouldHideBar: Bool {
+        let autoHide = UserDefaults.standard.string(forKey: PrefKey.menuBarFullScreenBehavior) == "Auto-Hide on Hover"
+        return !isEnabled || ((autoHide || isSuppressedByUnifiedWindow) && !isPointerNearBar)
+    }
+
+    private func refreshHover() {
+        let pointer = NSEvent.mouseLocation
+        let hovering = menuBarWindows.contains { window in
+            let screen = window.effectiveScreen
+            let height = CustomMenuBarWindow.metrics(for: screen).windowHeight
+            let region = NSRect(x: screen.frame.minX, y: screen.frame.maxY - height,
+                                width: screen.frame.width, height: height)
+            return region.contains(pointer)
+        }
+        if hovering { lastHoverDate = Date() }
+        let revealed = hovering || Date().timeIntervalSince(lastHoverDate) < 0.6
+            || AppDelegate.shared?.menuBarPanel?.isVisible == true
+        if revealed != isPointerNearBar {
+            isPointerNearBar = revealed
+            updateVisibility()
+        }
+    }
+
     public func setSuppressedByUnifiedWindow(_ suppressed: Bool) {
         isSuppressedByUnifiedWindow = suppressed
         updateVisibility()
@@ -1955,6 +1996,15 @@ public final class CustomMenuBarManager: ObservableObject {
     }
 
     private init() {
+        hoverTimer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refreshHover() }
+        }
+        if let hoverTimer { RunLoop.main.add(hoverTimer, forMode: .common) }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.updateVisibility() }
+        }
         // 1. Screen changes
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -1985,11 +2035,9 @@ public final class CustomMenuBarManager: ObservableObject {
         ) { [weak self] notif in
             let page = (notif.object as? Int) ?? 0
             Task { @MainActor [weak self] in
-                guard let self = self, self.isEnabled, !self.isSuppressedByUnifiedWindow else { return }
+                guard let self = self else { return }
                 self.isGenieOpen = (page == 1)
-                for win in self.menuBarWindows {
-                    win.orderFrontRegardless()
-                }
+                self.updateVisibility()
             }
         }
 
@@ -2000,16 +2048,14 @@ public final class CustomMenuBarManager: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self = self, self.isEnabled, !self.isSuppressedByUnifiedWindow else { return }
-                for win in self.menuBarWindows {
-                    win.orderFrontRegardless()
-                }
+                guard let self = self else { return }
+                self.updateVisibility()
             }
         }
     }
 
     public func updateVisibility() {
-        let shouldHide = !isEnabled || isSuppressedByUnifiedWindow
+        let shouldHide = shouldHideBar
         for win in menuBarWindows {
             if shouldHide {
                 win.alphaValue = 0.0
@@ -2029,8 +2075,8 @@ public final class CustomMenuBarManager: ObservableObject {
             } else {
                 win.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
             }
-            win.alphaValue = 1.0
         }
+        updateVisibility()
     }
 
     public func rebuildWindows() {
@@ -2047,7 +2093,7 @@ public final class CustomMenuBarManager: ObservableObject {
                 let hosting = CustomMenuBarHostingView(rootView: CustomMenuBarView(screen: screen))
                 win.contentView = hosting
                 win.hostingView = hosting
-                if !isSuppressedByUnifiedWindow { win.orderFront(nil) }
+                if !shouldHideBar { win.orderFront(nil) }
                 menuBarWindows.append(win)
             }
         } else {

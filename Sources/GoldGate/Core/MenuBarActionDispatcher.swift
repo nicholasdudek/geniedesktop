@@ -152,13 +152,6 @@ public struct TrashFrameKey: PreferenceKey {
     }
 }
 
-public struct ChevronFrameKey: PreferenceKey {
-    public static var defaultValue: NSRect = .zero
-    public static func reduce(value: inout NSRect, nextValue: () -> NSRect) {
-        let next = nextValue()
-        if next != .zero { value = next }
-    }
-}
 
 public struct BatteryFrameKey: PreferenceKey {
     public static var defaultValue: NSRect = .zero
@@ -219,7 +212,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
 
     public var dockItems: [DockAppItem] = []
     public var displayApps: [NSRunningApplication] = []
-    public var isCollapsedIntoBattery: Bool = false
     public var stripWidth: CGFloat = 0
 
     // Geometry frames measured by SwiftUI
@@ -227,7 +219,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
     public var appFrames: [AppFrameItem] = []
     public var finderFrame: NSRect = .zero
     public var trashFrame: NSRect = .zero
-    public var chevronFrame: NSRect = .zero
     public var batteryFrame: NSRect = .zero
 
     private var lastHandledEventNumber: Int = -1
@@ -235,7 +226,58 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
 
     private override init() {
         super.init()
-        self.isCollapsedIntoBattery = UserDefaults.standard.bool(forKey: PrefKey.isCollapsedIntoBattery)
+    }
+
+    // MARK: - Smart Edge Reveal
+    // Replaces the old manual "plug" click handle: when the mini dock is set to auto-hide, it now
+    // simply appears on its own once the cursor nears the top-right corner where the status item
+    // lives, the same way the real macOS Dock reveals when you push the cursor to the screen edge.
+
+    private var edgeProximityTimer: Timer?
+    private var isNearEdgeState = false
+    private var isOverDockArea = false
+    private var dockSwipeMonitor: Any?
+
+    public func startEdgeProximityMonitoring() {
+        if edgeProximityTimer == nil {
+            edgeProximityTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
+                self?.checkEdgeProximity()
+            }
+        }
+        startDockSwipeMonitoring()
+    }
+
+    public func stopEdgeProximityMonitoring() {
+        edgeProximityTimer?.invalidate()
+        edgeProximityTimer = nil
+        stopDockSwipeMonitoring()
+    }
+
+    // Dock swipe monitoring (disabled 3x3 spatial plane jumps to keep dock focused and stable)
+    private func startDockSwipeMonitoring() {
+        // Spatial grid navigation disabled in favor of core AI chat & mini dock stability
+    }
+
+    private func stopDockSwipeMonitoring() {
+        if let monitor = dockSwipeMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+        dockSwipeMonitor = nil
+    }
+
+    private func checkEdgeProximity() {
+        guard let screen = NSScreen.main else { return }
+        let mouseLoc = NSEvent.mouseLocation
+        let distanceFromTop = screen.frame.maxY - mouseLoc.y
+        // Reveal zone: the top few points of the screen, on the right-hand side where the
+        // status item's strip lives (roughly stripWidth + some slack, or a sensible default
+        // before the strip has reported its real measured width).
+        let revealZoneWidth = max(220, stripWidth + 80)
+        let isNear = distanceFromTop <= 4 && mouseLoc.x >= (screen.frame.maxX - revealZoneWidth)
+        isOverDockArea = distanceFromTop <= 30 && mouseLoc.x >= (screen.frame.maxX - revealZoneWidth)
+        guard isNear != isNearEdgeState else { return }
+        isNearEdgeState = isNear
+        NotificationCenter.default.post(name: NSNotification.Name("NexusMenuBarEdgeProximity"), object: isNear)
     }
 
     // MARK: - Central Click Dispatcher (Called by ClickableHostingView & statusItem.button)
@@ -275,7 +317,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         case app(DockAppItem)
         case finder
         case trash
-        case chevron
         case battery
     }
 
@@ -301,10 +342,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
             return .trash
         }
 
-        if chevronFrame != .zero && (chevronFrame.minX...chevronFrame.maxX).contains(point.x) {
-            return .chevron
-        }
-
         if batteryFrame != .zero && (batteryFrame.minX...batteryFrame.maxX).contains(point.x) {
             return .battery
         }
@@ -325,9 +362,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         if trashFrame != .zero {
             targets.append((.trash, trashFrame.midX))
         }
-        if chevronFrame != .zero {
-            targets.append((.chevron, chevronFrame.midX))
-        }
         if batteryFrame != .zero {
             targets.append((.battery, batteryFrame.midX))
         }
@@ -340,41 +374,33 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         }
 
         // 3. Fallback if frames not yet measured:
-        if isCollapsedIntoBattery {
-            if point.x < 18 { return .chevron }
-            if point.x < 64 { return .battery }
-            return .leo
-        } else {
-            let dockAlwaysShowFinder = UserDefaults.standard.object(forKey: PrefKey.dockAlwaysShowFinder) as? Bool ?? true
-            let dockAlwaysShowTrash = UserDefaults.standard.object(forKey: PrefKey.dockAlwaysShowTrash) as? Bool ?? true
-            let menuBarAppSwitcherEnabled = UserDefaults.standard.object(forKey: PrefKey.menuBarAppSwitcherEnabled) as? Bool ?? false
+        let dockAlwaysShowFinder = UserDefaults.standard.object(forKey: PrefKey.dockAlwaysShowFinder) as? Bool ?? true
+        let dockAlwaysShowTrash = UserDefaults.standard.object(forKey: PrefKey.dockAlwaysShowTrash) as? Bool ?? true
+        let menuBarAppSwitcherEnabled = UserDefaults.standard.object(forKey: PrefKey.menuBarAppSwitcherEnabled) as? Bool ?? false
 
-            let dockStartX: CGFloat = 4
-            let appSlotWidth: CGFloat = 26
-            let totalApps = dockItems.count
-            let appsEndX = dockStartX + CGFloat(totalApps) * appSlotWidth
-            if point.x >= dockStartX && point.x < appsEndX {
-                let index = min(totalApps - 1, max(0, Int((point.x - dockStartX) / appSlotWidth)))
-                if index < totalApps { return .app(dockItems[index]) }
-            }
-            var curX = appsEndX
-            if dockAlwaysShowFinder {
-                if point.x >= curX && point.x < curX + 26 { return .finder }
-                curX += 26
-            }
-            if dockAlwaysShowTrash {
-                if point.x >= curX && point.x < curX + 26 { return .trash }
-                curX += 26
-            }
-            if menuBarAppSwitcherEnabled {
-                if point.x >= curX && point.x < curX + 26 { return .app(dockItems.first ?? DockAppItem(id: "switcher", name: "Switcher")) }
-                curX += 26
-            }
-            if point.x >= curX && point.x < curX + 18 { return .chevron }
-            curX += 18
-            if point.x >= curX && point.x < curX + 50 { return .battery }
-            return .leo
+        let dockStartX: CGFloat = 4
+        let appSlotWidth: CGFloat = 26
+        let totalApps = dockItems.count
+        let appsEndX = dockStartX + CGFloat(totalApps) * appSlotWidth
+        if point.x >= dockStartX && point.x < appsEndX {
+            let index = min(totalApps - 1, max(0, Int((point.x - dockStartX) / appSlotWidth)))
+            if index < totalApps { return .app(dockItems[index]) }
         }
+        var curX = appsEndX
+        if dockAlwaysShowFinder {
+            if point.x >= curX && point.x < curX + 26 { return .finder }
+            curX += 26
+        }
+        if dockAlwaysShowTrash {
+            if point.x >= curX && point.x < curX + 26 { return .trash }
+            curX += 26
+        }
+        if menuBarAppSwitcherEnabled {
+            if point.x >= curX && point.x < curX + 26 { return .app(dockItems.first ?? DockAppItem(id: "switcher", name: "Switcher")) }
+            curX += 26
+        }
+        if point.x >= curX && point.x < curX + 50 { return .battery }
+        return .leo
     }
 
     // MARK: - Left Click Handlers
@@ -389,8 +415,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
             openNativeFinder()
         case .trash:
             openNativeTrash()
-        case .chevron:
-            toggleCollapse()
         case .battery:
             handleBatteryClick()
         }
@@ -526,12 +550,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         }
     }
 
-    public func toggleCollapse() {
-        isCollapsedIntoBattery.toggle()
-        UserDefaults.standard.set(isCollapsedIntoBattery, forKey: PrefKey.isCollapsedIntoBattery)
-        NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockCollapse"), object: nil)
-    }
-
     public func handleBatteryClick(in view: NSView? = nil, event: NSEvent? = nil) {
         HapticFeedback.selection()
         cycleNextBatteryStyle()
@@ -552,8 +570,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
             menu = makeFinderContextMenu()
         case .trash:
             menu = makeTrashContextMenu()
-        case .chevron:
-            menu = makeChevronContextMenu()
         case .battery:
             menu = makeBatteryContextMenu()
         }
@@ -715,37 +731,12 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         openNotesItem.target = self
         menu.addItem(openNotesItem)
 
-        // 3. Printer Sounds Toggle (Optional)
-        let soundOn = UserDefaults.standard.bool(forKey: PrefKey.notePrinterSoundEnabled)
-        let soundItem = NSMenuItem(
-            title: soundOn ? "✓ Mechanical Printer Sounds" : "Mechanical Printer Sounds",
-            action: #selector(togglePrinterSoundMenu),
-            keyEquivalent: ""
-        )
-        soundItem.image = NSImage(systemSymbolName: soundOn ? "speaker.wave.2.fill" : "speaker.slash.fill", accessibilityDescription: nil)
-        soundItem.target = self
-        soundItem.state = soundOn ? .on : .off
-        menu.addItem(soundItem)
-
         menu.addItem(NSMenuItem.separator())
 
-        // 4. Mini Dock Style Submenu (Matching battery dropdown)
-        let dockStyleMenu = NSMenu(title: "Mini Dock Style")
-        let currentDockStyle = UserDefaults.standard.string(forKey: PrefKey.miniDockBackgroundStyle) ?? "Clear (Transparent)"
-        let dockStyles = ["Clear (Transparent)", "Frosted Glass", "Dark Translucent", "Neon Tint"]
-        for style in dockStyles {
-            let isCurrent = (currentDockStyle == style)
-            let item = NSMenuItem(
-                title: style,
-                action: #selector(selectMiniDockStyleItem(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = style
-            item.state = isCurrent ? .on : .off
-            dockStyleMenu.addItem(item)
-        }
-        // 4. Apple Logo Color Submenu
+        // 3. Consolidated Preferences & Styles Submenu
+        let quickPrefMenu = NSMenu(title: "Preferences & Styles")
+
+        // Apple Logo Color
         let appleColorMenu = NSMenu(title: "Apple Logo Color")
         let currentAppleColor = UserDefaults.standard.string(forKey: PrefKey.menuBarAppleColor) ?? "Retro Rainbow 🌈"
         let appleColors = [
@@ -769,9 +760,9 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         let appleColorSubItem = NSMenuItem(title: "Apple Logo Color ❯", action: nil, keyEquivalent: "")
         appleColorSubItem.image = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
         appleColorSubItem.submenu = appleColorMenu
-        menu.addItem(appleColorSubItem)
+        quickPrefMenu.addItem(appleColorSubItem)
 
-        // 5. Mini Dock Style Submenu (Matching battery dropdown)
+        // Slide-in Direction
         let directionMenu = NSMenu(title: "Slide-in Direction")
         let currentDirection = UserDefaults.standard.string(forKey: PrefKey.gridTransitionDirection) ?? "Slide from Right (iPhone Mode 📱)"
         let directions = [
@@ -796,18 +787,62 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         let directionSubItem = NSMenuItem(title: "Slide-in Direction ❯", action: nil, keyEquivalent: "")
         directionSubItem.image = NSImage(systemSymbolName: "arrow.left.and.right", accessibilityDescription: nil)
         directionSubItem.submenu = directionMenu
-        menu.addItem(directionSubItem)
+        quickPrefMenu.addItem(directionSubItem)
 
-        // 6. Collapse Dock into Battery
-        let collapseTitle = isCollapsedIntoBattery ? "Expand Dock from Battery" : "Collapse Dock into Battery"
-        let collapseItem = NSMenuItem(title: collapseTitle, action: #selector(chevronToggle), keyEquivalent: "")
-        collapseItem.image = NSImage(systemSymbolName: "arrow.left.and.right.circle", accessibilityDescription: nil)
-        collapseItem.target = self
-        menu.addItem(collapseItem)
+        // Mini Dock Style
+        let dockStyleMenu = NSMenu(title: "Mini Dock Style")
+        let currentDockStyle = UserDefaults.standard.string(forKey: PrefKey.miniDockBackgroundStyle) ?? "Clear (Transparent)"
+        let dockStyles = ["Clear (Transparent)", "Frosted Glass", "Dark Translucent", "Neon Tint"]
+        for style in dockStyles {
+            let isCurrent = (currentDockStyle == style)
+            let item = NSMenuItem(
+                title: style,
+                action: #selector(selectMiniDockStyleItem(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = style
+            item.state = isCurrent ? .on : .off
+            dockStyleMenu.addItem(item)
+        }
+        let dockStyleSubItem = NSMenuItem(title: "Mini Dock Style ❯", action: nil, keyEquivalent: "")
+        dockStyleSubItem.image = NSImage(systemSymbolName: "macwindow.on.rectangle", accessibilityDescription: nil)
+        dockStyleSubItem.submenu = dockStyleMenu
+        quickPrefMenu.addItem(dockStyleSubItem)
+
+        quickPrefMenu.addItem(NSMenuItem.separator())
+
+        // Printer Sounds Toggle
+        let soundOn = UserDefaults.standard.bool(forKey: PrefKey.notePrinterSoundEnabled)
+        let soundItem = NSMenuItem(
+            title: soundOn ? "✓ Mechanical Printer Sounds" : "Mechanical Printer Sounds",
+            action: #selector(togglePrinterSoundMenu),
+            keyEquivalent: ""
+        )
+        soundItem.image = NSImage(systemSymbolName: soundOn ? "speaker.wave.2.fill" : "speaker.slash.fill", accessibilityDescription: nil)
+        soundItem.target = self
+        soundItem.state = soundOn ? .on : .off
+        quickPrefMenu.addItem(soundItem)
+
+        // Clear HTML Solutions Overlay (⌥⌘O)
+        let overlayItem = NSMenuItem(
+            title: "Clear HTML Solutions Overlay",
+            action: #selector(toggleClearHTMLOverlayAction),
+            keyEquivalent: "o"
+        )
+        overlayItem.keyEquivalentModifierMask = [.command, .option]
+        overlayItem.image = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)
+        overlayItem.target = self
+        quickPrefMenu.addItem(overlayItem)
+
+        let quickPrefSubItem = NSMenuItem(title: LocalizedStrings.translateText("Preferences & Styles ❯", lang: lang), action: nil, keyEquivalent: "")
+        quickPrefSubItem.image = NSImage(systemSymbolName: "slider.horizontal.3", accessibilityDescription: nil)
+        quickPrefSubItem.submenu = quickPrefMenu
+        menu.addItem(quickPrefSubItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // 7. Genie Settings... ⌘,
+        // 4. Genie Settings... ⌘,
         let settingsItem = NSMenuItem(title: LocalizedStrings.translateText("Genie Settings...", lang: lang), action: #selector(openGenieSettings), keyEquivalent: ",")
         settingsItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
         settingsItem.target = self
@@ -815,7 +850,7 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
 
         menu.addItem(NSMenuItem.separator())
 
-        // 9. Quit Genie ⌘Q
+        // 5. Quit Genie ⌘Q
         let quitItem = NSMenuItem(title: LocalizedStrings.translateText("Quit Genie", lang: lang), action: #selector(quitGenie), keyEquivalent: "q")
         quitItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: nil)
         quitItem.target = self
@@ -1153,105 +1188,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         NSAppleScript(source: script)?.executeAndReturnError(nil)
     }
 
-    private func makeChevronContextMenu() -> NSMenu {
-        let menu = NSMenu(title: "Mini Dock")
-        let lang = UserDefaults.standard.string(forKey: PrefKey.appLanguage) ?? "English (US)"
-        let title = isCollapsedIntoBattery ? "Expand Dock from Battery" : "Collapse Dock into Battery"
-        let item = NSMenuItem(title: title, action: #selector(chevronToggle), keyEquivalent: "")
-        item.image = NSImage(systemSymbolName: "arrow.left.and.right.circle", accessibilityDescription: nil)
-        item.target = self
-        menu.addItem(item)
-
-        menu.addItem(NSMenuItem.separator())
-
-        // Mini Dock Display Mode (Always On vs Always Hidden / Pop Down)
-        let curMode = UserDefaults.standard.string(forKey: PrefKey.miniDockDisplayMode) ?? "Always Shown"
-        let isHiddenMode = (curMode == "Always Hidden" || curMode == "Auto-Hide")
-        let toggleModeTitle = isHiddenMode ? LocalizedStrings.translateText("Enable Always On", lang: lang) : LocalizedStrings.translateText("Always Hide (Pop Down)", lang: lang)
-        let modeToggleItem = NSMenuItem(title: toggleModeTitle, action: #selector(toggleMiniDockModeAction), keyEquivalent: "")
-        modeToggleItem.image = NSImage(systemSymbolName: isHiddenMode ? "dock.rectangle" : "chevron.down", accessibilityDescription: nil)
-        modeToggleItem.target = self
-        menu.addItem(modeToggleItem)
-
-        let modeMenu = NSMenu(title: "Mini Dock Mode")
-        let alwaysOnItem = NSMenuItem(title: "Always On (Permanently Shown)", action: #selector(selectMiniDockModeAlwaysOn), keyEquivalent: "")
-        alwaysOnItem.target = self
-        alwaysOnItem.state = (!isHiddenMode) ? .on : .off
-        modeMenu.addItem(alwaysOnItem)
-
-        let alwaysHiddenItem = NSMenuItem(title: "Always Hidden (Pops Down on Hover)", action: #selector(selectMiniDockModeAlwaysHidden), keyEquivalent: "")
-        alwaysHiddenItem.target = self
-        alwaysHiddenItem.state = isHiddenMode ? .on : .off
-        modeMenu.addItem(alwaysHiddenItem)
-
-        let modeParent = NSMenuItem(title: "Mini Dock Mode ❯", action: nil, keyEquivalent: "")
-        modeParent.image = NSImage(systemSymbolName: "menubar.dock.rectangle", accessibilityDescription: nil)
-        modeParent.submenu = modeMenu
-        menu.addItem(modeParent)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let styleMenu = NSMenu(title: "Mini Dock Style")
-        let currentStyle = UserDefaults.standard.string(forKey: PrefKey.miniDockBackgroundStyle) ?? "Clear (Transparent)"
-        let styles = ["Clear (Transparent)", "Frosted Glass", "Dark Translucent", "Neon Tint"]
-        for s in styles {
-            let sItem = NSMenuItem(title: s, action: #selector(selectMiniDockStyle(_:)), keyEquivalent: "")
-            sItem.target = self
-            sItem.representedObject = s
-            if s == currentStyle {
-                sItem.state = .on
-            }
-            styleMenu.addItem(sItem)
-        }
-        let styleParent = NSMenuItem(title: "Mini Dock Style", action: nil, keyEquivalent: "")
-        styleParent.image = NSImage(systemSymbolName: "menubar.rectangle", accessibilityDescription: nil)
-        styleParent.submenu = styleMenu
-        menu.addItem(styleParent)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let settingsItem = NSMenuItem(title: LocalizedStrings.translateText("Genie Settings...", lang: lang), action: #selector(openGenieSettings), keyEquivalent: ",")
-        settingsItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
-        settingsItem.target = self
-        menu.addItem(settingsItem)
-
-        return menu
-    }
-
-    @objc private func toggleMiniDockModeAction() {
-        HapticFeedback.selection()
-        let curMode = UserDefaults.standard.string(forKey: PrefKey.miniDockDisplayMode) ?? "Always Shown"
-        let isHiddenMode = (curMode == "Always Hidden" || curMode == "Auto-Hide")
-        let newMode = isHiddenMode ? "Always Shown" : "Always Hidden"
-        UserDefaults.standard.set(newMode, forKey: PrefKey.miniDockDisplayMode)
-        NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: newMode)
-        AppDelegate.shared?.renderIcon()
-    }
-
-    @objc private func selectMiniDockModeAlwaysOn() {
-        HapticFeedback.selection()
-        UserDefaults.standard.set("Always Shown", forKey: PrefKey.miniDockDisplayMode)
-        NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: "Always Shown")
-        AppDelegate.shared?.renderIcon()
-    }
-
-    @objc private func selectMiniDockModeAlwaysHidden() {
-        HapticFeedback.selection()
-        UserDefaults.standard.set("Always Hidden", forKey: PrefKey.miniDockDisplayMode)
-        NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: "Always Hidden")
-        AppDelegate.shared?.renderIcon()
-    }
-
-    @objc private func selectMiniDockStyle(_ sender: NSMenuItem) {
-        guard let s = sender.representedObject as? String else { return }
-        UserDefaults.standard.set(s, forKey: PrefKey.miniDockBackgroundStyle)
-        NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockStyleChanged"), object: s)
-        AppDelegate.shared?.renderIcon()
-    }
-
-    @objc public func chevronToggle() {
-        toggleCollapse()
-    }
 
     // MARK: - Battery Quick Switcher (Simple Choices for Battery Bar & Percentages)
 
@@ -1330,6 +1266,11 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
     @objc public func toggleDesktopFilesAction() {
         HapticFeedback.selection()
         DesktopFilesManager.shared.toggleDesktopFiles()
+    }
+
+    @objc public func toggleClearHTMLOverlayAction() {
+        HapticFeedback.selection()
+        GenieClearHTMLOverlayManager.shared.toggle()
     }
 
     @objc public func selectColorModeItem(_ sender: NSMenuItem) {

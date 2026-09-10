@@ -135,9 +135,13 @@ public final class GenieTreeEnsembleEngine: ObservableObject {
         trees.append(DecisionTreeNode(
             featureIndex: 39, threshold: 0.5,
             left: DecisionTreeNode(
-                featureIndex: 56, threshold: 0.5,
-                left: leaf([.conversational: 0.7, .terminalExec: 0.2, .appleNote: 0.1]),
-                right: leaf([.conversational: 0.95, .webSearch: 0.05])
+                featureIndex: 45, threshold: 0.5,
+                left: DecisionTreeNode(
+                    featureIndex: 56, threshold: 0.5,
+                    left: leaf([.conversational: 0.7, .terminalExec: 0.2, .appleNote: 0.1]),
+                    right: leaf([.conversational: 0.95, .webSearch: 0.05])
+                ),
+                right: leaf([.screenshot: 0.96, .macShortcut: 0.04])
             ),
             right: DecisionTreeNode(
                 featureIndex: 17, threshold: 0.1, // Safari
@@ -239,20 +243,25 @@ public final class GenieTreeEnsembleEngine: ObservableObject {
                 right: leaf([.conversational: 0.98, .webSearch: 0.02])
             ),
             right: DecisionTreeNode(
-                featureIndex: 39, threshold: 0.5,
-                left: leaf([.terminalExec: 0.4, .appleNote: 0.3, .screenshot: 0.3]),
-                right: leaf([.appLaunch: 0.9, .macShortcut: 0.1])
+                featureIndex: 45, threshold: 0.5,
+                left: DecisionTreeNode(
+                    featureIndex: 39, threshold: 0.5,
+                    left: leaf([.terminalExec: 0.5, .appleNote: 0.5]),
+                    right: leaf([.appLaunch: 0.9, .macShortcut: 0.1])
+                ),
+                right: leaf([.screenshot: 0.98, .macShortcut: 0.02])
             )
         ))
 
         self.randomForest = trees
 
-        // Build 12 Boosted Decision Stumps for AdaBoost
+        // Build 13 Boosted Decision Stumps for AdaBoost
         var stumps: [AdaBoostStump] = []
         stumps.append(AdaBoostStump(featureIndex: 39, threshold: 0.5, polarity: true, targetClass: .appLaunch, weight: 1.45))
         stumps.append(AdaBoostStump(featureIndex: 40, threshold: 0.5, polarity: true, targetClass: .terminalExec, weight: 1.55))
         stumps.append(AdaBoostStump(featureIndex: 41, threshold: 0.5, polarity: true, targetClass: .macShortcut, weight: 1.50))
         stumps.append(AdaBoostStump(featureIndex: 4, threshold: 0.5, polarity: true, targetClass: .screenshot, weight: 1.60))
+        stumps.append(AdaBoostStump(featureIndex: 45, threshold: 0.5, polarity: true, targetClass: .screenshot, weight: 1.65))
         stumps.append(AdaBoostStump(featureIndex: 5, threshold: 0.5, polarity: true, targetClass: .screenRecord, weight: 1.55))
         stumps.append(AdaBoostStump(featureIndex: 42, threshold: 0.5, polarity: true, targetClass: .appleNote, weight: 1.40))
         stumps.append(AdaBoostStump(featureIndex: 43, threshold: 0.5, polarity: true, targetClass: .appleReminder, weight: 1.50))

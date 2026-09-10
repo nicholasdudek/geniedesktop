@@ -14,7 +14,7 @@ import QuartzCore
 // 2. Multi-Level Mipmap Generation (Levels 0..4) with sub-millisecond execution.
 // 3. Crisp Dynamic Preview Textures for offscreen spaces (Desktops 1..81) and documents on-demand.
 // 4. Sub-Pixel Anti-Aliasing (SPAA) & Procedural Glass Chromatic Aberration in Metal & SwiftUI.
-// 5. Seamless bridging with LocalModelManager and SwiftDOMEngine.
+// 5. Seamless bridging with LocalModelManager.
 
 // MARK: - Mipmap Resolution Levels
 public enum NeuralMipmapLevel: Int, CaseIterable, Sendable {
@@ -54,14 +54,6 @@ public enum NeuralMipmapLevel: Int, CaseIterable, Sendable {
     }
 }
 
-// MARK: - Prediction / Hallucination Modes
-public enum NeuralPredictionMode: String, CaseIterable, Sendable {
-    case spaceOverview = "Spatial Desktop Space"
-    case documentPreview = "Code & Document Preview"
-    case webDOM = "Web DOM Snapshot"
-    case terminalSession = "Terminal Matrix & Cookbooks"
-    case dynamicWallpaper = "Procedural Atmospheric Wallpaper"
-}
 
 // MARK: - Document Preview Type
 public enum NeuralDocumentType: String, CaseIterable, Sendable {
@@ -745,55 +737,3 @@ public struct NeuralGlassChromaticAberrationView<Content: View>: View {
     }
 }
 
-// MARK: - 🚀 SwiftUI Dynamic Neural Thumbnail Mipmap View
-public struct NeuralThumbnailMipmapView: View {
-    public let slotIndex: Int
-    public let title: String
-    public let targetSize: CGSize
-    @ObservedObject var magician: NeuralPixelMagicianEngine = .shared
-
-    public init(slotIndex: Int, title: String, targetSize: CGSize = CGSize(width: 240, height: 150)) {
-        self.slotIndex = slotIndex
-        self.title = title
-        self.targetSize = targetSize
-    }
-
-    public var body: some View {
-        let optimalLevel = NeuralMipmapLevel.optimalLevel(for: targetSize)
-        let preview = magician.activeOffscreenPreviews[slotIndex] ?? magician.generateSpacePreviewTexture(
-            slotIndex: slotIndex,
-            column: (slotIndex - 1) % 3,
-            row: (slotIndex - 1) / 3,
-            compassOrientation: "NW",
-            targetLevel: optimalLevel
-        )
-
-        NeuralGlassChromaticAberrationView(intensity: magician.chromaticAberrationIntensity) {
-            ZStack(alignment: .bottomLeading) {
-                Image(nsImage: preview)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: targetSize.width, height: targetSize.height)
-                    .clipped()
-
-                // Bottom Title Strip
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.cyan)
-                        .frame(width: 6, height: 6)
-                    Text(title)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Text("genie-nano")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.cyan.opacity(0.85))
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.black.opacity(0.70))
-            }
-        }
-        .frame(width: targetSize.width, height: targetSize.height)
-    }
-}

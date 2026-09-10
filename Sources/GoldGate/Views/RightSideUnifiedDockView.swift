@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Foundation
 import SwiftUI
 
@@ -35,8 +36,6 @@ public enum UnifiedDockTab: String, CaseIterable, Identifiable {
 /// Stage Manager Stage Stacks, and Settings into a single cohesive, non-overlapping glass panel.
 /// Powered by the same fluid magnification wave, spring physics, and specular effects as the Mini Dock.
 public struct RightSideUnifiedDockView: View {
-    @ObservedObject var localModels = LocalModelManager.shared
-    @ObservedObject var voiceEngine = GenieVoiceEngine.shared
     @ObservedObject var desktopsManager = MacDesktopsManager.shared
     @ObservedObject var tricksterEngine = AppScreenSizeTricksterEngine.shared
     @ObservedObject var appModel: AppModel
@@ -45,13 +44,6 @@ public struct RightSideUnifiedDockView: View {
     @State public var selectedTab: UnifiedDockTab = .chat
 
     public var edge: DockEdge = .trailing
-
-    // Chat State
-    @State private var inputText: String = ""
-    @State private var selectedVoiceDialect: GenieVoiceDialect = .usSamantha
-    @State private var copiedMessageId: UUID? = nil
-    @State private var attachedFileName: String? = nil
-    @State private var showVoicePicker: Bool = false
 
     // Apps & Hover Animation State (Mini Dock Parabolic Magnification Wave)
     @State private var appSearchFilter: String = ""
@@ -86,6 +78,21 @@ public struct RightSideUnifiedDockView: View {
         }
     }
 
+    /// `NSRunningApplication.activate()` alone is unreliable when the app's window lives on a
+    /// different Space — it often just silently no-ops instead of switching desktops. Explicitly
+    /// un-minimizing and raising the window via Accessibility is what actually makes macOS switch.
+    private func raiseAndActivate(_ app: NSRunningApplication) {
+        if #available(macOS 14.0, *) {
+            app.activate()
+        } else {
+            app.activate(options: [.activateIgnoringOtherApps])
+        }
+        if let window = SmartGridManager.shared.findWindowElement(pid: app.processIdentifier, fallbackFrame: nil) {
+            AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
+            AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+        }
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             // ── Top Drag Retractor Pill ──
@@ -111,7 +118,7 @@ public struct RightSideUnifiedDockView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 480)
+        .frame(width: RightSideChatDockView.standaloneWidth)
         .background(
             ZStack {
                 VisualEffectBlur(material: .hudWindow, blendingMode: .withinWindow, state: .active)
@@ -119,30 +126,18 @@ public struct RightSideUnifiedDockView: View {
             }
         )
         .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: edge == .trailing ? 22 : 0,
-                bottomLeadingRadius: edge == .trailing ? 22 : 0,
-                bottomTrailingRadius: edge == .leading ? 22 : 0,
-                topTrailingRadius: edge == .leading ? 22 : 0,
-                style: .continuous
-            )
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
         )
         .overlay(
-            UnevenRoundedRectangle(
-                topLeadingRadius: edge == .trailing ? 22 : 0,
-                bottomLeadingRadius: edge == .trailing ? 22 : 0,
-                bottomTrailingRadius: edge == .leading ? 22 : 0,
-                topTrailingRadius: edge == .leading ? 22 : 0,
-                style: .continuous
-            )
-            .strokeBorder(
-                LinearGradient(
-                    colors: [Color.cyan.opacity(0.50), Color.purple.opacity(0.30), Color.white.opacity(0.12)],
-                    startPoint: edge == .trailing ? .topLeading : .topTrailing,
-                    endPoint: edge == .trailing ? .bottomTrailing : .bottomLeading
-                ),
-                lineWidth: 0.85
-            )
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [Color.cyan.opacity(0.50), Color.purple.opacity(0.30), Color.white.opacity(0.12)],
+                        startPoint: edge == .trailing ? .topLeading : .topTrailing,
+                        endPoint: edge == .trailing ? .bottomTrailing : .bottomLeading
+                    ),
+                    lineWidth: 0.85
+                )
         )
         .shadow(color: Color.black.opacity(0.55), radius: 32, x: edge == .trailing ? -12 : 12, y: 0)
         .offset(x: dragDismissOffset)
@@ -216,8 +211,13 @@ public struct RightSideUnifiedDockView: View {
                     let isSelected = (selectedTab == tab)
                     Button(action: {
                         HapticFeedback.selection()
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
-                            selectedTab = tab
+                        if tab == .chat {
+                            isOpen = false
+                            FinderChatWindowManager.shared.show()
+                        } else {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+                                selectedTab = tab
+                            }
                         }
                     }) {
                         HStack(spacing: 4) {
@@ -228,8 +228,8 @@ public struct RightSideUnifiedDockView: View {
                                 .font(.system(size: 10.5, weight: isSelected ? .bold : .medium, design: .rounded))
                         }
                         .foregroundColor(isSelected ? .white : .white.opacity(0.60))
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background(
                             ZStack {
                                 if isSelected {
@@ -246,11 +246,7 @@ public struct RightSideUnifiedDockView: View {
                 }
             }
             .padding(3)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(0.06))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
-            )
+            .genieLiquidGlass(cornerRadius: 999)
 
             Spacer()
 
@@ -268,187 +264,52 @@ public struct RightSideUnifiedDockView: View {
             .buttonStyle(.plain)
             .help("Close Sidebar (Esc / Drag)")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
     }
 
-    // MARK: - 1. 💬 Chat Tab Content
+    // MARK: - 1. 💬 Chat Tab Content (Consolidated Master Window Launcher)
     private var chatTabContent: some View {
-        VStack(spacing: 0) {
-            // Desktop Space Switcher Strip
-            nativeDesktopSpacePlayerView
-
-            // Chat Stream
-            chatStreamView
-
-            Divider().opacity(0.15)
-
-            // Multimodal Input Bar
-            chatInputBarView
-        }
-    }
-
-    // MARK: - Desktop Space Switcher Strip
-    private var nativeDesktopSpacePlayerView: some View {
-        HStack(spacing: 6) {
-            Text("SPACES")
-                .font(.system(size: 8.5, weight: .heavy, design: .rounded))
-                .foregroundColor(.cyan.opacity(0.85))
-                .padding(.leading, 12)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 5) {
-                    ForEach(1...max(3, desktopsManager.spaces.count), id: \.self) { idx in
-                        let isActive = (desktopsManager.currentSpaceIndex == idx)
-                        Button(action: {
-                            HapticFeedback.selection()
-                            desktopsManager.switchToDesktop(index: idx)
-                        }) {
-                            Text("\(idx)")
-                                .font(.system(size: 10, weight: isActive ? .bold : .medium, design: .rounded))
-                                .foregroundColor(isActive ? .white : .white.opacity(0.65))
-                                .frame(width: 24, height: 20)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                        .fill(isActive ? Color.cyan.opacity(0.35) : Color.white.opacity(0.08))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 4)
+        VStack(spacing: 16) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(Color.cyan.opacity(0.18))
+                    .frame(width: 80, height: 80)
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 36))
+                    .foregroundColor(.cyan)
             }
-        }
-        .padding(.vertical, 4)
-        .background(Color.white.opacity(0.03))
-    }
-
-    // MARK: - Chat Stream View
-    private var chatStreamView: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(spacing: 12) {
-                    if localModels.chatHistory.isEmpty {
-                        chatEmptyPlaceholder
-                    } else {
-                        ForEach(localModels.chatHistory) { message in
-                            dockChatMessageBubble(message: message)
-                                .id(message.id)
-                        }
-                    }
-
-                    if localModels.isGenerating {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .scaleEffect(0.65)
-                                .colorScheme(.dark)
-                            Text("Genie is synthesizing...")
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
-                                .foregroundColor(.cyan.opacity(0.85))
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-            }
-            .onChange(of: localModels.chatHistory.count) { _, _ in
-                if let lastId = localModels.chatHistory.last?.id {
-                    withAnimation {
-                        proxy.scrollTo(lastId, anchor: .bottom)
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Chat Empty Placeholder
-    private var chatEmptyPlaceholder: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 32))
-                .foregroundStyle(LinearGradient(colors: [.cyan, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .padding(.top, 40)
-
-            Text("How can Genie assist you?")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+            Text("Single Consolidated Chat Window")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
-
-            Text("Ask questions, inspect your screen, or run apps in compact screen mode.")
-                .font(.system(size: 11, weight: .regular))
-                .foregroundColor(.white.opacity(0.60))
+            Text("All conversational capabilities, model switching, and agent execution live in the floating Liquid Glass Master Window.")
+                .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                .foregroundColor(.white.opacity(0.70))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
+                .padding(.horizontal, 28)
 
-    @ViewBuilder
-    private func dockChatMessageBubble(message: ChatMessage) -> some View {
-        let isUser = (message.role == "user")
-        HStack(alignment: .top, spacing: 8) {
-            if isUser {
-                Spacer()
-                Text(message.content)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.cyan.opacity(0.30))
-                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.cyan.opacity(0.50), lineWidth: 0.5))
-                    )
-            } else {
-                Text(message.content)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(.white.opacity(0.92))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
-                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.white.opacity(0.12), lineWidth: 0.5))
-                    )
-                Spacer()
-            }
-        }
-    }
-
-    // MARK: - Chat Input Bar View
-    private var chatInputBarView: some View {
-        HStack(spacing: 8) {
-            TextField("Ask Genie or run !trick <app>...", text: $inputText)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12.5))
-                .foregroundColor(.white)
-                .onSubmit {
-                    sendChatMessage()
+            Button(action: {
+                HapticFeedback.selection()
+                isOpen = false
+                FinderChatWindowManager.shared.show()
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.up.forward.app.fill")
+                        .font(.system(size: 12, weight: .bold))
+                    Text("Open Genie Chat Window")
+                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
                 }
-
-            if !inputText.isEmpty {
-                Button(action: {
-                    sendChatMessage()
-                }) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.cyan)
-                }
-                .buttonStyle(.plain)
+                .foregroundColor(.black)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Capsule().fill(Color.cyan))
+                .shadow(color: Color.cyan.opacity(0.50), radius: 8, x: 0, y: 3)
             }
+            .buttonStyle(.plain)
+            Spacer()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color.white.opacity(0.05))
-    }
-
-    private func sendChatMessage() {
-        guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let prompt = inputText
-        inputText = ""
-        localModels.generate(prompt: prompt)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 2. 🪟 Applications Tab Content (With Stage Manager & Mini Dock Wave)
@@ -476,12 +337,9 @@ public struct RightSideUnifiedDockView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-            )
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
+            .genieLiquidGlass(cornerRadius: 8)
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
             .padding(.bottom, 6)
 
             // Stage Manager Active Windows Carousel
@@ -523,10 +381,10 @@ public struct RightSideUnifiedDockView: View {
                         let isHovered = (hoveredAppId == "\(app.processIdentifier)")
                         Button(action: {
                             HapticFeedback.selection()
-                            if #available(macOS 14.0, *) {
-                                app.activate()
+                            if app.isActive {
+                                app.hide()
                             } else {
-                                app.activate(options: [.activateIgnoringOtherApps])
+                                raiseAndActivate(app)
                             }
                         }) {
                             HStack(spacing: 6) {
@@ -572,7 +430,16 @@ public struct RightSideUnifiedDockView: View {
 
         return Button(action: {
             HapticFeedback.selection()
-            NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+            let bundleId = Bundle(url: app.url)?.bundleIdentifier
+            if let running = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier != nil && $0.bundleIdentifier == bundleId }) {
+                if running.isActive {
+                    running.hide()
+                } else {
+                    raiseAndActivate(running)
+                }
+            } else {
+                NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+            }
         }) {
             VStack(spacing: 4) {
                 ZStack {

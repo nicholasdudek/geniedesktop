@@ -446,4 +446,154 @@ public final class SkyLightNeuralGovernorEngine: ObservableObject {
             }
         }
     }
+
+    // MARK: - 6. 🚀 SkyLight 2.0 Next-Gen System Workflows & Diagnostics
+    public func applyWorkflow(mode: SkyLight2WorkflowMode) {
+        guard let screen = NSScreen.main else { return }
+        let workArea = screen.visibleFrame
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 1080
+        let visibleWindows = gridManager.getVisibleWindows(primaryHeight: primaryHeight)
+
+        var placements: [NeuralWindowPlacement] = []
+        let gap: CGFloat = 8.0
+
+        switch mode {
+        case .codingAtelier:
+            // 60% Left Code, 40% Right Top Web, 40% Right Bottom Terminal
+            let codeWidth = (workArea.width - gap) * 0.60
+            let rightWidth = (workArea.width - gap) * 0.40
+            let halfH = (workArea.height - gap) * 0.50
+
+            var codePlaced = false
+            var termPlaced = false
+            var webPlaced = false
+
+            for win in visibleWindows {
+                let role = classifyApplication(name: win.ownerName)
+                if role == .codeEditor && !codePlaced {
+                    let frame = CGRect(x: workArea.minX, y: workArea.minY, width: codeWidth, height: workArea.height)
+                    placements.append(NeuralWindowPlacement(windowId: win.id, pid: win.pid, appName: win.ownerName, role: role, targetFrame: frame))
+                    codePlaced = true
+                } else if role == .terminal && !termPlaced {
+                    let frame = CGRect(x: workArea.minX + codeWidth + gap, y: workArea.minY, width: rightWidth, height: halfH)
+                    placements.append(NeuralWindowPlacement(windowId: win.id, pid: win.pid, appName: win.ownerName, role: role, targetFrame: frame))
+                    termPlaced = true
+                } else if role == .browser && !webPlaced {
+                    let frame = CGRect(x: workArea.minX + codeWidth + gap, y: workArea.minY + halfH + gap, width: rightWidth, height: halfH)
+                    placements.append(NeuralWindowPlacement(windowId: win.id, pid: win.pid, appName: win.ownerName, role: role, targetFrame: frame))
+                    webPlaced = true
+                }
+            }
+
+        case .researchCanvas:
+            // 50% Left Browser, 50% Right Notes/Knowledge
+            let halfW = (workArea.width - gap) * 0.50
+            for (index, win) in visibleWindows.prefix(2).enumerated() {
+                let x = workArea.minX + CGFloat(index) * (halfW + gap)
+                let frame = CGRect(x: x, y: workArea.minY, width: halfW, height: workArea.height)
+                placements.append(NeuralWindowPlacement(windowId: win.id, pid: win.pid, appName: win.ownerName, role: classifyApplication(name: win.ownerName), targetFrame: frame))
+            }
+
+        case .creativeStudio:
+            // Center 80% Canvas, floating edges
+            let cw = workArea.width * 0.80
+            let ch = workArea.height * 0.88
+            let frame = CGRect(x: workArea.minX + (workArea.width - cw) * 0.5, y: workArea.minY + (workArea.height - ch) * 0.5, width: cw, height: ch)
+            if let first = visibleWindows.first {
+                placements.append(NeuralWindowPlacement(windowId: first.id, pid: first.pid, appName: first.ownerName, role: .media, targetFrame: frame))
+            }
+
+        case .zenFocus:
+            // Full center focus on frontmost app
+            if let frontApp = NSWorkspace.shared.frontmostApplication,
+               let win = visibleWindows.first(where: { $0.pid == frontApp.processIdentifier }) {
+                let fw = workArea.width * 0.70
+                let fh = workArea.height * 0.80
+                let frame = CGRect(x: workArea.minX + (workArea.width - fw) * 0.5, y: workArea.minY + (workArea.height - fh) * 0.5, width: fw, height: fh)
+                placements.append(NeuralWindowPlacement(windowId: win.id, pid: win.pid, appName: win.ownerName, role: .systemUtility, targetFrame: frame))
+            }
+        }
+
+        // Apply Placements
+        for placement in placements {
+            let quartzY = primaryHeight - placement.targetFrame.maxY
+            let quartzFrame = CGRect(x: placement.targetFrame.origin.x, y: quartzY, width: placement.targetFrame.width, height: placement.targetFrame.height)
+            if let axElem = gridManager.findWindowElement(pid: placement.pid, fallbackFrame: nil) {
+                gridManager.setWindowFrame(element: axElem, frame: quartzFrame, pid: placement.pid)
+            }
+        }
+
+        self.activePlacements = placements
+        HapticFeedback.playClickSound()
+        self.statusMessage = "SkyLight 2.0: Activated '\(mode.rawValue)' Architecture"
+    }
+
+    /// Hitch companion windows across spaces and teleport instantaneously
+    public func teleportToSpaceWithHitch(spaceIndex: Int, windowIDs: [CGWindowID] = []) {
+        if skyLight.isAvailable && !windowIDs.isEmpty {
+            // Find target space ID from MacDesktopsManager
+            let spaceMgr = MacDesktopsManager.shared
+            if let targetSpace = spaceMgr.spaces.first(where: { $0.index == spaceIndex }) {
+                let id64 = targetSpace.id64 ?? UInt64(targetSpace.id) ?? 0
+                if id64 > 0 {
+                    skyLight.moveWindowsToSpace(windowIDs: windowIDs, spaceID: id64)
+                }
+            }
+        }
+        MacDesktopsManager.shared.switchToDesktop(index: spaceIndex)
+        HapticFeedback.success()
+    }
+
+    /// Comprehensive Apple Acquisition & Performance Diagnostics
+    public func runSkyLight2Diagnostics() -> SkyLight2DiagnosticsReport {
+        let t0 = CFAbsoluteTimeGetCurrent()
+        let cid = skyLight.connectionID()
+        let isDirect = skyLight.isAvailable
+        let axOk = AXIsProcessTrusted()
+        let spacesCount = MacDesktopsManager.shared.spaces.count
+        let latencyUs = (CFAbsoluteTimeGetCurrent() - t0) * 1_000_000.0
+
+        let tier = isDirect
+            ? "Tier 2 — Pro SkyLight 2.0 Engine (Direct Sub-Millisecond WindowServer C-Bridge)"
+            : "Tier 1 — Mac App Store Compliant (Sandboxed Cocoa/Accessibility Fallback)"
+
+        return SkyLight2DiagnosticsReport(
+            connectionID: cid,
+            isSkyLightDirectAvailable: isDirect,
+            isAccessibilityTrusted: axOk,
+            activeSpacesCount: spacesCount,
+            latencyMicroseconds: latencyUs,
+            complianceTier: tier
+        )
+    }
 }
+
+// MARK: - SkyLight 2.0 Semantic Workflow Modes
+public enum SkyLight2WorkflowMode: String, CaseIterable, Identifiable, Sendable {
+    case codingAtelier = "Coding Atelier (IDE + Shell + Canvas)"
+    case researchCanvas = "Research Canvas (Dual Browser & Notes)"
+    case creativeStudio = "Creative Studio (Center Stage)"
+    case zenFocus = "Zen Focus (Distraction-Free)"
+
+    public var id: String { rawValue }
+
+    public var icon: String {
+        switch self {
+        case .codingAtelier: return "hammer.fill"
+        case .researchCanvas: return "books.vertical.fill"
+        case .creativeStudio: return "paintpalette.fill"
+        case .zenFocus: return "leaf.fill"
+        }
+    }
+}
+
+// MARK: - SkyLight 2.0 Acquisition Diagnostics Report
+public struct SkyLight2DiagnosticsReport: Sendable {
+    public let connectionID: Int32
+    public let isSkyLightDirectAvailable: Bool
+    public let isAccessibilityTrusted: Bool
+    public let activeSpacesCount: Int
+    public let latencyMicroseconds: Double
+    public let complianceTier: String
+}
+

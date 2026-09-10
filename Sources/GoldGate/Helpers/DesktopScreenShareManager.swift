@@ -274,7 +274,7 @@ public final class DesktopScreenShareManager: ObservableObject {
             var capturedImage: NSImage? = nil
 
             if let wid = targetWid {
-                if let cgImg = CGWindowListCreateImage(.null, .optionIncludingWindow, wid, [.nominalResolution]) {
+                if let cgImg = safeCGWindowListCreateImage(.null, .optionIncludingWindow, wid, [.nominalResolution]) {
                     capturedImage = NSImage(cgImage: cgImg, size: NSSize(width: cgImg.width, height: cgImg.height))
                 }
             }
@@ -284,7 +284,7 @@ public final class DesktopScreenShareManager: ObservableObject {
             }
 
             if capturedImage == nil {
-                if let cgImg = CGWindowListCreateImage(screenBounds, .optionOnScreenOnly, kCGNullWindowID, [.nominalResolution]) {
+                if let cgImg = safeCGWindowListCreateImage(screenBounds, .optionOnScreenOnly, kCGNullWindowID, [.nominalResolution]) {
                     capturedImage = NSImage(cgImage: cgImg, size: NSSize(width: 480, height: 300))
                 }
             }

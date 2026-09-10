@@ -31,15 +31,15 @@ public enum FinderWindowSizePreset: String, CaseIterable, Identifiable {
 
 public enum FinderWindowTab: String, CaseIterable {
     case chat = "Chat"
-    case note = "Note"
-    case editor = "Editor"
+    case files = "Files"
+    // case note = "Note"      // Hidden for initial production release
+    // case editor = "Editor"  // Hidden for initial production release
     case settings = "Settings"
 
     public var icon: String {
         switch self {
         case .chat: return "bubble.left.and.bubble.right.fill"
-        case .note: return "note.text"
-        case .editor: return "chevron.left.forwardslash.chevron.right"
+        case .files: return "folder.fill"
         case .settings: return "gearshape.fill"
         }
     }
@@ -149,11 +149,26 @@ public final class FinderChatWindowManager: ObservableObject {
 
     public func show(tab: FinderWindowTab = .chat) {
         self.activeTab = tab
+
+        // Consolidate UI: Close any secondary drawer or dock chat windows
+        UserDefaults.standard.set(false, forKey: PrefKey.isRightChatDockOpen)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusCloseSecondaryChatWindows"), object: nil)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusCloseAllRollupsExceptChat"), object: nil)
+
         if window == nil {
             createWindow()
         }
 
         guard let win = window else { return }
+
+        if win.isMiniaturized { win.deminiaturize(nil) }
+        if isVisible {
+            win.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        isExpanded = false
+        currentSizePreset = .standard
 
         // Center on the active screen
         let screen = NSScreen.main ?? NSScreen.screens.first ?? NSScreen()
@@ -188,6 +203,10 @@ public final class FinderChatWindowManager: ObservableObject {
         show(tab: settings ? .settings : .chat)
     }
 
+    public func minimize() {
+        hide()
+    }
+
     public func hide() {
         guard let win = window, isVisible else { return }
         NSAnimationContext.runAnimationGroup({ ctx in
@@ -206,19 +225,21 @@ public final class FinderChatWindowManager: ObservableObject {
     private func createWindow() {
         let panel = FinderChatPanel(
             contentRect: NSRect(x: 0, y: 0, width: 920, height: 640),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            styleMask: [.borderless, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
 
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .hidden
+        if #available(macOS 11.0, *) {
+            panel.titlebarSeparatorStyle = .none
+        }
         panel.standardWindowButton(.closeButton)?.isHidden = true
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true
         panel.isMovable = true
         panel.isMovableByWindowBackground = true
-        panel.showsResizeIndicator = true
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
@@ -226,9 +247,12 @@ public final class FinderChatWindowManager: ObservableObject {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.isExcludedFromWindowsMenu = false
         panel.sharingType = .readOnly
-        panel.minSize = NSSize(width: 680, height: 440)
+        panel.minSize = NSSize(width: 760, height: 460)
 
-        panel.contentView = NSHostingView(rootView: FinderStyleChatWindowView())
+        let host = NSHostingView(rootView: FinderStyleChatWindowView().ignoresSafeArea())
+        host.autoresizingMask = [.width, .height]
+        panel.contentView = host
+        panel.invalidateShadow()
         self.window = panel
 
         NotificationCenter.default.addObserver(
@@ -309,4 +333,3 @@ public struct WindowDragRepresentable: NSViewRepresentable {
         }
     }
 }
-

@@ -1522,7 +1522,7 @@ public final class CameraCaptureService: NSObject, @unchecked Sendable {
         return await MainActor.run {
             guard let mainScreen = NSScreen.main else { return nil }
             let rect = mainScreen.frame
-            if let cgImage = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, .bestResolution) {
+            if let cgImage = safeCGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, .bestResolution) {
                 return NSImage(cgImage: cgImage, size: rect.size)
             }
             return nil

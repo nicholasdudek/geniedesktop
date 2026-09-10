@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import WebKit
+import UniformTypeIdentifiers
 
 // MARK: - Finder Sidebar Selection Enum (Retained for API & notification compatibility)
 public enum FinderChatSidebarItem: String, CaseIterable, Identifiable {
@@ -42,13 +43,14 @@ public enum FinderChatSidebarItem: String, CaseIterable, Identifiable {
 // MARK: - 💨 Animated Mystical Smoke & Stardust Particle Canvas
 public struct GenieBubblySmokeBackgroundView: View {
     let isGenerating: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(isGenerating: Bool = false) {
         self.isGenerating = isGenerating
     }
 
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion || !isGenerating)) { timeline in
             Canvas { context, size in
                 let w = size.width
                 let h = size.height
@@ -112,9 +114,9 @@ public struct GenieBubblySmokeBackgroundView: View {
                 let puffCount = 8
                 for i in 0..<puffCount {
                     let fi = Double(i)
-                    let speed = 0.20 + fi * 0.04
+                    let speed = 0.55 + fi * 0.12
                     let phase = fi * 1.25
-                    let cycle = (t * speed + phase).truncatingRemainder(dividingBy: 5.5) / 5.5
+                    let cycle = (t * speed + phase).truncatingRemainder(dividingBy: 2.0) / 2.0
 
                     let curY = h * (1.12 - cycle * 1.24)
                     let driftX = sin(cycle * .pi * 2.0 + fi) * (w * 0.16)
@@ -168,16 +170,30 @@ public struct GenieBubblySmokeBackgroundView: View {
 }
 
 public enum ChatWindowLayoutMode: String, CaseIterable, Identifiable {
-    case combined = "Combined"
-    case chatOnly = "Chat Only"
-    case settingsOnly = "Settings Only"
+    case chatOnly = "Chat"
+    case files = "Files & Chat"
+    case filesOnly = "Files"
+    case settingsOnly = "Settings"
 
     public var id: String { rawValue }
 
+    public static var consolidatedTabs: [ChatWindowLayoutMode] {
+        [.chatOnly, .files, .settingsOnly]
+    }
+
+    public var tabTitle: String {
+        switch self {
+        case .chatOnly: return "Chat"
+        case .files, .filesOnly: return "Files"
+        case .settingsOnly: return "Settings"
+        }
+    }
+
     public var icon: String {
         switch self {
-        case .combined: return "rectangle.split.2x1.fill"
         case .chatOnly: return "bubble.left.and.bubble.right.fill"
+        case .files: return "folder.badge.gearshape"
+        case .filesOnly: return "folder.fill"
         case .settingsOnly: return "gearshape.fill"
         }
     }
@@ -189,16 +205,38 @@ public struct FinderStyleChatWindowView: View {
     @ObservedObject var windowManager = FinderChatWindowManager.shared
     @ObservedObject var sleepManager = GenieSleepPreventionManager.shared
     @ObservedObject var imessageManager = GenieiMessageExtensionManager.shared
+    @ObservedObject var voiceEngine = GenieVoiceEngine.shared
     @AppStorage(PrefKey.aiEmotion) var selectedEmotionRaw: String = AIEmotionType.mystical.rawValue
 
-    @State private var layoutMode: ChatWindowLayoutMode = .combined
     @State private var splitRatio: CGFloat = 0.54
     @State private var isDraggingDivider: Bool = false
+    @State private var dragStartWidth: CGFloat?
+    @State private var browserURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
     @State private var promptText: String = ""
     @State private var statusFeedback: String? = nil
+    @State private var previewCreation: (title: String, html: String, fileURL: URL?)? = nil
+    @State private var droppedAttachments: [URL] = []
+    @State private var isChatDropTargeted: Bool = false
+
+    private var layoutMode: ChatWindowLayoutMode {
+        get {
+            switch windowManager.activeTab {
+            case .chat: return .chatOnly
+            case .files: return .files
+            case .settings: return .settingsOnly
+            }
+        }
+        nonmutating set {
+            switch newValue {
+            case .chatOnly: windowManager.activeTab = .chat
+            case .files, .filesOnly: windowManager.activeTab = .files
+            case .settingsOnly: windowManager.activeTab = .settings
+            }
+        }
+    }
 
     private var isShowingSettings: Bool {
-        get { layoutMode == .settingsOnly || layoutMode == .combined }
+        get { layoutMode == .settingsOnly }
     }
 
     private var currentEmotion: AIEmotionType {
@@ -235,17 +273,17 @@ public struct FinderStyleChatWindowView: View {
                     let totalW = geo.size.width
                     let totalH = geo.size.height
 
-                    if layoutMode == .combined {
+                    if layoutMode == .files {
                         if totalW < 660 {
-                            chatPane
+                            fileBrowserPane
                                 .frame(width: totalW, height: totalH)
                         } else {
-                            let settingsW = max(300, min(totalW - 280, totalW * splitRatio))
-                            let chatW = max(260, totalW - settingsW - 8)
+                            let browserW = FinderWorkspaceLayout.browserWidth(totalWidth: totalW, ratio: splitRatio)
+                            let chatW = totalW - browserW - 8
 
                             HStack(spacing: 0) {
-                                settingsPane
-                                    .frame(width: settingsW, height: totalH)
+                                fileBrowserPane
+                                    .frame(width: browserW, height: totalH)
                                     .clipped()
 
                                 dividerView(totalWidth: totalW)
@@ -257,12 +295,36 @@ public struct FinderStyleChatWindowView: View {
                             }
                             .frame(width: totalW, height: totalH)
                         }
+                    } else if layoutMode == .filesOnly {
+                        fileBrowserPane
+                            .frame(width: totalW, height: totalH)
                     } else if layoutMode == .settingsOnly {
                         settingsPane
                             .frame(width: totalW, height: totalH)
                     } else {
-                        chatPane
-                            .frame(width: totalW, height: totalH)
+                        if let creation = previewCreation {
+                            if totalW < 660 {
+                                creationPreviewPane(creation: creation)
+                                    .frame(width: totalW, height: totalH)
+                            } else {
+                                HStack(spacing: 0) {
+                                    creationPreviewPane(creation: creation)
+                                        .frame(width: max(320, totalW * 0.48), height: totalH)
+                                        .clipped()
+
+                                    dividerView(totalWidth: totalW)
+                                        .frame(width: 8, height: totalH)
+
+                                    chatPane
+                                        .frame(width: max(280, totalW - max(320, totalW * 0.48) - 8), height: totalH)
+                                        .clipped()
+                                }
+                                .frame(width: totalW, height: totalH)
+                            }
+                        } else {
+                            chatPane
+                                .frame(width: totalW, height: totalH)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -286,7 +348,6 @@ public struct FinderStyleChatWindowView: View {
                     lineWidth: 1.0
                 )
         )
-        .shadow(color: Color.black.opacity(0.40), radius: 24, x: 0, y: 10)
         .overlay(alignment: .top) {
             if let fb = statusFeedback {
                 Text(fb)
@@ -300,29 +361,44 @@ public struct FinderStyleChatWindowView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSetWindowMode"))) { notif in
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NexusSetWindowMode"))) { notif in
             if let mode = notif.object as? String {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
-                    if mode == "settings" || mode == "mode-settings" {
-                        layoutMode = .combined
-                    } else if mode == "chat-only" {
-                        layoutMode = .chatOnly
-                    } else if mode == "settings-only" {
+                    if mode == "settings" || mode == "mode-settings" || mode == "settings-only" {
                         layoutMode = .settingsOnly
+                    } else if mode == "files" {
+                        layoutMode = .files
                     } else {
-                        layoutMode = .combined
+                        layoutMode = .chatOnly
                     }
                 }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSwitchFinderSidebar"))) { notif in
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NexusSwitchFinderSidebar"))) { notif in
             if let item = notif.object as? FinderChatSidebarItem {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
                     if item == .settings {
-                        layoutMode = .combined
+                        layoutMode = .settingsOnly
                     } else {
-                        layoutMode = .combined
+                        layoutMode = .chatOnly
                     }
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusAIDisplayCreation"))) { notif in
+            if let code = notif.object as? String, !code.isEmpty {
+                let title = (notif.userInfo?["title"] as? String) ?? "AI Creation"
+                let fileURL: URL? = {
+                    if let uStr = notif.userInfo?["fileURL"] as? String, let u = URL(string: uStr) {
+                        return u
+                    }
+                    if let path = notif.userInfo?["filePath"] as? String {
+                        return URL(fileURLWithPath: path)
+                    }
+                    return nil
+                }()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    self.previewCreation = (title: title, html: code, fileURL: fileURL)
                 }
             }
         }
@@ -330,9 +406,19 @@ public struct FinderStyleChatWindowView: View {
             FinderChatWindowManager.shared.hide()
             return .handled
         }
+        .onAppear {
+            localModels.activeSaveDirectoryOverride = browserURL
+        }
+        .onChange(of: browserURL) { _, newValue in
+            localModels.activeSaveDirectoryOverride = newValue
+        }
     }
 
     // MARK: - ⚙️ Settings Pane
+    private var fileBrowserPane: some View {
+        FinderFileBrowserPaneView(initialURL: browserURL, onNavigate: { browserURL = $0 })
+    }
+
     private var settingsPane: some View {
         UnifiedSettingsView(
             isEmbedded: true,
@@ -347,6 +433,22 @@ public struct FinderStyleChatWindowView: View {
         )
     }
 
+    // MARK: - 🎨 Creation Interactive Preview Pane
+    @ViewBuilder
+    private func creationPreviewPane(creation: (title: String, html: String, fileURL: URL?)) -> some View {
+        GenieCreationDualTabPreviewView(
+            title: creation.title,
+            rawHtml: creation.html,
+            fileURL: creation.fileURL,
+            emotion: currentEmotion,
+            onClose: {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                    self.previewCreation = nil
+                }
+            }
+        )
+    }
+
     // MARK: - 💬 Chat Pane
     private var chatPane: some View {
         ZStack(alignment: .bottom) {
@@ -354,11 +456,82 @@ public struct FinderStyleChatWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.bottom, 64) // Reserve space for floating bottom input
 
-            // Floating Liquid Glass Input Bar
-            floatingBottomInputCapsule
-                .padding(.horizontal, 14)
-                .padding(.bottom, 12)
+            ChatInlinePreviewTrayView()
+                .padding(.bottom, 76)
+
+            // Floating Liquid Glass Input Bar + Dropped File Chips
+            VStack(spacing: 6) {
+                if !droppedAttachments.isEmpty {
+                    attachmentChipsRow
+                }
+                floatingBottomInputCapsule
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 12)
+
+            if isChatDropTargeted {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.85), style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                    .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white.opacity(0.08)))
+                    .overlay(
+                        Label("Drop to attach", systemImage: "tray.and.arrow.down.fill")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                    )
+                    .padding(10)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
         }
+        .onDrop(of: [.fileURL], isTargeted: $isChatDropTargeted) { providers in
+            handleChatFileDrop(providers)
+        }
+    }
+
+    // MARK: - 📎 Dropped File Attachment Chips
+    private var attachmentChipsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(droppedAttachments, id: \.self) { url in
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.fill")
+                            .font(.system(size: 10))
+                        Text(url.lastPathComponent)
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .lineLimit(1)
+                        Button(action: { droppedAttachments.removeAll { $0 == url } }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 11))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.white.opacity(0.12)))
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6))
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+    }
+
+    private func handleChatFileDrop(_ providers: [NSItemProvider]) -> Bool {
+        var didAccept = false
+        for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            didAccept = true
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                guard let data = item as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                DispatchQueue.main.async {
+                    if !droppedAttachments.contains(url) {
+                        droppedAttachments.append(url)
+                    }
+                }
+            }
+        }
+        if didAccept { HapticFeedback.selection() }
+        return didAccept
     }
 
     // MARK: - 📏 Resizable Glass Split Divider
@@ -390,11 +563,13 @@ public struct FinderStyleChatWindowView: View {
                     DragGesture(minimumDistance: 1)
                         .onChanged { val in
                             isDraggingDivider = true
-                            let newRatio = (totalWidth * splitRatio + val.translation.width) / totalWidth
-                            splitRatio = max(0.35, min(0.70, newRatio))
+                            let start = dragStartWidth ?? FinderWorkspaceLayout.browserWidth(totalWidth: totalWidth, ratio: splitRatio)
+                            dragStartWidth = start
+                            splitRatio = FinderWorkspaceLayout.ratio(totalWidth: totalWidth, startWidth: start, translation: val.translation.width)
                         }
                         .onEnded { _ in
                             isDraggingDivider = false
+                            dragStartWidth = nil
                         }
                 )
                 .simultaneousGesture(
@@ -410,107 +585,59 @@ public struct FinderStyleChatWindowView: View {
     // MARK: - 🫧 Floating Bubbly Header Bar (Borderless & Glass Polymorphic)
     private var floatingHeaderBar: some View {
         HStack(spacing: 10) {
-            // Traffic Lights Capsule (Floating Island)
-            HStack(spacing: 7) {
-                Circle().fill(Color.red.opacity(0.85)).frame(width: 12, height: 12)
-                    .onTapGesture { FinderChatWindowManager.shared.hide() }
-                    .help("Close Window (⌘W / Esc)")
-                Circle().fill(Color.yellow.opacity(0.85)).frame(width: 12, height: 12)
-                    .onTapGesture { FinderChatWindowManager.shared.hide() }
-                    .help("Minimize Window (⌘M)")
-                Circle().fill(Color.green.opacity(0.85)).frame(width: 12, height: 12)
-                    .onTapGesture { FinderChatWindowManager.shared.toggleExpand() }
-                    .help("Toggle Zoom / Expand")
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(0.08))
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.75)
-            )
-
-            // Genie Brand Glass Bubble with Pulsing Cyan Jewel
-            HStack(spacing: 6) {
-                ZStack {
-                    Circle()
-                        .fill(Color.cyan)
-                        .frame(width: 7, height: 7)
-                        .shadow(color: Color.cyan, radius: 4)
-                    Circle()
-                        .stroke(Color.cyan.opacity(0.50), lineWidth: 1.5)
-                        .frame(width: 12, height: 12)
+            HStack(spacing: 4) {
+                windowControl("Close Window", color: .red, icon: "xmark") { windowManager.hide() }
+                    .keyboardShortcut("w", modifiers: .command)
+                windowControl("Minimize Window", color: .yellow, icon: "minus") { windowManager.minimize() }
+                    .keyboardShortcut("m", modifiers: .command)
+                windowControl("Expand / Restore Window", color: .green, icon: "arrow.up.left.and.arrow.down.right") {
+                    windowManager.toggleExpand()
                 }
-
-                Text("Genie")
-                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-
-                Text("•")
-                    .foregroundColor(.white.opacity(0.30))
-
-                Text(layoutMode == .combined ? "Chat & Settings" : (layoutMode == .settingsOnly ? "Settings" : localModels.selectedModelDisplayName))
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(.cyan.opacity(0.90))
-                    .lineLimit(1)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(0.07))
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.28), Color.white.opacity(0.08)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 0.75
-                    )
-            )
 
-            // Model quick switch badge
+            Text("Genie")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+
+            Spacer(minLength: 0)
+
+            Picker("Workspace", selection: Binding(get: { layoutMode }, set: { layoutMode = $0 })) {
+                ForEach(ChatWindowLayoutMode.consolidatedTabs) { mode in
+                    Text(mode.tabTitle).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 204)
+            .accessibilityLabel("Workspace")
+
+            modelQuickSwitcher
+                .frame(minWidth: 90, maxWidth: 230)
+        }
+        .frame(height: 32)
+        .environment(\.colorScheme, .dark)
+    }
+
+    private func windowControl(_ title: String, color: Color, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 7, weight: .bold))
+                .foregroundStyle(.black.opacity(0.7))
+                .frame(width: 13, height: 13)
+                .background(color, in: Circle())
+                .frame(width: 20, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .accessibilityLabel(title)
+    }
+
+    private var modelQuickSwitcher: some View {
             Menu {
-                Menu("💎 Google Gemini") {
-                    ForEach(LocalModelManager.cloudModels.filter { $0.provider == .gemini }) { model in
-                        Button(action: { localModels.selectModel(model.id) }) {
-                            Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                        }
-                    }
-                }
-                Menu("🧠 Anthropic Claude") {
-                    ForEach(LocalModelManager.cloudModels.filter { $0.provider == .claude }) { model in
-                        Button(action: { localModels.selectModel(model.id) }) {
-                            Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                        }
-                    }
-                }
-                Menu("❇️ OpenAI") {
-                    ForEach(LocalModelManager.cloudModels.filter { $0.provider == .openai }) { model in
-                        Button(action: { localModels.selectModel(model.id) }) {
-                            Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                        }
-                    }
-                }
-                Menu("💻 Local Models (Ollama / Offline)") {
-                    ForEach(LocalModelManager.cloudModels.filter { $0.provider == .local }) { model in
-                        Button(action: { localModels.selectModel(model.id) }) {
-                            Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                        }
-                    }
-                    if localModels.localModelsEnabled && !localModels.availableModels.isEmpty {
-                        Divider()
-                        ForEach(localModels.availableModels) { model in
-                            Button(action: { localModels.selectModel(model.name) }) {
-                                Text(localModels.effectiveModel == model.name ? "\(model.displayName) ✓" : model.displayName)
-                            }
-                        }
+                ForEach(LocalModelManager.cloudModels) { model in
+                    Button(action: { localModels.selectModel(model.id) }) {
+                        Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
                     }
                 }
             } label: {
@@ -520,6 +647,8 @@ public struct FinderStyleChatWindowView: View {
                     Text(localModels.selectedModelDisplayName)
                         .font(.system(size: 10.5, weight: .medium, design: .rounded))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .truncationMode(.middle)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 7, weight: .bold))
                         .opacity(0.6)
@@ -531,104 +660,74 @@ public struct FinderStyleChatWindowView: View {
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6))
             }
             .menuStyle(.borderlessButton)
-
-            Spacer()
-                .overlay(WindowDragRepresentable())
-
-            // Mode Toggle Capsule: [◨ Combined] & [💬 Chat] & [⚙️ Settings]
-            HStack(spacing: 3) {
-                ForEach(ChatWindowLayoutMode.allCases) { mode in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
-                            layoutMode = mode
-                        }
-                        HapticFeedback.selection()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: mode.icon)
-                                .font(.system(size: 9.5))
-                            Text(mode.rawValue)
-                                .font(.system(size: 10.5, weight: layoutMode == mode ? .bold : .medium, design: .rounded))
-                        }
-                        .foregroundColor(layoutMode == mode ? .white : .secondary)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4.5)
-                        .background(
-                            Capsule()
-                                .fill(layoutMode == mode ? (mode == .combined ? Color.cyan.opacity(0.32) : Color.white.opacity(0.20)) : Color.clear)
-                        )
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(layoutMode == mode ? Color.cyan.opacity(0.55) : Color.clear, lineWidth: 0.75)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help(mode == .combined ? "Combined View (Chat + Settings Side by Side)" : mode.rawValue)
-                }
-            }
-            .padding(3)
-            .background(
-                Capsule()
-                    .fill(Color.black.opacity(0.25))
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.6)
-            )
-
-            // Window Action Buttons: Expand ^ & Close ✕
-            HStack(spacing: 4) {
-                Button(action: {
-                    windowManager.toggleExpand()
-                    HapticFeedback.selection()
-                }) {
-                    Image(systemName: windowManager.isExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white.opacity(0.85))
-                        .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.white.opacity(0.08)))
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.15), lineWidth: 0.6))
-                }
-                .buttonStyle(.plain)
-                .help("Expand / Restore Window")
-
-                Button(action: {
-                    FinderChatWindowManager.shared.hide()
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.white.opacity(0.08)))
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.15), lineWidth: 0.6))
-                }
-                .buttonStyle(.plain)
-                .help("Close Window (Esc)")
-            }
-        }
+            .menuIndicator(.hidden)
+            .help("Choose Model")
+            .accessibilityLabel("Choose Model")
     }
 
     // MARK: - 🫧 Floating Liquid Glass Bottom Input Capsule
     private var floatingBottomInputCapsule: some View {
         HStack(spacing: 8) {
-            // Dialogue Pill Badge
-            HStack(spacing: 4) {
-                Image(systemName: "bubble.left.fill")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.cyan)
-                Text("Dialogue")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+            // ➕ Consolidated Tools & Actions Menu
+            Menu {
+                Section("Mac Actions") {
+                    Button(action: {
+                        sleepManager.toggleSleepPrevention()
+                        showStatusFeedback(sleepManager.isSleepDisabled ? "Anti-Sleep ON ☕" : "Sleep OK 🌙")
+                        HapticFeedback.selection()
+                    }) {
+                        Label(
+                            sleepManager.isSleepDisabled ? "Anti-Sleep Active" : "Keep Mac Awake (Anti-Sleep)",
+                            systemImage: sleepManager.isSleepDisabled ? "cup.and.saucer.fill" : "cup.and.saucer"
+                        )
+                    }
+
+                    Button(action: {
+                        let clean = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !clean.isEmpty {
+                            imessageManager.sendiMessageDirect(to: imessageManager.nicholasAppleID, message: clean)
+                            promptText = ""
+                            showStatusFeedback("Relayed to iPhone Messages! 📱")
+                        } else if let lastBotMsg = localModels.chatHistory.last(where: { $0.role == "assistant" })?.content {
+                            imessageManager.sendiMessageDirect(to: imessageManager.nicholasAppleID, message: lastBotMsg)
+                            showStatusFeedback("Last reply sent to iPhone! 📱")
+                        } else {
+                            GeniePhoneBridgeManager.shared.pingNicholasPhone()
+                            showStatusFeedback("Pinged Nicholas's iPhone! 📱")
+                        }
+                        HapticFeedback.selection()
+                    }) {
+                        Label("Relay to iPhone (iMessage)", systemImage: "message.fill")
+                    }
+                }
+
+                Divider()
+
+                Section("Conversation") {
+                    Button(action: {
+                        localModels.clearChatHistory()
+                        showStatusFeedback("Chat Cleared")
+                        HapticFeedback.selection()
+                    }) {
+                        Label("Clear Conversation", systemImage: "trash")
+                    }
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white.opacity(0.85))
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Color.white.opacity(0.10)))
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.16), lineWidth: 0.6))
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(Color.cyan.opacity(0.18)))
-            .overlay(Capsule().stroke(Color.cyan.opacity(0.40), lineWidth: 0.6))
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .help("Actions & Tools")
 
             // Text Input Field
             TextField("Ask Genie anything...", text: $promptText)
                 .textFieldStyle(.plain)
-                .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                .font(.system(size: 13, weight: .regular, design: .rounded))
                 .foregroundColor(.white)
                 .padding(.vertical, 6)
                 .onSubmit { handlePromptSubmit() }
@@ -640,57 +739,37 @@ public struct FinderStyleChatWindowView: View {
                         .foregroundColor(.white.opacity(0.40))
                 }
                 .buttonStyle(.plain)
+                .help("Clear Input")
             }
+
+            // 🎙️ Voice Input / Speech Synthesis
+            Button(action: {
+                HapticFeedback.selection()
+                if voiceEngine.isSpeaking {
+                    voiceEngine.stopSpeaking()
+                } else if let lastBotMsg = localModels.chatHistory.last(where: { $0.role == "assistant" })?.content {
+                    voiceEngine.speak(text: lastBotMsg)
+                }
+            }) {
+                Image(systemName: voiceEngine.isSpeaking ? "waveform.badge.magnifyingglass" : "mic.fill")
+                    .font(.system(size: 13))
+                    .foregroundColor(voiceEngine.isSpeaking ? Color.cyan : Color.white.opacity(0.55))
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(voiceEngine.isSpeaking ? Color.cyan.opacity(0.20) : Color.white.opacity(0.08)))
+            }
+            .buttonStyle(.plain)
+            .help(voiceEngine.isSpeaking ? "Stop Speaking" : "Read Aloud")
 
             // Send Button [↑]
             Button(action: { handlePromptSubmit() }) {
                 Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 22))
+                    .font(.system(size: 24))
                     .foregroundColor(promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .white.opacity(0.25) : .cyan)
                     .shadow(color: promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.clear : Color.cyan.opacity(0.60), radius: 6)
             }
             .buttonStyle(.plain)
             .disabled(promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-            // ☕ Anti-Sleep Toggle
-            Button(action: {
-                sleepManager.toggleSleepPrevention()
-                showStatusFeedback(sleepManager.isSleepDisabled ? "Anti-Sleep ON ☕" : "Sleep OK 🌙")
-                HapticFeedback.selection()
-            }) {
-                Image(systemName: sleepManager.isSleepDisabled ? "cup.and.saucer.fill" : "cup.and.saucer")
-                    .font(.system(size: 13))
-                    .foregroundColor(sleepManager.isSleepDisabled ? .orange : .white.opacity(0.45))
-                    .frame(width: 24, height: 24)
-                    .background(Circle().fill(sleepManager.isSleepDisabled ? Color.orange.opacity(0.20) : Color.white.opacity(0.06)))
-            }
-            .buttonStyle(.plain)
-            .help("Toggle Anti-Sleep (Keep Screen Awake)")
-
-            // 📱 Apple Messages (iMessage) Relay
-            Button(action: {
-                let clean = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !clean.isEmpty {
-                    imessageManager.sendiMessageDirect(to: imessageManager.nicholasAppleID, message: clean)
-                    promptText = ""
-                    showStatusFeedback("Relayed to iPhone Messages! 📱")
-                } else if let lastBotMsg = localModels.chatHistory.last(where: { $0.role == "assistant" })?.content {
-                    imessageManager.sendiMessageDirect(to: imessageManager.nicholasAppleID, message: lastBotMsg)
-                    showStatusFeedback("Last reply sent to iPhone! 📱")
-                } else {
-                    GeniePhoneBridgeManager.shared.pingNicholasPhone()
-                    showStatusFeedback("Pinged Nicholas's iPhone! 📱")
-                }
-                HapticFeedback.selection()
-            }) {
-                Image(systemName: "message.fill")
-                    .font(.system(size: 13))
-                    .foregroundColor(Color(red: 0.0, green: 0.85, blue: 0.45))
-                    .frame(width: 24, height: 24)
-                    .background(Circle().fill(Color.green.opacity(0.15)))
-            }
-            .buttonStyle(.plain)
-            .help("Relay to iPhone via iMessage")
+            .help("Send Message")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -722,10 +801,17 @@ public struct FinderStyleChatWindowView: View {
 
     private func handlePromptSubmit() {
         let clean = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { return }
+        guard (!clean.isEmpty || !droppedAttachments.isEmpty), !localModels.isGenerating else { return }
         promptText = ""
 
-        localModels.generate(prompt: clean)
+        var finalPrompt = clean
+        if !droppedAttachments.isEmpty {
+            let fileList = droppedAttachments.map { "- \($0.path)" }.joined(separator: "\n")
+            finalPrompt += "\n\n📎 Attached file(s):\n\(fileList)"
+            droppedAttachments = []
+        }
+
+        localModels.generate(prompt: finalPrompt)
         HapticFeedback.selection()
     }
 

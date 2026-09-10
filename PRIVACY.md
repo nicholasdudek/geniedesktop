@@ -1,5 +1,7 @@
 # Privacy Policy for Genie — Desktop Workspace
 
+> **Genie 3.0 direct/development build notice:** The offline-only statements below describe the older distribution profile and do not describe the new Agent workspace. Agent mode sends task messages, selected file contents, and tool results to the model endpoint configured by the user. It stores task history locally under `~/Library/Application Support/Genie/AgentRuns` and optionally stores its API key in macOS Keychain. Shell commands have normal user permissions and may access the network. See [the 3.0 data flow and release boundaries](docs/GENIE_3_0.md) before using or distributing this build. A unified policy covering all existing chat and bridge integrations still requires review before publication.
+
 **Effective Date**: September 2, 2026  
 **Last Updated**: September 6, 2026  
 **Product**: Genie — Desktop Workspace (`com.nicholasdudek.genie` • legacy: `com.nicholasdudek.goldgate`)  

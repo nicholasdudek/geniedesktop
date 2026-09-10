@@ -224,7 +224,7 @@ public final class WallpaperManager: ObservableObject {
             }
         }
 
-        // 2. Search local Wallpapers directories before generic system folders
+        // 2. Search local Wallpapers directories and all Apple macOS system wallpaper folders
         var searchDirectories: [String] = []
         if let bundleWallpapers = Bundle.main.resourceURL?.appendingPathComponent("Wallpapers").path {
             searchDirectories.append(bundleWallpapers)
@@ -239,52 +239,66 @@ public final class WallpaperManager: ObservableObject {
         }
         searchDirectories.append("/Library/Desktop Pictures")
         searchDirectories.append("/System/Library/Desktop Pictures")
+        searchDirectories.append("/System/Library/Desktop Pictures/Solid Colors")
+        searchDirectories.append("/System/Library/Desktop Pictures/.thumbnails")
 
         for dir in searchDirectories {
             let url = URL(fileURLWithPath: dir)
-            if let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey], options: [.skipsPackageDescendants, .skipsHiddenFiles]) {
-                for case let fileURL as URL in enumerator {
-                    let ext = fileURL.pathExtension.lowercased()
-                    if ["heic", "jpg", "jpeg", "png"].contains(ext) {
-                        let path = fileURL.path
-                        // Strictly filter out thumbnail caches and low-res assets
-                        if path.contains("/.thumbnails") || path.contains(".thumbnails") || path.lowercased().contains("thumb") {
-                            // Allow Apple Aerial thumbnails since they are crisp 4K previews
-                            if !path.contains("aerials/thumbnails") {
-                                continue
-                            }
-                        }
+            guard let enumerator = FileManager.default.enumerator(
+                at: url,
+                includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
+                options: [.skipsPackageDescendants]
+            ) else { continue }
 
-                        // Ensure file is high resolution (> 50 KB)
-                        if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
-                           let fileSize = attrs[.size] as? Int, fileSize < 30_000 {
+            for case let fileURL as URL in enumerator {
+                let ext = fileURL.pathExtension.lowercased()
+                if ["heic", "jpg", "jpeg", "png"].contains(ext) {
+                    let path = fileURL.path
+                    let isSolidColor = path.contains("Solid Colors")
+                    let isAppleSystemThumbnail = path.contains("/System/Library/Desktop Pictures/.thumbnails") || path.contains("aerials/thumbnails")
+
+                    // Discard unwanted app caches (except Apple system wallpaper assets)
+                    if !isAppleSystemThumbnail && (path.contains("/.thumbnails") || path.contains(".thumbnails") || path.lowercased().contains("thumb")) {
+                        continue
+                    }
+
+                    // Check file size (Solid Colors are ~300 bytes, official wallpapers >= 5 KB)
+                    if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+                       let fileSize = attrs[.size] as? Int {
+                        if isSolidColor {
+                            if fileSize < 50 { continue }
+                        } else if isAppleSystemThumbnail {
+                            if fileSize < 5_000 { continue }
+                        } else if fileSize < 10_000 {
                             continue
                         }
+                    }
 
-                        if !seenPaths.contains(path) {
-                            seenPaths.insert(path)
-                            let cleanName = fileURL.deletingPathExtension().lastPathComponent
-                                .replacingOccurrences(of: "_", with: " ")
-                                .replacingOccurrences(of: "-", with: " ")
-                            
-                            let category: WallpaperCategory
-                            if cleanName.lowercased().contains("dark") || cleanName.lowercased().contains("dynamic") || cleanName.lowercased().contains("light") || cleanName.lowercased().contains("golden") {
-                                category = .dynamic
-                            } else if cleanName.lowercased().contains("sunset") || cleanName.lowercased().contains("cliff") || cleanName.lowercased().contains("beach") || cleanName.lowercased().contains("coast") || cleanName.lowercased().contains("valley") || cleanName.lowercased().contains("horizon") {
-                                category = .landscape
-                            } else if cleanName.lowercased().contains("grid") || cleanName.lowercased().contains("chroma") || cleanName.lowercased().contains("iridescence") || cleanName.lowercased().contains("dome") {
-                                category = .studio
-                            } else {
-                                category = .dynamic
-                            }
-
-                            items.append(WallpaperItem(
-                                id: path,
-                                name: cleanName,
-                                category: category,
-                                path: path
-                            ))
+                    if !seenPaths.contains(path) {
+                        seenPaths.insert(path)
+                        let cleanName = fileURL.deletingPathExtension().lastPathComponent
+                            .replacingOccurrences(of: "_", with: " ")
+                            .replacingOccurrences(of: "-", with: " ")
+                        
+                        let category: WallpaperCategory
+                        if isSolidColor {
+                            category = .studio
+                        } else if cleanName.lowercased().contains("dark") || cleanName.lowercased().contains("dynamic") || cleanName.lowercased().contains("light") || cleanName.lowercased().contains("golden") {
+                            category = .dynamic
+                        } else if cleanName.lowercased().contains("sunset") || cleanName.lowercased().contains("cliff") || cleanName.lowercased().contains("beach") || cleanName.lowercased().contains("coast") || cleanName.lowercased().contains("valley") || cleanName.lowercased().contains("horizon") || cleanName.lowercased().contains("sur") || cleanName.lowercased().contains("catalina") || cleanName.lowercased().contains("sonoma") {
+                            category = .landscape
+                        } else if cleanName.lowercased().contains("grid") || cleanName.lowercased().contains("chroma") || cleanName.lowercased().contains("iridescence") || cleanName.lowercased().contains("dome") || cleanName.lowercased().contains("radial") {
+                            category = .studio
+                        } else {
+                            category = .dynamic
                         }
+
+                        items.append(WallpaperItem(
+                            id: path,
+                            name: cleanName,
+                            category: category,
+                            path: path
+                        ))
                     }
                 }
             }
@@ -344,7 +358,7 @@ public final class WallpaperManager: ObservableObject {
 
         // 3. Curated 4K Wallpaper (when not in sameWallpaperMode)
         if !sameWallpaper && matchingStyle != "Exact Mirror (1:1)" {
-            let img = generateCuratedWallpaper(named: matchingStyle)
+            let img = generateCuratedWallpaper(named: matchingStyle, targetSize: CGSize(width: 3840, height: 2160))
             self.activeWallpaperImage = img
             return
         }
@@ -416,13 +430,13 @@ public final class WallpaperManager: ObservableObject {
         return false
     }
 
-    func generateCuratedWallpaper(named name: String) -> NSImage {
-        let key = "curated_\(name)" as NSString
+    func generateCuratedWallpaper(named name: String, targetSize: CGSize = CGSize(width: 480, height: 270)) -> NSImage {
+        let key = "curated_\(name)_\(Int(targetSize.width))x\(Int(targetSize.height))" as NSString
         if let cached = thumbnailCache.object(forKey: key) {
             return cached
         }
 
-        // Return real 4K photo asset if matching Golden Gate or Apple names
+        // Return real photo asset if matching Golden Gate or Apple names
         if name.contains("Golden") || name.contains("Gate") {
             if let img = loadBundledWallpaper(named: "GoldenGateSunset") ?? loadBundledWallpaper(named: "GoldenGateDynamic") ?? loadBundledWallpaper(named: "GoldenGateAerial4K") {
                 thumbnailCache.setObject(img, forKey: key)
@@ -436,7 +450,7 @@ public final class WallpaperManager: ObservableObject {
             }
         }
 
-        let size = CGSize(width: 3840, height: 2160)
+        let size = targetSize
         let img = NSImage(size: size)
         img.lockFocus()
 
@@ -489,14 +503,15 @@ public final class WallpaperManager: ObservableObject {
             bounds.fill()
             let gridCol = NSColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 0.35)
             gridCol.setStroke()
-            for x in stride(from: 0, to: size.width, by: 60) {
+            let gridStep = max(15.0, 60.0 * (size.width / 1920.0))
+            for x in stride(from: 0, to: size.width, by: gridStep) {
                 let p = NSBezierPath()
                 p.move(to: CGPoint(x: x, y: 0))
                 p.line(to: CGPoint(x: x, y: size.height))
                 p.lineWidth = 1.0
                 p.stroke()
             }
-            for y in stride(from: 0, to: size.height, by: 60) {
+            for y in stride(from: 0, to: size.height, by: gridStep) {
                 let p = NSBezierPath()
                 p.move(to: CGPoint(x: 0, y: y))
                 p.line(to: CGPoint(x: size.width, y: y))

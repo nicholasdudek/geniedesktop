@@ -174,6 +174,10 @@ public final class LocalModelManager: ObservableObject {
     // ── Runtime Observables & Chat History ──────────────────────────────────
     @Published public var availableModels: [LocalModelInfo] = []
     @Published public var chatHistory: [ChatMessage] = []
+    /// When set (by the embedded Finder-style file browser tracking its current folder),
+    /// documents/presentations/notes the chat generates land here instead of the
+    /// per-session Chat Folder under GenieStandardDirectories.
+    @Published public var activeSaveDirectoryOverride: URL?
     @Published public var savedSessions: [SavedChatSession] = []
     @Published public var currentSessionId: UUID = UUID()
     @Published public var isDiscovering: Bool = false
@@ -210,6 +214,10 @@ public final class LocalModelManager: ObservableObject {
     /// Context window Genie requests per generation. The base weights go to
     /// 262144; 64k is what fits alongside the app on a 48 GB machine.
     public static let localContextWindow = 65536
+
+    /// Cap on chained tool -> model -> tool rounds in `runAgentContinuation`,
+    /// so a model that keeps emitting commands can't loop forever.
+    private static let maxAgentLoopDepth = 3
 
     public static let cloudModels: [CloudModelItem] = [
         CloudModelItem(
@@ -967,6 +975,12 @@ record 5
 11. 🎥 DESKTOP SCREEN RECORDER:
 When asked to record the screen or capture desktop video:
 Format with a ```record_screen <seconds>``` block (e.g. ```record_screen 10```).
+
+12. 👁️ WHOLE-SCREEN VIEWER (OPTICAL VISION):
+When you need to actually see what's currently on the user's screen — to answer "what's on my screen", read an error, check the state of an app, or verify something before continuing — emit a ```screen_view``` block with no arguments. Genie captures the real screen, runs Apple Vision OCR over it, and hands the recognized text straight back to you as a tool result so you can read it and continue, instead of guessing or refusing.
+Example:
+```screen_view
+```
 """)
 
         if terminalAccessEnabled {
@@ -982,7 +996,8 @@ Format the exact shell command inside a ```bash or ```terminal block.
 11. 🌐 WEB BROWSER & INTERNET SEARCH:
 When asked to search the internet, lookup information on the web, browse websites, check real-time news, or look up live documentation:
 Format web searches inside a ```search <query>``` block.
-Format webpage visits inside a ```browse <url>``` block.
+Format webpage visits inside a ```browse <url>``` block — this opens the Live Browser so the user can see it too, and Genie reads the rendered page text back to you as a tool result.
+To fetch and read a page WITHOUT opening any visible browser window — a silent background read that runs in parallel with whatever is already on screen and never disturbs it — format with a ```browse_hidden <url>``` block. Use this when the user hasn't asked to watch you browse, or when you need to check several pages without popping windows open.
 """)
         }
 
@@ -1215,10 +1230,16 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                 self.lastTokensPerSecond = elapsed > 0 ? approxTokens / elapsed : 0
             }
 
-            let chatFolders = GenieStandardDirectories.chatSessionFolderURL(
+            var chatFolders = GenieStandardDirectories.chatSessionFolderURL(
                 sessionId: self.currentSessionId,
                 title: self.savedSessions.first(where: { $0.id == self.currentSessionId })?.title
             )
+            if let folderOverride = self.activeSaveDirectoryOverride {
+                chatFolders.documents = folderOverride
+                chatFolders.presentations = folderOverride
+                chatFolders.notes = folderOverride
+                chatFolders.images = folderOverride
+            }
 
             // 1. Slide Deck Presentations Tool
             if let slides = self.extractPresentationSlides(from: self.currentResponse) {
@@ -1390,6 +1411,19 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                     let statusEmoji = (exitCode == 0) ? "✓" : "⚠️ (Exit \(exitCode))"
                     let block = "\n\n💻 **[Terminal Auto-Execution \(statusEmoji)]:**\n```\n\(termOut.isEmpty ? "(Command executed successfully with no output)" : termOut)\n```"
                     self.currentResponse += block
+
+                    // Feed the result back to the model so it can react (run another
+                    // command, or write the final answer) instead of stopping after
+                    // one fixed pass. Only chains on success, bounded by depth.
+                    if exitCode == 0 {
+                        await self.runAgentContinuation(
+                            originalPrompt: cleanPrompt,
+                            toolContext: "Ran `\(cmd)`, exit 0:\n\(termOut.isEmpty ? "(no output)" : termOut)",
+                            provider: provider,
+                            modelToUse: modelToUse,
+                            depth: 1
+                        )
+                    }
                 }
             }
 
@@ -1430,9 +1464,62 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                     let urls = self.extractAllWebURLs(from: self.currentResponse)
                     if let url = urls.first {
                         MiniBrowserManager.shared.browse(url: url, triggeredByAI: true)
+                        let pageText = await MiniBrowserManager.shared.extractPageText()
                         MiniBrowserManager.shared.finishAIBrowsing()
+
+                        if !pageText.isEmpty {
+                            let preview = String(pageText.prefix(1500))
+                            self.currentResponse += "\n\n🌐 **[Live Browser — read \(url.host ?? url.absoluteString)]:**\n\(preview)"
+                            await self.runAgentContinuation(
+                                originalPrompt: cleanPrompt,
+                                toolContext: "Opened \(url.absoluteString) in the Live Browser. Rendered page text:\n\(pageText)",
+                                provider: provider,
+                                modelToUse: modelToUse,
+                                depth: 1
+                            )
+                        }
                     }
                 }
+            }
+
+            // 11d. Hidden Browser Auto-Execution — background read, never shown to the user
+            if self.webAccessEnabled {
+                let hiddenURLs = self.extractHiddenBrowseURLs(from: self.currentResponse)
+                if let url = hiddenURLs.first {
+                    let (pageText, screenshotPath, title) = await GenieHiddenBrowserEngine.shared.loadAndRead(url: url)
+                    var block = "\n\n🕶️ **[Hidden Browser — \(title)]:**\n"
+                    block += pageText.isEmpty ? "(page loaded but no readable text was found)" : String(pageText.prefix(1500))
+                    if let path = screenshotPath {
+                        block += "\n\n📸 Screenshot saved: \(path)"
+                    }
+                    self.currentResponse += block
+
+                    await self.runAgentContinuation(
+                        originalPrompt: cleanPrompt,
+                        toolContext: "Fetched \(url.absoluteString) in the hidden background browser (not shown on screen). Rendered page text:\n\(pageText.isEmpty ? "(no readable text)" : pageText)",
+                        provider: provider,
+                        modelToUse: modelToUse,
+                        depth: 1
+                    )
+                }
+            }
+
+            // 11e. Whole-Screen Viewer Auto-Execution
+            if self.extractScreenViewRequested(from: self.currentResponse) {
+                let ocrText = await GenieVisionEngine.shared.scanActiveScreenAndRecognize()
+                let fallback = GenieVisionEngine.shared.statusFeedback ?? "Screen captured, but no legible text was found."
+                let block = ocrText.isEmpty
+                    ? "\n\n👁️ **[Screen Viewer]:** \(fallback)"
+                    : "\n\n👁️ **[Screen Viewer]:**\n\(String(ocrText.prefix(2000)))"
+                self.currentResponse += block
+
+                await self.runAgentContinuation(
+                    originalPrompt: cleanPrompt,
+                    toolContext: "Captured the user's current screen and ran OCR. Recognized text:\n\(ocrText.isEmpty ? fallback : ocrText)",
+                    provider: provider,
+                    modelToUse: modelToUse,
+                    depth: 1
+                )
             }
 
             // 12. AI Creations Detection & Auto-Display in Player Window
@@ -2198,6 +2285,95 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
         LocalModelManager.primaryModelID
     }
 
+    // MARK: - Agent Loop Continuation
+    /// Re-prompts the model with a tool's output so it can chain another tool
+    /// call or write the final answer, instead of the reply ending the moment
+    /// one command finishes. Each round appends its own assistant `ChatMessage`
+    /// (so the trace is visible and persisted like any other turn) and recurses
+    /// only while the model keeps emitting a new terminal command, capped at
+    /// `maxAgentLoopDepth`.
+    private func runAgentContinuation(
+        originalPrompt: String,
+        toolContext: String,
+        provider: AIModelProvider,
+        modelToUse: String,
+        depth: Int
+    ) async {
+        guard depth <= Self.maxAgentLoopDepth else { return }
+
+        let followUp = """
+        Original request: "\(originalPrompt)"
+
+        Tool result:
+        \(toolContext)
+
+        Using this result, continue toward the original request. If another \
+        command is genuinely needed, reply with exactly one ```bash```, ```browse_hidden```, \
+        or ```screen_view``` block. Otherwise, write the final, well-formatted answer with no \
+        command block.
+        """
+
+        self.currentResponse = ""
+        self.currentThinking = ""
+        switch provider {
+        case .gemini:
+            await generateGemini(prompt: followUp, model: modelToUse, apiKey: self.geminiApiKey)
+        case .claude:
+            await generateClaude(prompt: followUp, model: modelToUse, apiKey: self.claudeApiKey)
+        case .openai:
+            await generateOpenAI(prompt: followUp, model: modelToUse, apiKey: self.openaiApiKey)
+        case .local:
+            await generateLocal(prompt: followUp, model: modelToUse)
+        }
+
+        guard !self.currentResponse.isEmpty else { return }
+
+        var nextToolContext: String?
+        if self.terminalAccessEnabled && self.terminalAutoExecute,
+           let cmd = self.extractTerminalCommand(from: self.currentResponse) {
+            let (termOut, exitCode) = await self.executeTerminalCommand(cmd)
+            let statusEmoji = (exitCode == 0) ? "✓" : "⚠️ (Exit \(exitCode))"
+            self.currentResponse += "\n\n💻 **[Terminal Auto-Execution \(statusEmoji)]:**\n```\n\(termOut.isEmpty ? "(Command executed successfully with no output)" : termOut)\n```"
+            if exitCode == 0 {
+                nextToolContext = "Ran `\(cmd)`, exit 0:\n\(termOut.isEmpty ? "(no output)" : termOut)"
+            }
+        }
+
+        if nextToolContext == nil, self.webAccessEnabled,
+           let url = self.extractHiddenBrowseURLs(from: self.currentResponse).first {
+            let (pageText, screenshotPath, title) = await GenieHiddenBrowserEngine.shared.loadAndRead(url: url)
+            var block = "\n\n🕶️ **[Hidden Browser — \(title)]:**\n"
+            block += pageText.isEmpty ? "(page loaded but no readable text was found)" : String(pageText.prefix(1500))
+            if let path = screenshotPath {
+                block += "\n\n📸 Screenshot saved: \(path)"
+            }
+            self.currentResponse += block
+            nextToolContext = "Fetched \(url.absoluteString) in the hidden background browser. Rendered page text:\n\(pageText.isEmpty ? "(no readable text)" : pageText)"
+        }
+
+        if nextToolContext == nil, self.extractScreenViewRequested(from: self.currentResponse) {
+            let ocrText = await GenieVisionEngine.shared.scanActiveScreenAndRecognize()
+            let fallback = GenieVisionEngine.shared.statusFeedback ?? "Screen captured, but no legible text was found."
+            self.currentResponse += ocrText.isEmpty
+                ? "\n\n👁️ **[Screen Viewer]:** \(fallback)"
+                : "\n\n👁️ **[Screen Viewer]:**\n\(String(ocrText.prefix(2000)))"
+            nextToolContext = "Captured the user's current screen and ran OCR. Recognized text:\n\(ocrText.isEmpty ? fallback : ocrText)"
+        }
+
+        self.chatHistory.append(ChatMessage(role: "assistant", content: self.currentResponse, model: modelToUse))
+        self.saveChatHistory()
+
+        if let next = nextToolContext {
+            await runAgentContinuation(
+                originalPrompt: originalPrompt,
+                toolContext: next,
+                provider: provider,
+                modelToUse: modelToUse,
+                depth: depth + 1
+            )
+        }
+    }
+
     // MARK: - Terminal & Developer Tool Execution Engine
     public func executeTerminalCommand(_ command: String) async -> (output: String, exitCode: Int32) {
         guard terminalAccessEnabled else {
@@ -2330,6 +2506,32 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             }
         }
         return urls
+    }
+
+    public func extractHiddenBrowseURLs(from text: String) -> [URL] {
+        var urls: [URL] = []
+        let patterns = ["```browse_hidden\n", "```browse_hidden "]
+        for p in patterns {
+            var searchRange = text.startIndex..<text.endIndex
+            while let start = text.range(of: p, range: searchRange) {
+                let remainder = text[start.upperBound...]
+                if let end = remainder.range(of: "```") {
+                    let raw = String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let url = URL(string: raw), (url.scheme == "http" || url.scheme == "https"), !urls.contains(url) {
+                        urls.append(url)
+                    }
+                    searchRange = end.upperBound..<text.endIndex
+                } else {
+                    break
+                }
+            }
+        }
+        return urls
+    }
+
+    public func extractScreenViewRequested(from text: String) -> Bool {
+        let patterns = ["```screen_view", "```view_screen"]
+        return patterns.contains { text.range(of: $0) != nil }
     }
 
     public func extractWebLinks(from text: String) -> [ExtractedWebLink] {

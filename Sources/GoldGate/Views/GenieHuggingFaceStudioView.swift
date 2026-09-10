@@ -104,7 +104,7 @@ public struct GenieHuggingFaceStudioView: View {
                         .background(Capsule().fill(Color.yellow.opacity(0.15)))
                 }
 
-                Text("1-Click GGUF download to local Apple Silicon RAM (48 GB) & headless Gradio UI execution.")
+                Text("1-Click GGUF download to local Apple Silicon RAM (\(LocalModelManager.detectedRAMString)) & headless Gradio UI execution.")
                     .font(.system(size: 10.5))
                     .foregroundColor(.secondary)
             }

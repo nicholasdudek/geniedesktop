@@ -67,6 +67,9 @@ public struct SpaceGraphicLayer: Identifiable, Equatable {
     public var runningAppNames: [String]
     public var runningAppIcons: [NSImage]
     public var liveThumbnail: NSImage?
+    public var isGPUForkActive: Bool
+    public var forkedFrame: GenieForkedFrame?
+    public var metalTexture: MTLTexture?
 
     public init(
         spaceIndex: Int,
@@ -82,7 +85,10 @@ public struct SpaceGraphicLayer: Identifiable, Equatable {
         contrast: Double = 1.0,
         runningAppNames: [String] = [],
         runningAppIcons: [NSImage] = [],
-        liveThumbnail: NSImage? = nil
+        liveThumbnail: NSImage? = nil,
+        isGPUForkActive: Bool = false,
+        forkedFrame: GenieForkedFrame? = nil,
+        metalTexture: MTLTexture? = nil
     ) {
         self.spaceIndex = spaceIndex
         self.name = name
@@ -98,6 +104,9 @@ public struct SpaceGraphicLayer: Identifiable, Equatable {
         self.runningAppNames = runningAppNames
         self.runningAppIcons = runningAppIcons
         self.liveThumbnail = liveThumbnail
+        self.isGPUForkActive = isGPUForkActive
+        self.forkedFrame = forkedFrame
+        self.metalTexture = metalTexture
     }
 
     public static func == (lhs: SpaceGraphicLayer, rhs: SpaceGraphicLayer) -> Bool {
@@ -107,7 +116,8 @@ public struct SpaceGraphicLayer: Identifiable, Equatable {
         lhs.opacity == rhs.opacity &&
         lhs.isVisible == rhs.isVisible &&
         lhs.isLocked == rhs.isLocked &&
-        lhs.isSolo == rhs.isSolo
+        lhs.isSolo == rhs.isSolo &&
+        lhs.isGPUForkActive == rhs.isGPUForkActive
     }
 }
 
@@ -266,4 +276,23 @@ public final class SpacesLayerManager: ObservableObject {
         statusMessage = "Merged Layer \(sourceSpaceIndex) down into Layer \(targetSpaceIndex) 🪄"
         synchronizeLayersWithMacOSSpaces()
     }
+
+    // MARK: - 4. 🔱 Zero-Copy GPU Pixel-Forking Spaces Engine
+    @Published public var isGPUSpacesForkingEnabled: Bool = true
+
+    public func attachGPUFork(to spaceIndex: Int, frame: GenieForkedFrame) {
+        guard let idx = layers.firstIndex(where: { $0.spaceIndex == spaceIndex }) else { return }
+        layers[idx].isGPUForkActive = true
+        layers[idx].forkedFrame = frame
+        layers[idx].metalTexture = frame.metalTexture
+        statusMessage = "Attached GPU Fork to Space \(spaceIndex) ⚡️"
+    }
+
+    public func detachGPUFork(from spaceIndex: Int) {
+        guard let idx = layers.firstIndex(where: { $0.spaceIndex == spaceIndex }) else { return }
+        layers[idx].isGPUForkActive = false
+        layers[idx].forkedFrame = nil
+        layers[idx].metalTexture = nil
+    }
 }
+

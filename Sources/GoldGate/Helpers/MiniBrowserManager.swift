@@ -107,6 +107,24 @@ public final class MiniBrowserManager: ObservableObject {
         }
     }
 
+    /// Waits briefly for the current navigation to finish, then reads back the rendered
+    /// page's text via `document.body.innerText` — closes the loop so a caller (the AI
+    /// model) actually gets what rendered, instead of only a "loaded" acknowledgement.
+    public func extractPageText(maxChars: Int = 6000, loadTimeout: TimeInterval = 12) async -> String {
+        let deadline = Date().addingTimeInterval(loadTimeout)
+        while isLoading && Date() < deadline {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
+
+        guard let webView = activeWebView else { return "" }
+        return await withCheckedContinuation { (cont: CheckedContinuation<String, Never>) in
+            webView.evaluateJavaScript("document.body ? document.body.innerText : ''") { result, _ in
+                let text = (result as? String) ?? ""
+                cont.resume(returning: String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxChars)))
+            }
+        }
+    }
+
     public func finishAIBrowsing(summary: String? = nil) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             self.isAIBrowsing = false

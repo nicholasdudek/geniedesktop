@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 public class WorldClockViewModel: ObservableObject {
-    /// Single shared instance used by the Genie settings pane and the floating Mini Watch Dock panel.
+    /// Single shared instance used by the Genie settings pane and the chat dock's watch strip.
     public static let shared = WorldClockViewModel()
 
     @Published public var pillows: [PillowClock] = [] {
@@ -18,7 +18,7 @@ public class WorldClockViewModel: ObservableObject {
     @Published public var timeTravelOffsetHours: Double = 0.0 // -12 to +12 or 0 to 24
     @Published public var globalSize: PillowSize = .regular
 
-    // Mini Watch Dock (configured in Settings)
+    // Chat-dock watch strip (configured in Settings)
     @Published public var dockSettings: MiniWatchDockSettings = .default {
         didSet {
             saveDockSettings()

@@ -16,9 +16,10 @@ public final class GenieScreenCaptureKitEngine: NSObject, @unchecked Sendable {
     public func captureDisplaySnapshot(cropRect: CGRect? = nil) async -> CGImage? {
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            guard let display = content.displays.first else { return nil }
+            guard let display = content.displays.first(where: { $0.displayID == CGMainDisplayID() }) else { return nil }
 
-            let filter = SCContentFilter(display: display, excludingWindows: [])
+            let ownWindows = content.windows.filter { $0.owningApplication?.processID == ProcessInfo.processInfo.processIdentifier }
+            let filter = SCContentFilter(display: display, excludingWindows: ownWindows)
             let config = SCStreamConfiguration()
             config.width = Int(display.width)
             config.height = Int(display.height)
@@ -34,6 +35,9 @@ public final class GenieScreenCaptureKitEngine: NSObject, @unchecked Sendable {
             self.lastCapturedImage = cgImage
             return cgImage
         } catch {
+            // Keep the existing CGWindowList path as a permission-safe fallback
+            // when ScreenCaptureKit is temporarily unavailable.
+            guard CGPreflightScreenCaptureAccess() else { return nil }
             return fallbackCapture(rect: cropRect ?? NSScreen.main?.frame ?? .zero)
         }
     }
@@ -42,7 +46,7 @@ public final class GenieScreenCaptureKitEngine: NSObject, @unchecked Sendable {
     public func fallbackCapture(rect: CGRect) -> CGImage? {
         guard let mainScreen = NSScreen.main else { return nil }
         let targetRect = rect.isEmpty ? mainScreen.frame : rect
-        return CGWindowListCreateImage(
+        return safeCGWindowListCreateImage(
             targetRect,
             .optionOnScreenOnly,
             kCGNullWindowID,
@@ -54,12 +58,9 @@ public final class GenieScreenCaptureKitEngine: NSObject, @unchecked Sendable {
     public func captureWindow(windowID: CGWindowID) async -> CGImage? {
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            guard let window = content.windows.first(where: { $0.windowID == windowID }),
-                  let display = content.displays.first else {
-                return fallbackCapture(rect: .zero)
-            }
+            guard let window = content.windows.first(where: { $0.windowID == windowID }) else { return nil }
 
-            let filter = SCContentFilter(display: display, including: [window])
+            let filter = SCContentFilter(desktopIndependentWindow: window)
             let config = SCStreamConfiguration()
             config.width = Int(window.frame.width)
             config.height = Int(window.frame.height)
@@ -68,7 +69,7 @@ public final class GenieScreenCaptureKitEngine: NSObject, @unchecked Sendable {
 
             return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
         } catch {
-            return fallbackCapture(rect: .zero)
+            return nil
         }
     }
 }

@@ -241,74 +241,6 @@ public final class SpatialPlaneManager: ObservableObject {
         notificationObservers.append(o3)
     }
 
-    // MARK: - 14" MacBook Pro Liquid Retina XDR Hardware Geometry & Grid Physics
-    public struct HardwareDisplayGeometry: Sendable {
-        // 14" MacBook Pro Hardware Panel: 3024 x 1964 native physical pixels
-        public static let nativePanelPixels = CGSize(width: 3024, height: 1964)
-        // Safe 16:10 active display area below the 74px camera notch: 3024 x 1890 physical pixels
-        public static let safeActivePixels = CGSize(width: 3024, height: 1890)
-        // Default 2.0x Retina scaled points: 1512 x 982 points
-        public static let defaultRetinaPoints = CGSize(width: 1512, height: 982)
-        // Safe 16:10 active points below the 37pt notch / menu bar: 1512 x 945 points
-        public static let safeRetinaPoints = CGSize(width: 1512, height: 945)
-        public static let defaultBackingScaleFactor: CGFloat = 2.0
-        public static let cameraNotchHeightPixels: CGFloat = 74.0
-        public static let cameraNotchHeightPoints: CGFloat = 37.0
-
-        // ── 3x3 Grid Exact Pixel Split Calculations ──
-        // In Max Resolution Safe Mode (3024 x 1890 physical pixels):
-        // Width: 3024 / 3 = exactly 1008.0 px (remainder 0)
-        // Height: 1890 / 3 = exactly 630.0 px (remainder 0)
-        public static let sectorSafePixels3x3 = CGSize(width: 1008.0, height: 630.0)
-
-        // In Default Retina Points Safe Mode (1512 x 945 points @ 2x):
-        // Width: 1512 / 3 = exactly 504.0 pt (remainder 0)
-        // Height: 945 / 3 = exactly 315.0 pt (remainder 0)
-        public static let sectorSafePoints3x3 = CGSize(width: 504.0, height: 315.0)
-
-        // In 9x9 Universe Mode (81 screens):
-        // Width per screen: 3024 / 9 = 336.0 px (168.0 pt) (remainder 0)
-        // Height per screen: 1890 / 9 = 210.0 px (105.0 pt) (remainder 0)
-        public static let universeSafePixels9x9 = CGSize(width: 336.0, height: 210.0)
-        public static let universeSafePoints9x9 = CGSize(width: 168.0, height: 105.0)
-
-        /// Returns the live main display resolution in points and pixels
-        public static func currentDisplayMetrics() -> (points: CGSize, pixels: CGSize, scale: CGFloat, is14InchRetina: Bool) {
-            let screen = NSScreen.main ?? NSScreen.screens.first
-            let points = screen?.frame.size ?? defaultRetinaPoints
-            let scale = screen?.backingScaleFactor ?? defaultBackingScaleFactor
-            let pixels = CGSize(width: points.width * scale, height: points.height * scale)
-            let is14 = (abs(pixels.width - 3024) < 1.0) || (abs(points.width - 1512) < 1.0)
-            return (points, pixels, scale, is14)
-        }
-
-        /// Computes even 3x3 split dimensions. Returns (sectorSize: CGSize, remainderPixels: CGSize, isPerfectSplit: Bool)
-        public static func calculate3x3Split(usePhysicalPixels: Bool = true, isolateNotch: Bool = true) -> (sectorSize: CGSize, remainderPixels: CGSize, isPerfectSplit: Bool) {
-            if usePhysicalPixels {
-                let total = isolateNotch ? safeActivePixels : nativePanelPixels
-                let widthPerSector = floor(total.width / 3.0)
-                let heightPerSector = floor(total.height / 3.0)
-                let remainderX = total.width - (widthPerSector * 3.0)
-                let remainderY = total.height - (heightPerSector * 3.0)
-                return (
-                    CGSize(width: widthPerSector, height: heightPerSector),
-                    CGSize(width: remainderX, height: remainderY),
-                    remainderX == 0 && remainderY == 0
-                )
-            } else {
-                let total = isolateNotch ? safeRetinaPoints : defaultRetinaPoints
-                let widthPerSector = floor(total.width / 3.0)
-                let heightPerSector = floor(total.height / 3.0)
-                let remainderX = total.width - (widthPerSector * 3.0)
-                let remainderY = total.height - (heightPerSector * 3.0)
-                return (
-                    CGSize(width: widthPerSector, height: heightPerSector),
-                    CGSize(width: remainderX, height: remainderY),
-                    remainderX == 0 && remainderY == 0
-                )
-            }
-        }
-    }
 
     // MARK: - 9x9 Big Screen Universe & 3x3 Pixel Geometry
     // Universe: 9x9 = 81 screens (the default desktop size).
@@ -439,22 +371,38 @@ public final class SpatialPlaneManager: ObservableObject {
         initializeRAMBuffers()
         refreshAllRAMBuffers()
 
-        let currentSpaces = MacDesktopsManager.shared.spaces
-        // PRELOAD 9 DESKTOPS: Warm up hardware-level WindowServer spaces up to 9
-        // // OLD IMPLEMENTATION: if currentSpaces.count < 2 {
-        if currentSpaces.count < 9 {
-            self.isPreloadingRAM = true
-            let needed = min(9 - currentSpaces.count, 7) // Incrementally batch preload
-            for _ in 0..<needed {
-                _ = MacDesktopsManager.shared.executeHardwareSpaceCreation()
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
-                MacDesktopsManager.shared.refreshSpaces()
-                self?.isPreloadingRAM = false
-                self?.refreshAllRAMBuffers()
+        // PRELOAD 9 DESKTOPS: Warm up hardware-level WindowServer spaces up to a full 3x3 grid.
+        // The whole spatial model assumes all nine slots exist, so this tops up to nine and then
+        // verifies — WindowServer silently drops creation requests when they arrive too fast, and
+        // the previous version also capped each pass at 7, so a one-space Mac never reached nine.
+        createMissingGridSpaces(attemptsRemaining: 3)
+    }
+
+    private func createMissingGridSpaces(attemptsRemaining: Int) {
+        MacDesktopsManager.shared.refreshSpaces()
+        let existing = MacDesktopsManager.shared.spaces.count
+        let needed = Self.totalGridSpaces - existing
+        guard needed > 0, attemptsRemaining > 0 else {
+            isPreloadingRAM = false
+            refreshAllRAMBuffers()
+            return
+        }
+
+        isPreloadingRAM = true
+        for _ in 0..<needed {
+            _ = MacDesktopsManager.shared.executeHardwareSpaceCreation()
+        }
+
+        // Re-check after WindowServer settles; anything it dropped gets retried.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            MainActor.assumeIsolated {
+                self?.createMissingGridSpaces(attemptsRemaining: attemptsRemaining - 1)
             }
         }
     }
+
+    /// The 3x3 plane is always nine slots — every sector lookup assumes all nine exist.
+    public static let totalGridSpaces = 9
 
     private var themeWallpaperCache: [String: NSImage] = [:]
 
@@ -950,35 +898,8 @@ public final class SpatialPlaneManager: ObservableObject {
     }
 
     public func zoomOutToPlane() {
-        guard !isZoomedOut else { return }
-        refreshAllRAMBuffers()
-        let maxLimit = isUniverse81Active ? Self.totalUniverseScreens : 9
-        let currentIdx = max(1, min(maxLimit, MacDesktopsManager.shared.currentSpaceIndex))
-        focusedPlaneIndex = currentIdx
-        activeMacroPixelSector = Self.macroPixelSector(for: currentIdx).sector
-
-        continuousCanvasFormation = "1:1 Continuous Mega-Canvas"
-
-        let fitScale: CGFloat
-        switch gridZoomFitMode {
-        case "2x2 Grid", "2 Screens (Side-by-Side)":
-            fitScale = 0.50
-        case "1x1 Desktop":
-            fitScale = 1.0
-        default:
-            fitScale = 0.50
-        }
-
-        vectorZoomScale = fitScale
-        macroCameraOffset = .zero
-
-        HapticFeedback.heavy()
-        NSSound(named: "Blow")?.play()
-
-        showOverlayWindow()
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-            self.isZoomedOut = true
-        }
+        // Spatial zoomed-out overview archived 2026-09-08 (~/Desktop/Genie/.backups/spatial-canvas-2026-09-08/).
+        // Pinch-to-zoom-out is a no-op until/unless this feature returns.
     }
 
     public func zoomInToSelectedDesktop(index: Int? = nil) {
@@ -1014,7 +935,7 @@ public final class SpatialPlaneManager: ObservableObject {
             win.sharingType = .readOnly
             win.hidesOnDeactivate = false
             win.acceptsMouseMovedEvents = true
-            win.contentView = SpatialTouchHostingView(rootView: SpatialDesktopPlaneCanvasView())
+            win.contentView = NSView()
             self.overlayWindow = win
         }
         overlayWindow?.setFrame(screen.frame, display: true)

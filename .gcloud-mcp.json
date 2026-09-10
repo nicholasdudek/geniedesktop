@@ -1,0 +1,18 @@
+{
+  "allow": [
+    "config list",
+    "config get",
+    "auth list",
+    "projects describe",
+    "projects list",
+    "services list",
+    "services api-keys list",
+    "billing accounts list",
+    "billing accounts describe",
+    "billing budgets list",
+    "billing budgets describe",
+    "billing projects describe",
+    "ai models list",
+    "ai endpoints list"
+  ]
+}

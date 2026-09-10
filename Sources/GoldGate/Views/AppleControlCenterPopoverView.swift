@@ -133,6 +133,7 @@ public struct AppleControlCenterPopoverView: View {
         .shadow(color: Color.black.opacity(0.35), radius: 20, y: 10)
         .onAppear {
             loadInitialStates()
+            refreshNowPlaying()
         }
     }
 
@@ -745,7 +746,6 @@ public struct AppleControlCenterPopoverView: View {
                 .buttonStyle(.plain)
 
                 Button(action: {
-                    isPlaying.toggle()
                     sendMediaKey(code: 16) // NX_KEYTYPE_PLAY
                 }) {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
@@ -823,13 +823,56 @@ public struct AppleControlCenterPopoverView: View {
 
     private func sendMediaKey(code: Int32) {
         HapticFeedback.tick()
+        let command: String
+        switch code {
+        case 20: command = "previous track"  // NX_KEYTYPE_PREVIOUS
+        case 19: command = "next track"      // NX_KEYTYPE_NEXT
+        default: command = "playpause"       // NX_KEYTYPE_PLAY
+        }
         let musicScript = """
         if application "Music" is running then
-            tell application "Music" to playpause
+            tell application "Music" to \(command)
         else if application "Spotify" is running then
-            tell application "Spotify" to playpause
+            tell application "Spotify" to \(command)
         end if
         """
         NSAppleScript(source: musicScript)?.executeAndReturnError(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            refreshNowPlaying()
+        }
+    }
+
+    private func refreshNowPlaying() {
+        let script = """
+        if application "Music" is running then
+            tell application "Music"
+                if player state is playing then
+                    return (name of current track) & "||" & (artist of current track) & "||playing"
+                else if player state is paused then
+                    return (name of current track) & "||" & (artist of current track) & "||paused"
+                else
+                    return "Music||Not Playing||stopped"
+                end if
+            end tell
+        else if application "Spotify" is running then
+            tell application "Spotify"
+                if player state is playing then
+                    return (name of current track) & "||" & (artist of current track) & "||playing"
+                else if player state is paused then
+                    return (name of current track) & "||" & (artist of current track) & "||paused"
+                else
+                    return "Spotify||Not Playing||stopped"
+                end if
+            end tell
+        else
+            return "Music||Not Playing||stopped"
+        end if
+        """
+        guard let result = NSAppleScript(source: script)?.executeAndReturnError(nil).stringValue else { return }
+        let parts = result.components(separatedBy: "||")
+        guard parts.count == 3 else { return }
+        currentTrackTitle = parts[0]
+        currentTrackArtist = parts[1]
+        isPlaying = (parts[2] == "playing")
     }
 }

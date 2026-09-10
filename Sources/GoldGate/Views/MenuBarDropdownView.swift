@@ -350,11 +350,12 @@ struct MenuBarDropdownView: View {
     @AppStorage(PrefKey.showAppNames) var showAppNames: Bool = false
     @AppStorage(PrefKey.showPageIndicator) var showPageIndicator: Bool = false
     @AppStorage(PrefKey.spacing) var itemSpacing: Double = 16.0
-    @AppStorage(PrefKey.enableMagnification) var enableMagnification: Bool = true
+    @AppStorage(PrefKey.enableMagnification) var enableMagnification: Bool = false
     @AppStorage(PrefKey.magnificationScale) var maxMagnification: Double = 1.65
-    @AppStorage(PrefKey.dockAnimationStyle) var dockAnimationStyleRaw: String = "Classic Magnify 🔍"
+    @AppStorage(PrefKey.dockAnimationStyle) var dockAnimationStyleRaw: String = "None"
     @AppStorage(PrefKey.dockAnimationIntensity) var dockAnimationIntensity: Double = 0.7
-    @AppStorage(PrefKey.danceToMusicEnabled) var danceToMusicEnabled: Bool = true
+    @AppStorage(PrefKey.dockBackgroundOpacity) var dockBackgroundOpacity: Double = 0.70
+    @AppStorage(PrefKey.danceToMusicEnabled) var danceToMusicEnabled: Bool = false
     @AppStorage(PrefKey.liquidGlassEnabled) var liquidGlassEnabled: Bool = true
     @ObservedObject var musicMonitor: MusicPlaybackMonitor = .shared
     @AppStorage(PrefKey.soundEnabled) var soundEnabled: Bool = true
@@ -380,10 +381,9 @@ struct MenuBarDropdownView: View {
 
     // Window Graphics & Vibrancy Backing Engine
     @ObservedObject private var wallpaperManager = WallpaperManager.shared
-    @AppStorage(PrefKey.windowGraphicsEnabled) var windowGraphicsEnabled: Bool = true
+    @AppStorage(PrefKey.windowGraphicsEnabled) var windowGraphicsEnabled: Bool = false
     @AppStorage(PrefKey.windowGlassVibrancy) var windowGlassVibrancy: Double = 0.75
-    @AppStorage(PrefKey.windowWallpaperEffect) var windowWallpaperEffect: Bool = true
-    @AppStorage(PrefKey.windowShaderFxEnabled) var windowShaderFxEnabled: Bool = true
+    @AppStorage(PrefKey.windowShaderFxEnabled) var windowShaderFxEnabled: Bool = false
 
     // Living Background App Physics Simulation
     @AppStorage(PrefKey.appPhysicsSimulation) var appPhysicsSimulation: String = "None"
@@ -395,11 +395,10 @@ struct MenuBarDropdownView: View {
     @AppStorage(PrefKey.pinballModeEnabled) var pinballModeEnabled: Bool = false
 
     // Genie Summon Animation & Smoke Engine
-    @AppStorage(PrefKey.genieAnimEnabled) var genieAnimEnabled: Bool = true
+    @AppStorage(PrefKey.genieAnimEnabled) var genieAnimEnabled: Bool = false
     @AppStorage(PrefKey.genieAnimOrigin) var genieAnimOrigin: String = "Top Glyph 🪔"
-    @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = true
+    @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = false
     @AppStorage(PrefKey.smokeStyle) var smokeStyle: String = "Mystical Cyan 🧞‍♂️"
-    @AppStorage(PrefKey.ambientSmokeEnabled) var ambientSmokeEnabled: Bool = true
 
     // Menu Bar Aesthetics & Apple Logo Colors
     @AppStorage(PrefKey.menuBarAppleColor) var appleColor: String = "Retro Rainbow 🌈"
@@ -420,6 +419,7 @@ struct MenuBarDropdownView: View {
     @State private var genieAnchor: UnitPoint = .topTrailing
     @State private var genieOffsetY: CGFloat = 0.0
     @State private var popoverBounds: CGSize = CGSize(width: 880, height: 560)
+    @State private var isPanelVisible: Bool = false
 
     // Studio Dropdown Theme & International Language
     @AppStorage(PrefKey.studioTheme) var studioTheme: String = "System (Auto)"
@@ -538,9 +538,8 @@ struct MenuBarDropdownView: View {
 
     // Status Bar & Battery Controls
     @AppStorage(PrefKey.batteryEnabled) var batteryEnabled: Bool = true
+    @AppStorage(PrefKey.batteryStyle) var batteryStyle: String = "Horizontal Fill"
     @AppStorage(PrefKey.iconEnabled) var iconEnabled: Bool = true
-    @AppStorage(PrefKey.iconSizeScale) var iconSizeScale: Double = 1.0
-    @AppStorage(PrefKey.iconSpacingScale) var iconSpacingScale: Double = 1.0
     @AppStorage(PrefKey.showBatteryPercentage) var showBatteryPercentage: Bool = true
     @AppStorage(PrefKey.iconStyle) var iconStyle: String = "Apple Minimal"
     @AppStorage(PrefKey.animSpeed) var animSpeed: Double = 0.03
@@ -883,7 +882,9 @@ struct MenuBarDropdownView: View {
             "Bioluminescent Jellyfish 🪼": "Ocean & Marine 🐬",
             "Baby Octo Float 🐙": "Ocean & Marine 🐬",
             "Cosmic Star Whale": "Ocean & Marine 🐬",
+            "Cosmic Star Whale 🐋": "Ocean & Marine 🐬",
             "Deep Void Star Kraken 🦑": "Ocean & Marine 🐬",
+            "Japanese Koi Sanctuary 🎏": "Ocean & Marine 🐬",
 
             "Celestial Dragon": "Fantasy & Dragons 🐉",
             "Inferno Fire Dragon 🔥": "Fantasy & Dragons 🐉",
@@ -904,6 +905,7 @@ struct MenuBarDropdownView: View {
             "Pixel Cyber Neko 🐱": "Cyber & Beasts 🐺",
             "Cyber Alpha Wolf 🐺": "Cyber & Beasts 🐺",
             "8-Bit Arcade Ghost 👻": "Cyber & Beasts 🐺",
+            "Pixel Yoshi Companion 🦖": "Cyber & Beasts 🐺",
             "Matrix Rain": "Cyber & Beasts 🐺",
 
             
@@ -936,6 +938,7 @@ struct MenuBarDropdownView: View {
             "Astronaut Visor 👨‍🚀": "Cosmic & Cyber ⚡️",
             "Cyber Samurai Mask 🥷": "Cosmic & Cyber ⚡️",
             "Flame Corona 🔥": "Cosmic & Cyber ⚡️",
+            "Pixel Heart Armor ❤️": "Cosmic & Cyber ⚡️",
 
             "Winter Scarf 🧣": "Festive & Luxury 👑",
             
@@ -958,16 +961,16 @@ struct MenuBarDropdownView: View {
     private var ambientEntities: [String] {
         [
             "Pacific Ocean Dolphins 🐬", "Coral Reef Aquaria 🐠", "Deep Sea Mantas 🌊",
-            "Japanese Koi Pond 🎏", "Red Panda Climber 🐾",
+            "Japanese Koi Pond 🎏", "Japanese Koi Sanctuary 🎏", "Red Panda Climber 🐾",
             "Gliding Sea Turtle 🐢", "Origami Paper Cranes 🕊️", "Bioluminescent Jellyfish 🪼",
             "Cute Capybara with Citrus 🍊", "Floating Astronaut Spacewalk 👨‍🚀", "Baby Octo Float 🐙",
             "Champions Soccer ⚽", "Hoops Basketball 🏀", "Formula Racing 🏎️",
             "Golden Fireflies 🏮", "Autumn Leaves 🍁", "Sakura Storm 🌸",
             "Floating Pixie Fairy ✨", "Cyber Sentry Drone 🛸", "Celestial Dragon",
             "Inferno Fire Dragon 🔥", "Frost Wyrm (Ice Dragon) ❄️", "Void Shadow Dragon 🔮",
-            "Cyber Phoenix", "Spirit Kitsune", "Cosmic Star Whale",
+            "Cyber Phoenix", "Spirit Kitsune", "Cosmic Star Whale", "Cosmic Star Whale 🐋",
             "Pixel Cyber Neko 🐱", "Cyber Alpha Wolf 🐺", "Cherry Blossom 9-Tail Kitsune 🦊",
-            "Deep Void Star Kraken 🦑", "8-Bit Arcade Ghost 👻",
+            "Deep Void Star Kraken 🦑", "8-Bit Arcade Ghost 👻", "Pixel Yoshi Companion 🦖",
             "Monarch Butterflies 🦋", "Matrix Rain", "None"
         ]
     }
@@ -988,6 +991,7 @@ struct MenuBarDropdownView: View {
             ("Dragon Scales 🐉", "Golden dragon horns perched with emerald scales", "flame", .green),
             ("Astronaut Visor 👨‍🚀", "Curved space helmet glass dome visor", "globe", .cyan),
             ("Cyber Samurai Mask 🥷", "Futuristic neon demon battle mask visor", "shield.fill", .cyan),
+            ("Pixel Heart Armor ❤️", "8-Bit retro arcade heart protective battle armor frame", "heart.fill", .pink),
             ("Sakura Shinto Gate ⛩️", "Ornate Japanese vermillion Torii gate shrine", "house.fill", .red),
             ("Golden Halo Corona 😇", "Divine glowing angelic light ring with radiant rays", "sun.max.fill", .yellow),
             ("Sprout Leaf 🌱", "Cute anime plant seedling growing on top", "leaf", .green),
@@ -1186,10 +1190,11 @@ struct MenuBarDropdownView: View {
                         }
 
                         // 3. Dynamic Atmospheric Shader Canvas (Matching the Desktop Shaders!)
-                        if windowShaderFxEnabled && (wallpaperFxEnabled || wallpaperFxType != "None") {
+                        if isPanelVisible && windowShaderFxEnabled && (wallpaperFxEnabled || wallpaperFxType != "None") {
                             AtmosphericShaderCanvas(
                                 type: wallpaperFxType,
-                                intensity: CGFloat(wallpaperFxIntensity * 0.70)
+                                intensity: CGFloat(wallpaperFxIntensity * 0.70),
+                                isPaused: !isPanelVisible
                             )
                             .frame(width: bgGeo.size.width, height: bgGeo.size.height)
                         }
@@ -1455,6 +1460,11 @@ struct MenuBarDropdownView: View {
                 self.keyMonitor = nil
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusMenuBarPanelVisibilityChanged"))) { notif in
+            if let isVis = notif.object as? Bool {
+                isPanelVisible = isVis
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusGenieReset"))) { _ in
             genieScale = 1.0
             genieOpacity = 1.0
@@ -1632,39 +1642,12 @@ struct MenuBarDropdownView: View {
 
                     Divider()
 
-                    Menu("💎 Google Gemini") {
-                        ForEach(LocalModelManager.cloudModels.filter { $0.provider == .gemini }) { model in
-                            Button(action: { localModels.selectModel(model.id) }) {
-                                Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                            }
+                    ForEach(LocalModelManager.cloudModels) { model in
+                        Button(action: { localModels.selectModel(model.id) }) {
+                            Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
                         }
                     }
 
-                    Menu("🧠 Anthropic Claude") {
-                        ForEach(LocalModelManager.cloudModels.filter { $0.provider == .claude }) { model in
-                            Button(action: { localModels.selectModel(model.id) }) {
-                                Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                            }
-                        }
-                    }
-
-                    Menu("❇️ OpenAI") {
-                        ForEach(LocalModelManager.cloudModels.filter { $0.provider == .openai }) { model in
-                            Button(action: { localModels.selectModel(model.id) }) {
-                                Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                            }
-                        }
-                    }
-
-                    if localModels.localModelsEnabled && !localModels.availableModels.isEmpty {
-                        Menu("💻 Local Ollama / LM Studio") {
-                            ForEach(localModels.availableModels) { model in
-                                Button(action: { localModels.selectModel(model.name) }) {
-                                    Text(localModels.effectiveModel == model.name ? "\(model.displayName) ✓" : model.displayName)
-                                }
-                            }
-                        }
-                    }
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "sparkles")
@@ -1760,9 +1743,9 @@ struct MenuBarDropdownView: View {
                         localModels.clearChatHistory()
                         HapticFeedback.selection()
                     }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "plus.bubble.fill")
-                                .font(.system(size: 8.5))
+                        HStack(spacing: 3.5) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 8.5, weight: .bold))
                             Text("New")
                                 .font(.system(size: 9.5, weight: .semibold, design: .rounded))
                         }
@@ -1774,41 +1757,35 @@ struct MenuBarDropdownView: View {
                     .buttonStyle(.plain)
                     .help("Start fresh chat")
 
-                    // Clear Chat
-                    if !localModels.chatHistory.isEmpty {
+                    // Consolidated Chat Actions Menu (...)
+                    Menu {
                         Button(action: {
-                            localModels.clearChatHistory()
-                            HapticFeedback.tick()
+                            let text = localModels.chatHistory.map { "\($0.role.capitalized): \($0.content)" }.joined(separator: "\n\n")
+                            _ = DesktopNotePrinter.shared.printNote(content: text, openInFile: true)
+                            HapticFeedback.success()
                         }) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 9))
-                                .foregroundColor(.white.opacity(0.70))
-                                .frame(width: 20, height: 20)
-                                .background(Circle().fill(Color.white.opacity(0.08)))
+                            Label("Save Chat to Desktop Note", systemImage: "doc.text")
                         }
-                        .buttonStyle(.plain)
-                        .help("Clear Chat History")
-                    }
 
-                    // Save to Note
-                    Button(action: {
-                        let text = localModels.chatHistory.map { "\($0.role.capitalized): \($0.content)" }.joined(separator: "\n\n")
-                        _ = DesktopNotePrinter.shared.printNote(content: text, openInFile: true)
-                        HapticFeedback.success()
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "doc.text.fill")
-                                .font(.system(size: 8.5))
-                            Text("Note")
-                                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        if !localModels.chatHistory.isEmpty {
+                            Divider()
+                            Button(action: {
+                                localModels.clearChatHistory()
+                                HapticFeedback.tick()
+                            }) {
+                                Label("Clear Chat History", systemImage: "trash")
+                            }
                         }
-                        .foregroundColor(.cyan)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3.5)
-                        .background(Capsule().fill(Color.cyan.opacity(0.18)))
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white.opacity(0.70))
+                            .frame(width: 20, height: 20)
+                            .background(Circle().fill(Color.white.opacity(0.08)))
                     }
-                    .buttonStyle(.plain)
-                    .help("Save Chat to Note")
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .help("Chat Actions (Save Note, Clear)")
                 } else if selectedTab == .applications {
                     Button(action: {
                         HapticFeedback.selection()
@@ -2139,6 +2116,11 @@ struct MenuBarDropdownView: View {
 
             // ── Apple Floating Liquid Glass Prompt Input Bar ──
             chatBottomPromptBar
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusAIDisplayCreation"))) { _ in
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                self.chatLayoutMode = .split
+            }
         }
     }
 
@@ -4056,13 +4038,6 @@ struct MenuBarDropdownView: View {
 
                 if windowGraphicsEnabled {
                     HStack(spacing: 12) {
-                        Toggle(isOn: $windowWallpaperEffect) {
-                            Text(LocalizedStrings.translateText("Desktop Wallpaper Camouflage", lang: appLanguage))
-                                .font(.system(size: 11, weight: .medium))
-                        }
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-
                         Toggle(isOn: $windowShaderFxEnabled) {
                             Text(LocalizedStrings.translateText("Atmospheric Shaders in Window", lang: appLanguage))
                                 .font(.system(size: 11, weight: .medium))
@@ -4984,18 +4959,6 @@ struct MenuBarDropdownView: View {
                     .labelsHidden()
                     .frame(width: 140)
                 }
-
-                Divider().padding(.leading, 42).opacity(0.25)
-
-                AppleSettingsRow(title: "Click Outside to Dismiss", subtitle: "Clicking empty desktop space dismisses overlay", icon: "cursorarrow.click.2", iconColor: .blue) {
-                    Toggle("", isOn: Binding(
-                        get: { UserDefaults.standard.bool(forKey: PrefKey.dismissOnOutsideClick) },
-                        set: { UserDefaults.standard.set($0, forKey: PrefKey.dismissOnOutsideClick) }
-                    ))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                }
             }
 
             motionFxDetailView
@@ -5712,51 +5675,6 @@ struct MenuBarDropdownView: View {
                     .padding(.vertical, 8)
                 }
             }
-
-            // Floating Bar & Notch Geometry
-            AppleSettingsSection("Menu Bar Geometry & Notch Clearance") {
-                AppleSettingsRow(title: "Menu Bar Notch Clearance", subtitle: "Automatically adjust desktop grid bounds below MacBook notch", icon: "macbook.gen2", iconColor: .cyan) {
-                    Toggle("", isOn: Binding(
-                        get: { UserDefaults.standard.bool(forKey: PrefKey.notchClearanceEnabled) },
-                        set: { UserDefaults.standard.set($0, forKey: PrefKey.notchClearanceEnabled) }
-                    ))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                }
-
-                Divider().padding(.leading, 42).opacity(0.25)
-
-                AppleSettingsRow(title: "Translucent Glass Bar", subtitle: "Frosted liquid glass backdrop under menu icons", icon: "sparkles.rectangle.stack", iconColor: .blue) {
-                    Toggle("", isOn: Binding(
-                        get: { UserDefaults.standard.bool(forKey: PrefKey.glassBarBackdrop) },
-                        set: { UserDefaults.standard.set($0, forKey: PrefKey.glassBarBackdrop) }
-                    ))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                }
-
-                Divider().padding(.leading, 42).opacity(0.25)
-
-                AppleSettingsRow(title: "Notch Filler Gap Offset", subtitle: "Adjust horizontal spacing to bypass camera notch (~2 cm shift)", icon: "arrow.left.and.right", iconColor: .purple) {
-                    HStack(spacing: 8) {
-                        Slider(value: Binding(
-                            get: { UserDefaults.standard.double(forKey: PrefKey.notchFillerGapOffset) },
-                            set: {
-                                UserDefaults.standard.set($0, forKey: PrefKey.notchFillerGapOffset)
-                                NotificationCenter.default.post(name: NSNotification.Name("NexusSettingsChanged"), object: nil)
-                            }
-                        ), in: -100...200, step: 10)
-                        .frame(width: 100)
-
-                        Text("\(Int(UserDefaults.standard.double(forKey: PrefKey.notchFillerGapOffset))) pt")
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.secondary)
-                            .frame(width: 45, alignment: .trailing)
-                    }
-                }
-            }
         }
     }
 
@@ -5804,20 +5722,6 @@ struct MenuBarDropdownView: View {
                         }
                     }
 
-                    // Quick Insert Button
-                    Button(action: {
-                        LocalModelManager.shared.geminiApiKey = "AQ.Ab8RN6KQdZll5kIJEFdF5jHHFDp8s5NxF8kZTRItnCRHb84ltw"
-                        HapticFeedback.selection()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bolt.fill")
-                                .font(.system(size: 9))
-                            Text("Insert AQ.Ab8RN... Key")
-                                .font(.system(size: 10, weight: .medium))
-                        }
-                        .foregroundColor(.blue)
-                    }
-                    .buttonStyle(.plain)
                 }
                 .padding(.vertical, 4)
 
@@ -6665,34 +6569,31 @@ struct MenuBarDropdownView: View {
                 Spacer()
             }
 
-            // Included items list
-            VStack(alignment: .leading, spacing: 3) {
+            // Included items list (Clickable to equip individual items!)
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(pack.includes, id: \.self) { inc in
-                    HStack(spacing: 5) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.accentColor)
-                        Text(inc)
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                    }
+                    includedItemEquipRow(inc)
                 }
             }
             .padding(.vertical, 2)
 
-            // Action Button
+            // Action Buttons
             HStack {
-                Spacer()
+                // Active status pill
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 11, weight: .bold))
-                    Text(LocalizedStrings.translateText("INCLUDED & ACTIVE", lang: appLanguage))
-                        .font(.system(size: 10.5, weight: .bold))
+                    Text(LocalizedStrings.translateText("UNLOCKED", lang: appLanguage))
+                        .font(.system(size: 9.5, weight: .bold))
                 }
                 .foregroundColor(.green)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
                 .background(Capsule().fill(Color.green.opacity(0.14)))
+
+                Spacer()
+
+                equipButton(for: pack)
             }
         }
         .padding(10)
@@ -6704,6 +6605,122 @@ struct MenuBarDropdownView: View {
                         .stroke(Color.green.opacity(0.35), lineWidth: 1)
                 )
         )
+    }
+
+    private func includedItemEquipRow(_ inc: String) -> some View {
+        Button(action: {
+            storeManager.applyIncludedItem(inc)
+            HapticFeedback.selection()
+            if inc.hasPrefix("Companion: ") {
+                ambientEntity = String(inc.dropFirst("Companion: ".count))
+            } else if inc.hasPrefix("Shader: ") {
+                wallpaperFxType = String(inc.dropFirst("Shader: ".count))
+                wallpaperFxEnabled = true
+                windowShaderFxEnabled = true
+            } else if inc.hasPrefix("Formation: ") {
+                appFormation = String(inc.dropFirst("Formation: ".count))
+            } else if inc.hasPrefix("Snuggie: ") || inc.hasPrefix("Apparel: ") {
+                iconSnuggie = String(inc.dropFirst(inc.hasPrefix("Snuggie: ") ? "Snuggie: ".count : "Apparel: ".count))
+            } else if inc.hasPrefix("Style: ") {
+                batteryStyle = "8-Bit Arcade"
+            }
+        }) {
+            HStack(spacing: 5) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.accentColor)
+                Text(inc)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("Equip")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(.accentColor.opacity(0.8))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Color.accentColor.opacity(0.1)))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func equipButton(for pack: ExpansionPackItem) -> some View {
+        let isEquipped: Bool = storeManager.isPackEquipped(pack.id)
+        let primaryColor: Color = pack.gradient.first ?? Color.cyan
+        Button(action: { equipPackAction(pack) }) {
+            HStack(spacing: 5) {
+                Image(systemName: isEquipped ? "checkmark.circle.fill" : "wand.and.stars")
+                    .font(.system(size: 11, weight: .bold))
+                Text(isEquipped ? LocalizedStrings.translateText("EQUIPPED ✓", lang: appLanguage) : LocalizedStrings.translateText("EQUIP PACK", lang: appLanguage))
+                    .font(.system(size: 10.5, weight: .bold))
+            }
+            .foregroundColor(isEquipped ? Color.white : primaryColor)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(isEquipped ? Color.green : primaryColor.opacity(0.18))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().stroke(isEquipped ? Color.green : primaryColor.opacity(0.6), lineWidth: 1.2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func equipPackAction(_ pack: ExpansionPackItem) {
+        storeManager.applyPack(pack)
+        HapticFeedback.success()
+        switch pack.id {
+        case ExpansionStoreManager.cyberpunkID, ExpansionStoreManager.legacyCyberpunkID:
+            ambientEntity = "Cyber Alpha Wolf 🐺"
+            wallpaperFxType = "4K Tokyo Neon Night Rain 🌧️"
+            wallpaperFxEnabled = true
+            windowShaderFxEnabled = true
+            appFormation = "Tesseract Hypercube 🧊"
+            iconSnuggie = "Cyber Samurai Mask 🥷"
+            statusIconStyle = "Cyber Bolt ⚡️"
+            studioTheme = "Midnight Cyberpunk"
+            appIconTintColor = "Neon Cyan"
+        case ExpansionStoreManager.zenID, ExpansionStoreManager.legacyZenID:
+            ambientEntity = "Cherry Blossom 9-Tail Kitsune 🦊"
+            wallpaperFxType = "Sakura Petal Blizzard 🌸"
+            wallpaperFxEnabled = true
+            windowShaderFxEnabled = true
+            appFormation = "Zen Garden Yin-Yang ☯️"
+            iconSnuggie = "Sakura Shinto Gate ⛩️"
+            statusIconStyle = "Green Leaf 🍃"
+            appIconTintColor = "Sakura Pink"
+        case ExpansionStoreManager.cosmosID, ExpansionStoreManager.legacyCosmosID:
+            ambientEntity = "Cosmic Star Whale 🐋"
+            wallpaperFxType = "Supermassive Black Hole Lens 🕳️"
+            wallpaperFxEnabled = true
+            windowShaderFxEnabled = true
+            appFormation = "Supernova Burst 💥"
+            iconSnuggie = "Astronaut Visor 👨‍🚀"
+            statusIconStyle = "Cosmic Planet 🪐"
+            appIconTintColor = "Amethyst"
+        case ExpansionStoreManager.retroID, ExpansionStoreManager.legacyRetroID:
+            ambientEntity = "8-Bit Arcade Ghost 👻"
+            wallpaperFxType = "Retro CRT Vector Scanline Grid 🕹️"
+            wallpaperFxEnabled = true
+            windowShaderFxEnabled = true
+            iconSnuggie = "Pixel Heart Armor ❤️"
+            batteryStyle = "8-Bit Arcade"
+            statusIconStyle = "Arcade Gamepad 🎮"
+            appIconTintColor = "Emerald"
+        case ExpansionStoreManager.ultimateID, ExpansionStoreManager.legacyUltimateID:
+            ambientEntity = "Genie Portal 🌀"
+            wallpaperFxType = "Fluid Ink Chromatography 🎨"
+            wallpaperFxEnabled = true
+            windowShaderFxEnabled = true
+            appFormation = "Tesseract Hypercube 🧊"
+            iconSnuggie = "Crown Jewel 👑"
+            batteryStyle = "Tesla Cell Pack"
+            statusIconStyle = "Crown Jewel 👑"
+            appIconTintColor = "Royal Gold"
+        default:
+            break
+        }
     }
 
     // MARK: - Tab 10: Preferences Detail View
@@ -6767,20 +6784,6 @@ struct MenuBarDropdownView: View {
                         }
                     }
 
-                    // Quick Insert Button
-                    Button(action: {
-                        LocalModelManager.shared.geminiApiKey = "AQ.Ab8RN6KQdZll5kIJEFdF5jHHFDp8s5NxF8kZTRItnCRHb84ltw"
-                        HapticFeedback.selection()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bolt.fill")
-                                .font(.system(size: 9))
-                            Text("Insert AQ.Ab8RN... Key")
-                                .font(.system(size: 10, weight: .medium))
-                        }
-                        .foregroundColor(.blue)
-                    }
-                    .buttonStyle(.plain)
                 }
                 .padding(.vertical, 4)
 
@@ -7501,7 +7504,14 @@ struct MenuBarDropdownView: View {
             itemSpacing = 24.0
             showAppNames = true
             textSize = 12.0
-            enableMagnification = true
+            enableMagnification = false
+            dockAnimationStyleRaw = "None"
+            danceToMusicEnabled = false
+            genieAnimEnabled = false
+            smokeEffectsEnabled = false
+            windowGraphicsEnabled = false
+            windowShaderFxEnabled = false
+            appPhysicsSimulation = "None"
             maxMagnification = 1.45
             ambientEntity = "None"
             wallpaperFxEnabled = false
@@ -7554,48 +7564,6 @@ struct MenuBarDropdownView: View {
 }
 
 
-// MARK: - Golden Gate Bridge Arch Heading Badge 🌉
-
-struct GoldenGateBridgeArchGlyph: View {
-    @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
-var size: CGFloat = 24
-
-    private var badgeImage: NSImage? {
-        if let url = Bundle.main.url(forResource: "HeaderBadge", withExtension: "png"),
-           let img = NSImage(contentsOf: url) {
-            return img
-        }
-        if let url = Bundle.main.url(forResource: "HeaderBadge", withExtension: "jpg"),
-           let img = NSImage(contentsOf: url) {
-            return img
-        }
-        return nil
-    }
-
-    var body: some View {
-        ZStack {
-            if let img = badgeImage {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: size, height: size)
-                    .clipShape(RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-                            .stroke(Color.orange.opacity(0.6), lineWidth: 0.8)
-                    )
-            } else {
-                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                    .fill(Color.orange.opacity(0.2))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                            .stroke(Color.orange.opacity(0.8), lineWidth: 0.8)
-                    )
-            }
-        }
-        .frame(width: size, height: size)
-    }
-}
 
 // MARK: - Authentic Apple macOS Traffic Lights Control 🚦
 
@@ -7702,27 +7670,31 @@ struct LightDarkModeButton: View {
             NSApp.appearance = nil  // follow system
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            if let dark = dark {
-                // Set system-wide via osascript (most reliable on macOS 13+)
-                let ascript = Process()
-                ascript.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-                ascript.arguments = ["-e",
-                    "tell application \"System Events\" to tell appearance preferences to set dark mode to \(dark)"]
-                try? ascript.run(); ascript.waitUntilExit()
-
-                // Belt-and-suspenders: write globalDomain defaults key
-                let defs = Process()
-                defs.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-                defs.arguments = ["write", "-globalDomain", "AppleInterfaceStyle", dark ? "Dark" : "Light"]
-                try? defs.run(); defs.waitUntilExit()
-            } else {
-                // Revert to System auto: delete the override key
-                let defs = Process()
-                defs.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-                defs.arguments = ["delete", "-globalDomain", "AppleInterfaceStyle"]
-                try? defs.run(); defs.waitUntilExit()
-            }
+        // System Events owns the appearance setting. Sending the Apple Event
+        // in-process via NSAppleScript keeps this working in both builds —
+        // `com.apple.systemevents` is entitled in each profile — where spawning
+        // /usr/bin/osascript is not reachable under the sandbox. The
+        // `defaults write -globalDomain` that followed is dropped: System
+        // Events already persists the change, and writing another app's domain
+        // is not permitted to a sandboxed app.
+        guard let dark else {
+            // System Auto: clear the AppleInterfaceStyle override in the global
+            // domain. `CFPreferencesSetAppValue(_, nil, _)` removes the key,
+            // which is exactly what `defaults delete -globalDomain` did.
+            guard GenieCapabilities.canModifySystemPreferenceDomains else { return }
+            CFPreferencesSetAppValue(
+                "AppleInterfaceStyle" as CFString,
+                nil,
+                kCFPreferencesAnyApplication
+            )
+            CFPreferencesAppSynchronize(kCFPreferencesAnyApplication)
+            return
+        }
+        let source = "tell application \"System Events\" to tell appearance preferences to set dark mode to \(dark)"
+        DispatchQueue.main.async {
+            guard let script = NSAppleScript(source: source) else { return }
+            var errorInfo: NSDictionary?
+            script.executeAndReturnError(&errorInfo)
         }
     }
 
@@ -7858,60 +7830,6 @@ struct TopLanguageSelectorMenu: View {
     }
 }
 
-// MARK: - International Language Selector Dropdown Button 🌐
-
-struct LanguageSelectorButton: View {
-    @Binding var appLanguage: String
-
-    private var currentLanguage: AppLanguage {
-        AppLanguage.allCases.first(where: { $0.rawValue == appLanguage }) ?? .english
-    }
-
-    var body: some View {
-        Menu {
-            ForEach(AppLanguage.allCases) { lang in
-                Button(action: {
-                    HapticFeedback.selection()
-                    withAnimation(.spring(response: 0.22, dampingFraction: 0.8)) {
-                        appLanguage = lang.rawValue
-                    }
-                }) {
-                    HStack {
-                        Text("\(lang.flag) \(lang.rawValue) (\(lang.greeting))")
-                        if appLanguage == lang.rawValue {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Text(currentLanguage.flag)
-                    .font(.system(size: 11))
-                Text(currentLanguage.code)
-                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.92))
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 7, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.40))
-            }
-            .padding(.horizontal, 6)
-            .frame(height: 24)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6)
-            )
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help("App Language: \(appLanguage) — Click to Switch Language")
-    }
-}
 
 // MARK: - Sidebar Tab Item Button View
 
@@ -8118,6 +8036,20 @@ extension MenuBarDropdownView {
                         .foregroundColor(.secondary)
                 }
                 Slider(value: $dockAnimationIntensity, in: 0.0...1.0, step: 0.05)
+                    .controlSize(.small)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(LocalizedStrings.translateText("Dock Transparency", lang: appLanguage))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(String(format: "%.0f%%", dockBackgroundOpacity * 100))
+                        .font(.system(size: 11).monospacedDigit())
+                        .foregroundColor(.secondary)
+                }
+                Slider(value: $dockBackgroundOpacity, in: 0.10...0.95, step: 0.05)
                     .controlSize(.small)
             }
 

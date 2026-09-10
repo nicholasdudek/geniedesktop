@@ -6,20 +6,26 @@
 
 <p align="center">
   <b>Next-generation macOS spatial workspace and application launcher engineered natively with Swift and Metal.</b><br>
-  <i>120 FPS ProMotion • Hardware-Accelerated Shaders • Smart Retractor • Pure Offline Privacy</i>
+  <i>Native macOS workspace • Structured agent tools • Local or cloud models</i>
 </p>
 
 <p align="center">
   <a href="https://apps.apple.com/app/id6808165534">
     <img src="https://img.shields.io/badge/Mac_App_Store-Download-007AFF?style=for-the-badge&logo=apple&logoColor=white" alt="Mac App Store" />
   </a>
-  <img src="https://img.shields.io/badge/Current_Build-v1.0.0_(Build_10)-935ff5?style=for-the-badge&logo=apple&logoColor=white" alt="Current Build v1.0.0 (Build 12)" />
+  <img src="https://img.shields.io/badge/Current_Build-v3.0.0_(Build_300)-935ff5?style=for-the-badge&logo=apple&logoColor=white" alt="Development Build v3.0.0 (Build 300)" />
   <img src="https://img.shields.io/badge/macOS-14.0%20Sonoma%20%7C%2015.0%20Sequoia-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Sonoma & Sequoia" />
   <img src="https://img.shields.io/badge/Architecture-Apple%20Silicon%20%26%20Intel-FF9500?style=for-the-badge" alt="Apple Silicon" />
   <img src="https://img.shields.io/badge/Privacy-Zero%20Telemetry-success?style=for-the-badge" alt="Zero Telemetry" />
 </p>
 
 ---
+
+## Genie 3.0 Agent workspace
+
+Open the chat dock and select **Agent 3.0**. Choose a workspace, configure a tool-capable model, and enter a task with a verification step. File edits and commands appear for review before execution. **Stop** cancels the run and active command process group. **History** restores saved runs; **Resume** reconciles interrupted actions without replaying them automatically.
+
+The new agent uses an OpenAI-compatible chat-completions endpoint (OpenAI, Ollama, LM Studio, or a compatible gateway). Existing chat providers remain available in Chat. This is a direct/development build feature; the existing offline App Store entitlement profile does not enable networked agent execution. See [3.0 details and validation](docs/GENIE_3_0.md).
 
 ## ⚡️ Speed & Engineering Stats
 
@@ -30,7 +36,7 @@
 | **Idle CPU Overhead** | **0.0%** | Event-driven loop sleeping when not active |
 | **Resident RAM Usage** | **~38 MB** | Zero web runtime or Electron overhead; pure compiled Swift 6 |
 | **Codebase Size** | **15,991 LOC** | 22 handcrafted modules designed from scratch for macOS |
-| **Network Footprint** | **0 Bytes** | Sandboxed offline (`com.apple.security.network.client = false`) |
+| **Agent networking** | **User-configured** | Task messages and tool results are sent to the selected model endpoint |
 
 ---
 
@@ -222,7 +228,7 @@ We provide direct engineering support with guaranteed responses under 24 hours:
 * **Principal Engineer & Founder**: Nicholas M. Dudek
 * **Direct Engineering Support**: [nicholas.dudek@icloud.com](mailto:nicholas.dudek@icloud.com)
 * **GitHub Issues & Discussions**: [github.com/nicholasdudek/geniedesktop/issues](https://github.com/nicholasdudek/geniedesktop/issues)
-* **Mac App Store**: [Download Genie v1.0.0 (Build 12)](https://apps.apple.com/app/id6808165534)
+* **Mac App Store**: [Genie on the Mac App Store](https://apps.apple.com/app/id6808165534)
 * **Official Website**: [nicholasdudek.github.io/geniedesktop](https://nicholasdudek.github.io/geniedesktop/)
 * **Privacy Policy**: [nicholasdudek.github.io/geniedesktop/privacy.html](https://nicholasdudek.github.io/geniedesktop/privacy.html)
 * **Location**: Genie Core Labs • San Francisco Bay Area, California

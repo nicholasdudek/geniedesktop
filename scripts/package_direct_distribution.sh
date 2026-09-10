@@ -19,10 +19,14 @@ killall Genie 2>/dev/null || true
 killall GoldGate 2>/dev/null || true
 sleep 0.5
 
-# 2. Build Release binary with SwiftPM
+# 2. Build Release binary with SwiftPM if not already present
 cd "$PROJECT_DIR"
-echo "==> Compiling Release binary with SwiftPM..."
-swift build -c release
+if [ ! -f "$PROJECT_DIR/.build/out/Products/Release/$APP_NAME" ] && [ ! -f "$PROJECT_DIR/.build/release/$APP_NAME" ]; then
+    echo "==> Compiling Release binary with SwiftPM..."
+    swift build -c release
+else
+    echo "==> Using existing Release binary..."
+fi
 
 # 3. Generate and compile Assets.xcassets (Asset Catalog)
 if [ -f "$PROJECT_DIR/generate_asset_catalog.sh" ]; then
@@ -36,7 +40,17 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/$APP_NAME.app/Contents/MacOS"
 mkdir -p "$BUILD_DIR/$APP_NAME.app/Contents/Resources"
 
-cp "$PROJECT_DIR/.build/release/Genie" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/Genie"
+BIN_PATH="$(swift build -c release --show-bin-path 2>/dev/null || true)"
+if [ -n "$BIN_PATH" ] && [ -f "$BIN_PATH/$APP_NAME" ]; then
+    cp "$BIN_PATH/$APP_NAME" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+elif [ -f "$PROJECT_DIR/.build/out/Products/Release/$APP_NAME" ]; then
+    cp "$PROJECT_DIR/.build/out/Products/Release/$APP_NAME" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+elif [ -f "$PROJECT_DIR/.build/release/$APP_NAME" ]; then
+    cp "$PROJECT_DIR/.build/release/$APP_NAME" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+else
+    echo "Error: Cannot find compiled binary for $APP_NAME"
+    exit 1
+fi
 cp "$PROJECT_DIR/Sources/GoldGate/Info.plist" "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist"
 
 # Copy compiled Assets.car

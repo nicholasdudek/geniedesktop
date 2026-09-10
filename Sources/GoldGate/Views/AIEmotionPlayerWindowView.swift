@@ -156,8 +156,7 @@ public struct AIEmotionPlayerWindowView: View {
 
     private var currentLayout: WindowLayoutMode {
         get {
-            let mode = WindowLayoutMode(rawValue: windowLayoutRaw) ?? .chatOnly
-            return mode == .split ? .chatOnly : mode
+            WindowLayoutMode(rawValue: windowLayoutRaw) ?? .chatOnly
         }
         nonmutating set { windowLayoutRaw = newValue.rawValue }
     }
@@ -629,7 +628,11 @@ public struct AIEmotionPlayerWindowView: View {
             case .gradientShader:
                 livingAtmosphereCanvas(emotion: currentEmotion)
             case .htmlAnimation:
-                InteractiveHtmlWebView(htmlString: customHtmlContent, emotionColorHex: currentEmotion.accentColor.toHex())
+                GenieCreationDualTabPreviewView(
+                    title: localModels.activeCreationTitle.isEmpty ? "HTML Creation" : localModels.activeCreationTitle,
+                    rawHtml: customHtmlContent,
+                    emotion: currentEmotion
+                )
             case .videoMovie:
                 MovieLoopPlayerView(videoUrl: mediaUrl)
             case .imageGif:
@@ -803,18 +806,31 @@ public struct InteractiveHtmlWebView: NSViewRepresentable {
     public let htmlString: String
     public let emotionColorHex: String
 
+    public func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    public final class Coordinator {
+        var lastLoadedHtml: String = ""
+    }
+
     public func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        config.defaultWebpagePreferences.allowsContentJavaScript = true
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground") // Transparent background
-        webView.loadHTMLString(htmlString, baseURL: nil)
+        context.coordinator.lastLoadedHtml = htmlString
+        let desktopURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+        webView.loadHTMLString(htmlString, baseURL: desktopURL)
         return webView
     }
 
     public func updateNSView(_ nsView: WKWebView, context: Context) {
-        if nsView.url == nil {
-            nsView.loadHTMLString(htmlString, baseURL: nil)
+        if context.coordinator.lastLoadedHtml != htmlString {
+            context.coordinator.lastLoadedHtml = htmlString
+            let desktopURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+            nsView.loadHTMLString(htmlString, baseURL: desktopURL)
         }
     }
 }
@@ -845,7 +861,7 @@ public struct MovieLoopPlayerView: NSViewRepresentable {
             let player = AVPlayer(url: url)
             player.actionAtItemEnd = .none
             context.coordinator.loopObserver = NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
+                forName: AVPlayerItem.didPlayToEndTimeNotification,
                 object: player.currentItem,
                 queue: .main
             ) { [weak player] _ in
@@ -866,7 +882,7 @@ public struct MovieLoopPlayerView: NSViewRepresentable {
                 NotificationCenter.default.removeObserver(oldObs)
             }
             context.coordinator.loopObserver = NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
+                forName: AVPlayerItem.didPlayToEndTimeNotification,
                 object: player.currentItem,
                 queue: .main
             ) { [weak player] _ in
@@ -1721,37 +1737,9 @@ public struct CompactChatStreamView: View {
 
                 Divider()
 
-                Menu("💎 Google Gemini") {
-                    ForEach(LocalModelManager.cloudModels.filter { $0.provider == .gemini }) { model in
-                        Button(action: { localModels.selectModel(model.id) }) {
-                            Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                        }
-                    }
-                }
-
-                Menu("🧠 Anthropic Claude") {
-                    ForEach(LocalModelManager.cloudModels.filter { $0.provider == .claude }) { model in
-                        Button(action: { localModels.selectModel(model.id) }) {
-                            Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                        }
-                    }
-                }
-
-                Menu("❇️ OpenAI") {
-                    ForEach(LocalModelManager.cloudModels.filter { $0.provider == .openai }) { model in
-                        Button(action: { localModels.selectModel(model.id) }) {
-                            Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
-                        }
-                    }
-                }
-
-                if localModels.localModelsEnabled && !localModels.availableModels.isEmpty {
-                    Menu("💻 Local Ollama / LM Studio") {
-                        ForEach(localModels.availableModels) { model in
-                            Button(action: { localModels.selectModel(model.name) }) {
-                                Text(localModels.effectiveModel == model.name ? "\(model.displayName) ✓" : model.displayName)
-                            }
-                        }
+                ForEach(LocalModelManager.cloudModels) { model in
+                    Button(action: { localModels.selectModel(model.id) }) {
+                        Text(localModels.effectiveModel == model.id ? "\(model.displayName) ✓" : model.displayName)
                     }
                 }
             } label: {
@@ -2122,14 +2110,15 @@ public struct CompactChatStreamView: View {
                         .padding(.vertical, 5)
                         .background(Color.black.opacity(0.35))
 
-                        ScrollView([.horizontal, .vertical]) {
+                        ScrollView(.vertical) {
                             Text(artifact.code)
                                 .font(.system(size: 10, design: .monospaced))
                                 .foregroundColor(.white.opacity(0.92))
                                 .padding(8)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .frame(maxHeight: 140)
+                        .frame(maxHeight: 200)
                     }
                     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.black.opacity(0.40)))
                     .overlay(
@@ -2171,42 +2160,125 @@ public struct CompactChatStreamView: View {
 
                 // Interactive AI Creation Card (HTML Canvas / SVG / Interactive Demo)
                 if !isUser, let creation = localModels.extractCreation(from: msg.content) {
-                    Button(action: {
-                        localModels.activeCreationCode = creation.html
-                        localModels.activeCreationTitle = creation.title
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("NexusAIDisplayCreation"),
-                            object: creation.html,
-                            userInfo: ["title": creation.title]
-                        )
-                        HapticFeedback.heavy()
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "paintpalette.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(.yellow)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("Display Creation in Player Window")
-                                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
-                                Text(creation.title)
-                                    .font(.system(size: 9, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.7))
+                    let safeTitle: String = {
+                        let cleaned = creation.title
+                            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                            .filter { !$0.isEmpty }
+                            .joined(separator: " ")
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        return cleaned.isEmpty ? "AI Creation" : cleaned
+                    }()
+                    let fileOnDesktop = FileManager.default.homeDirectoryForCurrentUser
+                        .appendingPathComponent("Desktop")
+                        .appendingPathComponent("\(safeTitle).html")
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Button(action: {
+                            localModels.activeCreationCode = creation.html
+                            localModels.activeCreationTitle = creation.title
+
+                            // Auto-write to Desktop so file exists on disk
+                            try? creation.html.write(to: fileOnDesktop, atomically: true, encoding: .utf8)
+
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("NexusAIDisplayCreation"),
+                                object: creation.html,
+                                userInfo: [
+                                    "title": creation.title,
+                                    "filePath": fileOnDesktop.path,
+                                    "fileURL": fileOnDesktop.absoluteString
+                                ]
+                            )
+                            HapticFeedback.heavy()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "paintpalette.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.yellow)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Display Creation in Preview")
+                                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text(creation.title)
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                Spacer()
+                                Image(systemName: "play.circle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.yellow)
                             }
-                            Spacer()
-                            Image(systemName: "play.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.yellow)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(LinearGradient(colors: [Color.purple.opacity(0.35), Color.blue.opacity(0.25)], startPoint: .leading, endPoint: .trailing))
+                            )
+                            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color.yellow.opacity(0.40), lineWidth: 0.75))
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(LinearGradient(colors: [Color.purple.opacity(0.35), Color.blue.opacity(0.25)], startPoint: .leading, endPoint: .trailing))
-                        )
-                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color.yellow.opacity(0.40), lineWidth: 0.75))
+                        .buttonStyle(.plain)
+
+                        HStack(spacing: 6) {
+                            Button(action: {
+                                try? creation.html.write(to: fileOnDesktop, atomically: true, encoding: .utf8)
+                                if let safari = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") {
+                                    NSWorkspace.shared.open([fileOnDesktop], withApplicationAt: safari, configuration: NSWorkspace.OpenConfiguration())
+                                } else {
+                                    NSWorkspace.shared.open(fileOnDesktop)
+                                }
+                                HapticFeedback.selection()
+                            }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "safari")
+                                        .font(.system(size: 9))
+                                    Text("Run in Safari")
+                                        .font(.system(size: 9, weight: .semibold))
+                                }
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Color.cyan.opacity(0.20)))
+                                .foregroundColor(.cyan)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button(action: {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(creation.html, forType: .string)
+                                HapticFeedback.success()
+                            }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.system(size: 9))
+                                    Text("Copy HTML")
+                                        .font(.system(size: 9, weight: .semibold))
+                                }
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Color.white.opacity(0.10)))
+                                .foregroundColor(.white.opacity(0.85))
+                            }
+                            .buttonStyle(.plain)
+
+                            Button(action: {
+                                try? creation.html.write(to: fileOnDesktop, atomically: true, encoding: .utf8)
+                                NSWorkspace.shared.activateFileViewerSelecting([fileOnDesktop])
+                                HapticFeedback.selection()
+                            }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "desktopcomputer")
+                                        .font(.system(size: 9))
+                                    Text("Desktop File")
+                                        .font(.system(size: 9, weight: .semibold))
+                                }
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Color.white.opacity(0.12)))
+                                .foregroundColor(.white.opacity(0.85))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.leading, 2)
                     }
-                    .buttonStyle(.plain)
                     .padding(.top, 2)
                 }
             }
@@ -2325,12 +2397,10 @@ public struct CompactChatStreamView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 4) {
-                starterChip("💎 Ask Google Gemini about code architecture") {
-                    localModels.selectModel("gemini-2.0-flash")
+                starterChip("📐 Explain this app's architecture") {
                     localModels.generate(prompt: "Explain the architectural design patterns of our macOS app.")
                 }
-                starterChip("✳️ Ask Claude 3.7 to refactor & optimize") {
-                    localModels.selectModel("claude-3-7-sonnet-20250219")
+                starterChip("✳️ Refactor & optimize the Swift codebase") {
                     localModels.generate(prompt: "Review our latest Swift codebase components and suggest clean refactorings.")
                 }
                 starterChip("⑂ Review GitHub git diff & draft Pull Request") {

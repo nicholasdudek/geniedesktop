@@ -142,8 +142,105 @@ public final class ExpansionStoreManager: ObservableObject {
         UserDefaults.standard.set(Array(unlockedPacks), forKey: PrefKey.unlockedPacks)
     }
 
+    public static let equippedPackKey = "nexus.equippedExpansionPack"
+    @Published public var equippedPackID: String? = UserDefaults.standard.string(forKey: ExpansionStoreManager.equippedPackKey)
+
     public func isPackUnlocked(_ id: String) -> Bool {
         return true
+    }
+
+    public func isPackEquipped(_ id: String) -> Bool {
+        return equippedPackID == id
+    }
+
+    public func applyPack(_ pack: ExpansionPackItem) {
+        equippedPackID = pack.id
+        UserDefaults.standard.set(pack.id, forKey: Self.equippedPackKey)
+
+        switch pack.id {
+        case Self.cyberpunkID, Self.legacyCyberpunkID:
+            UserDefaults.standard.set("Cyber Alpha Wolf 🐺", forKey: PrefKey.ambientEntity)
+            UserDefaults.standard.set("4K Tokyo Neon Night Rain 🌧️", forKey: PrefKey.wallpaperFxType)
+            UserDefaults.standard.set(true, forKey: PrefKey.wallpaperFxEnabled)
+            UserDefaults.standard.set(true, forKey: PrefKey.windowShaderFxEnabled)
+            UserDefaults.standard.set("Tesseract Hypercube 🧊", forKey: PrefKey.appFormation)
+            UserDefaults.standard.set("Cyber Samurai Mask 🥷", forKey: PrefKey.iconSnuggie)
+            UserDefaults.standard.set("Cyberpunk Matrix", forKey: PrefKey.batteryStyle)
+            UserDefaults.standard.set("Cyber Bolt ⚡️", forKey: PrefKey.statusIconStyle)
+            UserDefaults.standard.set("Midnight Cyberpunk", forKey: PrefKey.studioTheme)
+            UserDefaults.standard.set("Neon Cyan", forKey: PrefKey.appIconTintColor)
+
+        case Self.zenID, Self.legacyZenID:
+            UserDefaults.standard.set("Cherry Blossom 9-Tail Kitsune 🦊", forKey: PrefKey.ambientEntity)
+            UserDefaults.standard.set("Sakura Petal Blizzard 🌸", forKey: PrefKey.wallpaperFxType)
+            UserDefaults.standard.set(true, forKey: PrefKey.wallpaperFxEnabled)
+            UserDefaults.standard.set(true, forKey: PrefKey.windowShaderFxEnabled)
+            UserDefaults.standard.set("Zen Garden Yin-Yang ☯️", forKey: PrefKey.appFormation)
+            UserDefaults.standard.set("Sakura Shinto Gate ⛩️", forKey: PrefKey.iconSnuggie)
+            UserDefaults.standard.set("Green Leaf 🍃", forKey: PrefKey.statusIconStyle)
+            UserDefaults.standard.set("Sakura Pink", forKey: PrefKey.appIconTintColor)
+
+        case Self.cosmosID, Self.legacyCosmosID:
+            UserDefaults.standard.set("Cosmic Star Whale 🐋", forKey: PrefKey.ambientEntity)
+            UserDefaults.standard.set("Supermassive Black Hole Lens 🕳️", forKey: PrefKey.wallpaperFxType)
+            UserDefaults.standard.set(true, forKey: PrefKey.wallpaperFxEnabled)
+            UserDefaults.standard.set(true, forKey: PrefKey.windowShaderFxEnabled)
+            UserDefaults.standard.set("Supernova Burst 💥", forKey: PrefKey.appFormation)
+            UserDefaults.standard.set("Astronaut Visor 👨‍🚀", forKey: PrefKey.iconSnuggie)
+            UserDefaults.standard.set("Solar Core", forKey: PrefKey.batteryStyle)
+            UserDefaults.standard.set("Cosmic Planet 🪐", forKey: PrefKey.statusIconStyle)
+            UserDefaults.standard.set("Amethyst", forKey: PrefKey.appIconTintColor)
+
+        case Self.retroID, Self.legacyRetroID:
+            UserDefaults.standard.set("8-Bit Arcade Ghost 👻", forKey: PrefKey.ambientEntity)
+            UserDefaults.standard.set("Retro CRT Vector Scanline Grid 🕹️", forKey: PrefKey.wallpaperFxType)
+            UserDefaults.standard.set(true, forKey: PrefKey.wallpaperFxEnabled)
+            UserDefaults.standard.set(true, forKey: PrefKey.windowShaderFxEnabled)
+            UserDefaults.standard.set("Pixel Heart Armor ❤️", forKey: PrefKey.iconSnuggie)
+            UserDefaults.standard.set("8-Bit Arcade", forKey: PrefKey.batteryStyle)
+            UserDefaults.standard.set("Arcade Gamepad 🎮", forKey: PrefKey.statusIconStyle)
+            UserDefaults.standard.set("Emerald", forKey: PrefKey.appIconTintColor)
+
+        case Self.ultimateID, Self.legacyUltimateID:
+            UserDefaults.standard.set("Genie Portal 🌀", forKey: PrefKey.ambientEntity)
+            UserDefaults.standard.set("Fluid Ink Chromatography 🎨", forKey: PrefKey.wallpaperFxType)
+            UserDefaults.standard.set(true, forKey: PrefKey.wallpaperFxEnabled)
+            UserDefaults.standard.set(true, forKey: PrefKey.windowShaderFxEnabled)
+            UserDefaults.standard.set("Tesseract Hypercube 🧊", forKey: PrefKey.appFormation)
+            UserDefaults.standard.set("Crown Jewel 👑", forKey: PrefKey.iconSnuggie)
+            UserDefaults.standard.set("Tesla Cell Pack", forKey: PrefKey.batteryStyle)
+            UserDefaults.standard.set("Crown Jewel 👑", forKey: PrefKey.statusIconStyle)
+            UserDefaults.standard.set("Royal Gold", forKey: PrefKey.appIconTintColor)
+
+        default:
+            break
+        }
+
+        NotificationCenter.default.post(name: NSNotification.Name("GenieExpansionPackEquipped"), object: pack.id)
+    }
+
+    public func applyIncludedItem(_ itemString: String) {
+        if itemString.hasPrefix("Companion: ") {
+            let name = String(itemString.dropFirst("Companion: ".count))
+            UserDefaults.standard.set(name, forKey: PrefKey.ambientEntity)
+        } else if itemString.hasPrefix("Shader: ") {
+            let name = String(itemString.dropFirst("Shader: ".count))
+            UserDefaults.standard.set(name, forKey: PrefKey.wallpaperFxType)
+            UserDefaults.standard.set(true, forKey: PrefKey.wallpaperFxEnabled)
+            UserDefaults.standard.set(true, forKey: PrefKey.windowShaderFxEnabled)
+        } else if itemString.hasPrefix("Formation: ") {
+            let name = String(itemString.dropFirst("Formation: ".count))
+            UserDefaults.standard.set(name, forKey: PrefKey.appFormation)
+        } else if itemString.hasPrefix("Snuggie: ") {
+            let name = String(itemString.dropFirst("Snuggie: ".count))
+            UserDefaults.standard.set(name, forKey: PrefKey.iconSnuggie)
+        } else if itemString.hasPrefix("Apparel: ") {
+            let name = String(itemString.dropFirst("Apparel: ".count))
+            UserDefaults.standard.set(name, forKey: PrefKey.iconSnuggie)
+        } else if itemString.hasPrefix("Style: ") {
+            UserDefaults.standard.set("8-Bit Arcade", forKey: PrefKey.batteryStyle)
+        }
+        NotificationCenter.default.post(name: NSNotification.Name("GenieExpansionItemEquipped"), object: itemString)
     }
 
     public func purchasePack(_ item: ExpansionPackItem) async {

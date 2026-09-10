@@ -4,7 +4,6 @@ import SwiftUI
 // MARK: - ⚙️ Clean Genie Chat Settings Card
 public struct GenieChatSettingsCardView: View {
     @ObservedObject var localModels = LocalModelManager.shared
-    @AppStorage(PrefKey.geminiApiKey) var geminiApiKey: String = ""
     @AppStorage(PrefKey.claudeApiKey) var claudeApiKey: String = ""
     @AppStorage(PrefKey.openaiApiKey) var openaiApiKey: String = ""
     @AppStorage(PrefKey.ollamaHost) var ollamaHost: String = "http://localhost:11434"
@@ -16,6 +15,13 @@ public struct GenieChatSettingsCardView: View {
     @AppStorage(PrefKey.aiEmotion) var selectedEmotionRaw: String = AIEmotionType.mystical.rawValue
 
     @State private var statusFeedback: String? = nil
+
+    /// The key is Keychain-backed on `LocalModelManager`, so bind through it rather
+    /// than `@AppStorage`.
+    private var geminiApiKeyBinding: Binding<String> {
+        Binding(get: { localModels.geminiApiKey },
+                set: { localModels.geminiApiKey = $0 })
+    }
 
     public init() {}
 
@@ -50,7 +56,7 @@ public struct GenieChatSettingsCardView: View {
                 // ── 2. Cloud API Keys (BYOK) ────────────────────────────────
                 settingsSection(title: "CLOUD API KEYS (BYOK)", icon: "key.fill") {
                     VStack(alignment: .leading, spacing: 8) {
-                        apiKeyRow(title: "Google Gemini Key", placeholder: "AIzaSy...", text: $geminiApiKey, color: .blue)
+                        apiKeyRow(title: "Google Gemini Key", placeholder: "AIzaSy...", text: geminiApiKeyBinding, color: .blue)
                         apiKeyRow(title: "Anthropic Claude Key", placeholder: "sk-ant-api03...", text: $claudeApiKey, color: .orange)
                         apiKeyRow(title: "OpenAI GPT Key", placeholder: "sk-proj-...", text: $openaiApiKey, color: .green)
                     }

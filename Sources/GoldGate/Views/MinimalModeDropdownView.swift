@@ -21,7 +21,7 @@ struct MinimalModeDropdownView: View {
     @State private var genieOpacity: Double = 1.0
     @State private var genieOffsetY: CGFloat = 0.0
 
-    @AppStorage(PrefKey.smokeEffectsEnabled) private var smokeEffectsEnabled: Bool = true
+    @AppStorage(PrefKey.smokeEffectsEnabled) private var smokeEffectsEnabled: Bool = false
     @AppStorage(PrefKey.smokeStyle) private var smokeStyle: String = "Mystical Cyan 🧞‍♂️"
     @AppStorage(PrefKey.genieAnimOrigin) private var genieAnimOrigin: String = "Top Glyph 🪔"
 

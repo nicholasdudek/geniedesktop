@@ -12,6 +12,8 @@
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.nicholasdudek.genie</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
@@ -30,21 +32,38 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>4.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>14</string>
+	<string>400</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
+	<string>27.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Nicholas M. Dudek. All rights reserved.</string>
+
+	<!-- ===== TCC purpose strings =====
+	     Every protected resource Genie touches must declare a purpose string,
+	     or macOS kills the process at the point of first access. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Genie uses the camera to capture instant vintage Polaroid memos and photo notes.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Genie controls Finder, Music, Notes and other apps on your behalf to arrange windows, send notes, and run the automations you trigger from the menu bar.</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Genie organises and previews the files on your Desktop for its spatial desktop grid.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Genie opens and organises documents you browse through its file workspace.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Genie reads your Downloads folder so recently downloaded files appear in its workspace.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>Genie shows files on connected drives inside its file workspace.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>Genie shows files on network volumes and shared folders inside its file workspace.</string>
+
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -196,6 +196,10 @@ public final class AIEditorBridgeEngine: ObservableObject {
             command = "cat \"\(url.path)\""
         }
 
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            return (GenieCapabilities.unavailableMessage("Running scripts"), false)
+        }
+
         return await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()

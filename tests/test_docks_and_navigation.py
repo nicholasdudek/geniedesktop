@@ -8,13 +8,13 @@ CHAT_DOCK_FILE = BASE_DIR / "Sources/GoldGate/Views/RightSideChatDockView.swift"
 CHAT_BAR_FILE = BASE_DIR / "Sources/GoldGate/Views/AppleSearchBarNoteView.swift"
 
 def test_app_defaults_dock_keys():
-    """Verify all 4-side dock and mini-map keys are registered in AppDefaultsManager."""
+    """Verify all dock and mini-map keys are registered in AppDefaultsManager."""
     content = APP_DEFAULTS_FILE.read_text()
     expected_keys = [
-        "nexus.isLeftChatDockOpen",
         "nexus.isRightChatDockOpen",
         "nexus.isRightAppsDockOpen",
         "nexus.showMiniDockInChatBar",
+        "nexus.showMiniDockInMenuBar",
         "nexus.showAppsMiniMap",
     ]
     for key in expected_keys:
@@ -32,33 +32,34 @@ def test_dock_edge_support():
     assert "public var edge: DockEdge" in content
 
 def test_desktop_grid_4_sided_docks():
-    """Verify DesktopGridView contains 4-sided dock containers and hover triggers."""
+    """Verify DesktopGridView contains dock containers and hover triggers."""
     content = DESKTOP_GRID_FILE.read_text()
     
-    # Left & Right edge containers
-    assert "leftEdgeChatDockContainer" in content
+    # Right edge container
     assert "rightEdgeDocksContainer" in content
     
-    # Cursor hover triggers for all sides
+    # Cursor hover triggers for sides
     assert "location.x <= 10" in content, "Left edge cursor trigger must be present"
     assert "location.y >= screenSize.height - 24" in content, "Bottom edge cursor trigger must be present"
     assert "location.y <= 6" in content, "Top edge cursor trigger must be present"
     
     # Mutual exclusivity handlers
-    assert ".onChange(of: isLeftChatDockOpen)" in content
     assert ".onChange(of: isRightChatDockOpen)" in content
     assert ".onChange(of: isRightAppsDockOpen)" in content
     assert ".onChange(of: isTopSearchBarPoppedDown)" in content
     assert ".onChange(of: appDisplayStageRaw)" in content
 
 def test_chat_bar_mini_dock_and_mini_map():
-    """Verify AppleSearchBarNoteView includes the top-notch mini dock drop-down and right apps mini-map."""
-    content = CHAT_BAR_FILE.read_text()
-    
-    assert "chatBarMiniDockStrip" in content
-    assert "compactRightSideAppsMiniMapView" in content
-    assert "showAppsMiniMap" in content
-    assert "showMiniDockInChatBar" in content
+    """Verify RealMacOSMiniDockView and RightSideChatDockView are properly defined and integrated."""
+    mini_dock_file = BASE_DIR / "Sources/GoldGate/Views/RealMacOSMiniDockView.swift"
+    content = mini_dock_file.read_text()
+    assert "struct RealMacOSMiniDockView" in content
+    assert "DockAndDesktopManager" in content
+    assert "isDownwardMenuBarDock" in content
+
+    chat_dock_file = BASE_DIR / "Sources/GoldGate/Views/RightSideChatDockView.swift"
+    chat_content = chat_dock_file.read_text()
+    assert "struct RightSideChatDockView" in chat_content
 
 def test_apps_retrieval_and_bump_physics():
     """Verify full applications can be retrieved down to bottom and spring bump physics are configured."""

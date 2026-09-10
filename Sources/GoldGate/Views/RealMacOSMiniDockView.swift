@@ -18,14 +18,19 @@ public struct RealMacOSMiniDockView: View {
     @AppStorage(PrefKey.dockShowFolderStacks) var dockShowFolderStacks: Bool = true
     @AppStorage(PrefKey.dockActiveAppsOnly) var dockActiveAppsOnly: Bool = false
     @AppStorage(PrefKey.miniDockBackgroundStyle) var miniDockBackgroundStyle: String = "Clear (Transparent)"
-    @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = true
+    @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = false
     @AppStorage(PrefKey.smokeStyle) var smokeStyle: String = "Mystical Cyan 🧞‍♂️"
     @AppStorage(PrefKey.appIconTintColor) var appIconTintColor: String = "Emerald"
     @AppStorage(PrefKey.iconSnuggie) var iconSnuggie: String = "None"
-    @AppStorage(PrefKey.dockAnimationStyle) var dockAnimationStyleRaw: String = "Classic Magnify 🔍"
+    @AppStorage(PrefKey.dockAnimationStyle) var dockAnimationStyleRaw: String = "None"
     @AppStorage(PrefKey.dockAnimationIntensity) var dockAnimationIntensity: Double = 0.7
-    @AppStorage(PrefKey.danceToMusicEnabled) var danceToMusicEnabled: Bool = true
+    @AppStorage(PrefKey.dockFormation) var dockFormationRaw: String = DockFormation.defaultFormation.rawValue
+    @AppStorage(PrefKey.danceToMusicEnabled) var danceToMusicEnabled: Bool = false
     @ObservedObject var musicMonitor: MusicPlaybackMonitor = .shared
+
+    public var dockFormation: DockFormation {
+        DockFormation(preferenceValue: dockFormationRaw)
+    }
 
     @State private var hoveredItemId: String? = nil
     @State private var bouncingItemId: String? = nil
@@ -60,10 +65,15 @@ public struct RealMacOSMiniDockView: View {
     }
 
     private var genieAppIcon: NSImage? {
-        let devIconURL = URL(fileURLWithPath: "/Users/nicholasdudek/Developer/GoldGate/Sources/GoldGate/Assets.xcassets/AppIcon.appiconset/icon_512x512.png")
-        if FileManager.default.fileExists(atPath: devIconURL.path), let img = NSImage(contentsOf: devIconURL) {
-            img.size = NSSize(width: 40, height: 40)
-            return img
+        let candidatePaths = [
+            "/Users/nicholasdudek/Desktop/Genie/GoldGate/Sources/GoldGate/Assets.xcassets/AppIcon.appiconset/icon_512x512.png",
+            "/Users/nicholasdudek/Developer/GoldGate/Sources/GoldGate/Assets.xcassets/AppIcon.appiconset/icon_512x512.png"
+        ]
+        for path in candidatePaths {
+            if FileManager.default.fileExists(atPath: path), let img = NSImage(contentsOfFile: path) {
+                img.size = NSSize(width: 40, height: 40)
+                return img
+            }
         }
         if let appIcon = NSApp.applicationIconImage {
             appIcon.size = NSSize(width: 40, height: 40)
@@ -111,38 +121,76 @@ public struct RealMacOSMiniDockView: View {
     }
 
     private func dockContent(time: TimeInterval) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                // Real macOS Dock Applications in exact 100% bottom dock order
-                ForEach(displayedDockItems) { item in
-                    dockIconItemView(for: item, transform: iconTransform(for: item, time: time))
-                }
+        Group {
+            if dockFormation.isVertical {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 6) {
+                        genieDockItemView
 
-                // 2. Vertical Divider before Folder Stacks & Trash
-                if (dockShowFolderStacks && !dockManager.dockFolders.isEmpty) || dockAlwaysShowTrash {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.20))
-                        .frame(width: 1, height: 30)
-                        .padding(.horizontal, 4)
-                }
+                        ForEach(displayedDockItems) { item in
+                            dockIconItemView(for: item, transform: iconTransform(for: item, time: time))
+                        }
 
-                // 3. Pinned Folder Stacks (Downloads, Documents, Applications)
-                if dockShowFolderStacks {
-                    ForEach(dockManager.dockFolders) { folder in
-                        dockFolderItemView(for: folder)
+                        if (dockShowFolderStacks && !dockManager.dockFolders.isEmpty) || dockAlwaysShowTrash {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.20))
+                                .frame(width: 26, height: 1)
+                                .padding(.vertical, 4)
+                        }
+
+                        if dockShowFolderStacks {
+                            ForEach(dockManager.dockFolders) { folder in
+                                dockFolderItemView(for: folder)
+                            }
+                        }
+
+                        if dockAlwaysShowTrash {
+                            trashDockItemView
+                        }
+
+                        batteryPillView
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 12)
                 }
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        // 1. Genie Anchor Item (Always present on Genie's mini dock)
+                        genieDockItemView
 
-                // 4. Native macOS Live Trash Slot
-                if dockAlwaysShowTrash {
-                    trashDockItemView
+                        // Real macOS Dock Applications in exact 100% bottom dock order
+                        ForEach(displayedDockItems) { item in
+                            dockIconItemView(for: item, transform: iconTransform(for: item, time: time))
+                        }
+
+                        // 2. Vertical Divider before Folder Stacks & Trash
+                        if (dockShowFolderStacks && !dockManager.dockFolders.isEmpty) || dockAlwaysShowTrash {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.20))
+                                .frame(width: 1, height: 30)
+                                .padding(.horizontal, 4)
+                        }
+
+                        // 3. Pinned Folder Stacks (Downloads, Documents, Applications)
+                        if dockShowFolderStacks {
+                            ForEach(dockManager.dockFolders) { folder in
+                                dockFolderItemView(for: folder)
+                            }
+                        }
+
+                        // 4. Native macOS Live Trash Slot
+                        if dockAlwaysShowTrash {
+                            trashDockItemView
+                        }
+
+                        // 5. Live Battery Pill
+                        batteryPillView
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
                 }
-
-                // 5. Live Battery Pill
-                batteryPillView
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
         }
         .background(dockBackground)
         .onAppear {
@@ -206,49 +254,290 @@ public struct RealMacOSMiniDockView: View {
         }
     }
 
-
+    private var dockShape: UnevenRoundedRectangle {
+        if isDownwardMenuBarDock {
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 0,
+                bottomLeadingRadius: 18,
+                bottomTrailingRadius: 18,
+                topTrailingRadius: 0,
+                style: .continuous
+            )
+        }
+        switch dockFormation {
+        case .floatingIsland:
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 22,
+                bottomLeadingRadius: 22,
+                bottomTrailingRadius: 22,
+                topTrailingRadius: 22,
+                style: .continuous
+            )
+        case .bottomShelf:
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 16,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 16,
+                style: .continuous
+            )
+        case .notchWing:
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 4,
+                bottomLeadingRadius: 18,
+                bottomTrailingRadius: 18,
+                topTrailingRadius: 4,
+                style: .continuous
+            )
+        case .verticalRail:
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 18,
+                bottomLeadingRadius: 18,
+                bottomTrailingRadius: 18,
+                topTrailingRadius: 18,
+                style: .continuous
+            )
+        case .compactHub:
+            return UnevenRoundedRectangle(
+                topLeadingRadius: 24,
+                bottomLeadingRadius: 24,
+                bottomTrailingRadius: 24,
+                topTrailingRadius: 24,
+                style: .continuous
+            )
+        }
+    }
 
     // MARK: - Dynamic Dock Background
     @ViewBuilder
     private var dockBackground: some View {
-        ZStack {
-            VisualEffectBlur(material: .popover, blendingMode: .behindWindow, state: .active)
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.18),
-                    Color.white.opacity(0.06),
-                    Color.black.opacity(0.35)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+        Group {
+            switch miniDockBackgroundStyle {
+            case "Clear (Transparent)", "Clear", "Transparent":
+                Color.clear
+                    .overlay(
+                        dockShape.strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6)
+                    )
+
+            case "Dark Obsidian Glass", "Dark Translucent", "Obsidian":
+                ZStack {
+                    VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow, state: .active)
+                    Color.black.opacity(0.55)
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.14), Color.clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+                .clipShape(dockShape)
+                .overlay(
+                    dockShape.strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.35), Color.white.opacity(0.06)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.8
+                    )
+                )
+
+            case "Cosmic Aurora", "Neon Aurora Glass", "Neon Tint":
+                ZStack {
+                    VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow, state: .active)
+                    Color(red: 0.05, green: 0.08, blue: 0.18).opacity(0.65)
+                    LinearGradient(
+                        colors: [
+                            Color.cyan.opacity(0.35),
+                            Color.purple.opacity(0.25),
+                            Color.pink.opacity(0.18)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .clipShape(dockShape)
+                .overlay(
+                    dockShape.strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.cyan.opacity(0.80),
+                                Color.purple.opacity(0.65),
+                                Color.pink.opacity(0.40)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.85
+                    )
+                )
+
+            case "Liquid Gold & Champagne", "Liquid Gold", "Gold":
+                ZStack {
+                    VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow, state: .active)
+                    Color(red: 0.15, green: 0.10, blue: 0.04).opacity(0.60)
+                    LinearGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.35),
+                            Color(red: 0.85, green: 0.65, blue: 0.13).opacity(0.20),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .clipShape(dockShape)
+                .overlay(
+                    dockShape.strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.90, blue: 0.45).opacity(0.85),
+                                Color(red: 0.85, green: 0.65, blue: 0.13).opacity(0.50)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.85
+                    )
+                )
+
+            case "Emerald Rainforest", "Emerald Glass", "Emerald":
+                ZStack {
+                    VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow, state: .active)
+                    Color(red: 0.02, green: 0.12, blue: 0.06).opacity(0.60)
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.0, green: 0.90, blue: 0.50).opacity(0.32),
+                            Color(red: 0.0, green: 0.65, blue: 0.40).opacity(0.18),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .clipShape(dockShape)
+                .overlay(
+                    dockShape.strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.2, green: 1.0, blue: 0.6).opacity(0.80),
+                                Color(red: 0.0, green: 0.65, blue: 0.4).opacity(0.45)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.85
+                    )
+                )
+
+            case "Amethyst Nebula", "Amethyst Glass", "Amethyst":
+                ZStack {
+                    VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow, state: .active)
+                    Color(red: 0.10, green: 0.04, blue: 0.16).opacity(0.60)
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.70, green: 0.30, blue: 0.95).opacity(0.35),
+                            Color(red: 0.45, green: 0.15, blue: 0.75).opacity(0.20),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .clipShape(dockShape)
+                .overlay(
+                    dockShape.strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.85, green: 0.45, blue: 1.0).opacity(0.85),
+                                Color(red: 0.55, green: 0.20, blue: 0.85).opacity(0.50)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.85
+                    )
+                )
+
+            case "Sunset Mirage":
+                ZStack {
+                    VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow, state: .active)
+                    Color(red: 0.14, green: 0.05, blue: 0.06).opacity(0.60)
+                    LinearGradient(
+                        colors: [
+                            Color(red: 1.0, green: 0.45, blue: 0.25).opacity(0.35),
+                            Color(red: 0.90, green: 0.20, blue: 0.45).opacity(0.22),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .clipShape(dockShape)
+                .overlay(
+                    dockShape.strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.60, blue: 0.35).opacity(0.85),
+                                Color(red: 0.90, green: 0.25, blue: 0.50).opacity(0.50)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.85
+                    )
+                )
+
+            case "Diamond Ice":
+                ZStack {
+                    VisualEffectBlur(material: .popover, blendingMode: .behindWindow, state: .active)
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.30),
+                            Color.cyan.opacity(0.12),
+                            Color.white.opacity(0.08)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+                .clipShape(dockShape)
+                .overlay(
+                    dockShape.strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.70), Color.cyan.opacity(0.40)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.85
+                    )
+                )
+
+            default: // "Apple Liquid Glass" / System default
+                ZStack {
+                    VisualEffectBlur(material: .popover, blendingMode: .behindWindow, state: .active)
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.18),
+                            Color.white.opacity(0.06),
+                            Color.black.opacity(0.35)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+                .clipShape(dockShape)
+                .overlay(
+                    dockShape.strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.40), Color.white.opacity(0.10)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.8
+                    )
+                )
+            }
         }
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: isDownwardMenuBarDock ? 0 : 18,
-                bottomLeadingRadius: 18,
-                bottomTrailingRadius: 18,
-                topTrailingRadius: isDownwardMenuBarDock ? 0 : 18,
-                style: .continuous
-            )
-        )
-        .overlay(
-            UnevenRoundedRectangle(
-                topLeadingRadius: isDownwardMenuBarDock ? 0 : 18,
-                bottomLeadingRadius: 18,
-                bottomTrailingRadius: 18,
-                topTrailingRadius: isDownwardMenuBarDock ? 0 : 18,
-                style: .continuous
-            )
-            .strokeBorder(
-                LinearGradient(
-                    colors: [Color.white.opacity(0.40), Color.white.opacity(0.10)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 0.8
-            )
-        )
         .shadow(color: Color.black.opacity(0.45), radius: 16, y: 6)
     }
 
@@ -303,6 +592,39 @@ public struct RealMacOSMiniDockView: View {
             }
             Button("Inscribe Memorandum (Notes)") {
                 NotificationCenter.default.post(name: NSNotification.Name("NexusFocusGenieSearchBarWithMode"), object: "file")
+            }
+            Divider()
+            Menu("Dock Formation") {
+                ForEach(DockFormation.allCases) { formation in
+                    Button(action: {
+                        HapticFeedback.selection()
+                        dockFormationRaw = formation.rawValue
+                    }) {
+                        HStack {
+                            Image(systemName: formation.icon)
+                            Text(formation.rawValue)
+                            if dockFormation == formation {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+            Menu("Animation Motion") {
+                ForEach(DockAnimationStyle.allCases) { style in
+                    Button(action: {
+                        HapticFeedback.selection()
+                        dockAnimationStyleRaw = style.rawValue
+                    }) {
+                        HStack {
+                            Image(systemName: style.symbolName)
+                            Text(style.rawValue)
+                            if dockAnimationStyle == style {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
             }
             Divider()
             Button("Genie Settings...") {

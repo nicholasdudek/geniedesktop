@@ -53,9 +53,9 @@ struct DesktopGridView: View {
     @ObservedObject private var desktopFilesManager = DesktopFilesManager.shared
     @ObservedObject private var windowManager = DesktopWindowManager.shared
     @ObservedObject private var wallpaperEngine = DraggableWallpaperCanvasEngine.shared
-    @ObservedObject private var swiftDOMEngine = SwiftDOMEngine.shared
 
     @State private var currentPage: Int = 0
+    @State private var isPageIndicatorHovered: Bool = false
     @State private var isEditing: Bool = false
     @State private var wiggle: Bool = false
     @State private var animPhase: Double = 0.0
@@ -102,7 +102,7 @@ struct DesktopGridView: View {
     @AppStorage(PrefKey.iconSize) var iconSize: Double = 64.0
     @AppStorage(PrefKey.textSize) var textSize: Double = 11.0
     @AppStorage(PrefKey.spacing) var itemSpacing: Double = 16.0
-    @AppStorage(PrefKey.enableMagnification) var enableMagnification: Bool = true
+    @AppStorage(PrefKey.enableMagnification) var enableMagnification: Bool = false
     @AppStorage(PrefKey.magnificationScale) var maxMagnification: Double = 1.65
     @AppStorage(PrefKey.wallpaperMode) var wallpaperMode: String = "Genie"
     @AppStorage(PrefKey.sameWallpaperMode) var sameWallpaperMode: Bool = true
@@ -143,9 +143,8 @@ struct DesktopGridView: View {
     @AppStorage(PrefKey.gridTransitionDirection) var gridTransitionDirection: String = "Pull Up from Bottom"
     @AppStorage(PrefKey.searchBarPlacement) var searchBarPlacement: String = "Meet in Middle (Top Chat, Bottom Apps) ⚖️"
     @AppStorage(PrefKey.middleSplitRatio) var middleSplitRatio: Double = 0.44
-    // Edge Sliding Docks (Independent Chat & Applications on Left & Right)
+    // Edge Sliding Dock (the merged Chat + Applications dock lives on the right only)
     @AppStorage(PrefKey.rightEdgeDocksEnabled) var rightEdgeDocksEnabled: Bool = true
-    @AppStorage(PrefKey.isLeftChatDockOpen) var isLeftChatDockOpen: Bool = false
     @AppStorage(PrefKey.isRightChatDockOpen) var isRightChatDockOpen: Bool = false
     @AppStorage(PrefKey.isRightAppsDockOpen) var isRightAppsDockOpen: Bool = false
     @AppStorage(PrefKey.rightDocksCoexistMode) var rightDocksCoexistMode: String = "Side-by-Side 📐"
@@ -328,6 +327,14 @@ struct DesktopGridView: View {
                     )
                     .onTapGesture(count: 1) {
                         NotificationCenter.default.post(name: NSNotification.Name("NexusClose"), object: nil)
+                        // Sidebar and chat dismiss together when clicking desktop
+                        if isRightChatDockOpen || isRightAppsDockOpen || FinderChatWindowManager.shared.isVisible {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+                                isRightChatDockOpen = false
+                                isRightAppsDockOpen = false
+                            }
+                            FinderChatWindowManager.shared.hide()
+                        }
                         guard !isEditing else {
                             withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
                                 isEditing = false
@@ -349,6 +356,10 @@ struct DesktopGridView: View {
                             }
                         }
                     }
+                    // Only claim the whole screen while the plane is actually presenting. While it is
+                    // dismissed this window still spans the display above the desktop icon layer, so a
+                    // full-screen hit area here would swallow every click meant for the Finder desktop.
+                    .allowsHitTesting(currentPage == 1)
 
                 // WALLPAPER & TRANSLUCENT GLASS LAYER (Active on Page 1)
                 // 1. "Genie" / "1:1 Camouflage": 100% transparent pass-through with NO background!
@@ -374,7 +385,7 @@ struct DesktopGridView: View {
 
                     switch activeTreatment {
                     case "Clear Water Caustics", "Clear Water Glass":
-                        ClearWaterCausticsCanvas(screenSize: screenSize)
+                        ClearWaterCausticsCanvas(screenSize: screenSize, isPaused: currentPage != 1)
                     case "Cyber Vector Grid", "Cyber Grid":
                         CyberVectorGridCanvas(screenSize: screenSize)
                     case "Obsidian Velvet Tint":
@@ -411,28 +422,28 @@ struct DesktopGridView: View {
                 .allowsHitTesting(false)
 
                 // UNIFIED HARDWARE-ACCELERATED METAL CANVAS (Wallpaper FX, Living Pets, Cursor Trails, Pinballs)
-                if currentPage == 1 {
-                    UnifiedAmbientMetalCanvas(
-                        wallpaperEnabled: wallpaperFxEnabled && !isGenieMode,
-                        wallpaperFxType: wallpaperFxType,
-                        wallpaperIntensity: CGFloat(wallpaperFxIntensity),
-                        ambientEntity: isEditing ? "None" : ambientEntity,
-                        entityTheme: appIconTheme,
-                        cursorFxType: cursorFxType,
-                        mouseLocation: mouseLocation,
-                        cursorTrail: cursorTrail,
-                        dragonFollow: dragonFollowCursor,
-                        petTreats: petTreats,
-                        pinballEnabled: pinballModeEnabled,
-                        pinballs: pinballs,
-                        screenSize: screenSize
-                    )
-                    .allowsHitTesting(false)
-                }
+                // Runs on the desktop plane as well as the summoned canvas so cursor trails and
+                // ambient art stay visible while you work. The canvas pauses its own timeline when
+                // no layer is enabled, so an idle desktop costs nothing.
+                UnifiedAmbientMetalCanvas(
+                    wallpaperEnabled: wallpaperFxEnabled && !isGenieMode,
+                    wallpaperFxType: wallpaperFxType,
+                    wallpaperIntensity: CGFloat(wallpaperFxIntensity),
+                    ambientEntity: isEditing ? "None" : ambientEntity,
+                    entityTheme: appIconTheme,
+                    cursorFxType: cursorFxType,
+                    mouseLocation: mouseLocation,
+                    cursorTrail: cursorTrail,
+                    dragonFollow: false,
+                    petTreats: [],
+                    pinballEnabled: false,
+                    pinballs: [],
+                    screenSize: screenSize
+                )
+                .allowsHitTesting(false)
 
-
-
-                // INTERACTIVE LAUNCH SHOCKWAVES & BURSTS
+                // INTERACTIVE LAUNCH SHOCKWAVES & BURSTS (Disabled for production stability)
+                /*
                 ForEach(shockwaves) { wave in
                     Circle()
                         .stroke(
@@ -447,6 +458,7 @@ struct DesktopGridView: View {
                         .position(wave.center)
                         .allowsHitTesting(false)
                 }
+                */
 
 
                 // GEOMETRIC APPS MATRIX (120 FPS CoreAnimation Pipeline)
@@ -516,6 +528,8 @@ struct DesktopGridView: View {
                         appModel.moveApp(from: srcID, to: dstID)
                     }
                 )
+                // Reserve the floating right dock's footprint so desktop icons remain clear of it.
+                .padding(.trailing, rightEdgeDocksEnabled ? 82 : 0)
                 .frame(width: screenSize.width, height: screenSize.height, alignment: .topLeading)
                 .offset(
                     x: transitionOffset(screenSize: screenSize).x + pullDragOffsetX + wallpaperEngine.offset(for: .desktopFiles).width,
@@ -551,21 +565,13 @@ struct DesktopGridView: View {
                 )
                 .offset(x: wallpaperEngine.offset(for: .floatingHUD).width, y: wallpaperEngine.offset(for: .floatingHUD).height)
 
-                // 📱 Left-Edge Chat Dock ("cursor left screen pops out our chat dock")
-                leftEdgeChatDockContainer(screenSize: screenSize, topClearance: topClearance, bottomClearance: bottomClearance)
-
-                // 📱 Right-Edge Sliding Docks & Floating Trigger Tabs ("right side edige pops out our buttons for seen applicationas and chat quickly")
-                rightEdgeDocksContainer(screenSize: screenSize, topClearance: topClearance, bottomClearance: bottomClearance)
-                    .zIndex(60)
+                // 📱 Right-Edge Sliding Docks & Floating Trigger Tabs (Disabled for production: single window consolidated)
+                // rightEdgeDocksContainer(screenSize: screenSize, topClearance: topClearance, bottomClearance: bottomClearance)
+                //     .zIndex(60)
 
                 // Continuous Panoramic Vertical Scrollbar (Zenith Chat, Horizon Desktop, Nadir Apps)
                 continuousVerticalScrollBar(screenSize: screenSize)
                     .zIndex(40)
-
-                // Continuous Panoramic Horizontal Spaces Scrollbar [1][2][3]
-                if appDisplayStage == .hidden {
-                    continuousHorizontalScrollBar(screenSize: screenSize)
-                }
 
                 // 📱 iPhone Home Indicator Bar (Swipe Up for Apps, Swipe Down to Retrieve)
                 if !isEditing && appDisplayStage == .hidden {
@@ -583,13 +589,12 @@ struct DesktopGridView: View {
                     if !isEditing {
                         let now = ProcessInfo.processInfo.systemUptime
                         if now - lastPageSwitchTime > 0.25 {
-                            // 1. Left Edge: cursor left screen pops out our chat dock ("cursor left screen pops out our chat dock")
-                            if location.x <= 10 && !isLeftChatDockOpen {
+                            // 1. Left Edge: cursor left screen pops out our chat dock (opens the merged chat on the right sidebar)
+                            if location.x <= 10 && !isRightChatDockOpen {
                                 lastPageSwitchTime = now
                                 HapticFeedback.selection()
                                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                                    isLeftChatDockOpen = true
-                                    isRightChatDockOpen = false
+                                    isRightChatDockOpen = true
                                     isRightAppsDockOpen = false
                                     isTopSearchBarPoppedDown = false
                                     appDisplayStage = .hidden
@@ -603,7 +608,6 @@ struct DesktopGridView: View {
                                     currentPage = 1
                                     appDisplayStage = .fullScreen
                                     isTopSearchBarPoppedDown = false
-                                    isLeftChatDockOpen = false
                                     isRightChatDockOpen = false
                                     isRightAppsDockOpen = false
                                 }
@@ -618,7 +622,6 @@ struct DesktopGridView: View {
                                     currentPage = 1
                                     appDisplayStage = .hidden
                                     isTopSearchBarPoppedDown = true
-                                    isLeftChatDockOpen = false
                                     isRightChatDockOpen = false
                                     isRightAppsDockOpen = false
                                 }
@@ -683,8 +686,7 @@ struct DesktopGridView: View {
                 DesktopWindowManager.shared.setPage(0)
                 NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 0)
             }
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusThreeFingerDragUp"))) { _ in
-                SpatialPlaneManager.shared.toggleZoomOutPlane()
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusDesktopPageChanged"))) { _ in
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusThreeFingerDragLeft"))) { _ in
                 guard !isEditing else { return }
@@ -757,32 +759,13 @@ struct DesktopGridView: View {
                     currentPage = 1
                     appDisplayStage = .fullScreen
                     isTopSearchBarPoppedDown = false
-                    isLeftChatDockOpen = false
                     isRightChatDockOpen = false
                     isRightAppsDockOpen = false
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusToggleLeftChatDock"))) { _ in
-                if UserDefaults.standard.bool(forKey: PrefKey.unifiedCommandWindowEnabled) {
-                    // Strip + chat live together in one draggable window.
-                    isLeftChatDockOpen = false
-                    UnifiedCommandWindowManager.shared.toggle()
-                    return
-                }
-                withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                    if !isLeftChatDockOpen {
-                        isRightChatDockOpen = false
-                        isRightAppsDockOpen = false
-                        isTopSearchBarPoppedDown = false
-                        appDisplayStage = .hidden
-                    }
-                    isLeftChatDockOpen.toggle()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusToggleRightChatDock"))) { _ in
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
                     if !isRightChatDockOpen {
-                        isLeftChatDockOpen = false
                         isRightAppsDockOpen = false
                         isTopSearchBarPoppedDown = false
                         appDisplayStage = .hidden
@@ -802,7 +785,6 @@ struct DesktopGridView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusCloseAllRollupsExceptApps"))) { _ in
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                    isLeftChatDockOpen = false
                     isRightChatDockOpen = false
                     isTopSearchBarPoppedDown = false
                     appDisplayStage = .hidden
@@ -917,18 +899,12 @@ struct DesktopGridView: View {
                 petTreats.removeAll()
                 cursorTrail.removeAll()
             }
-            let targetScrn = screen ?? NSScreen.main ?? NSScreen()
-            let scrnW = targetScrn.frame.width > 0 ? targetScrn.frame.width : 1440
-            let scrnH = targetScrn.frame.height > 0 ? targetScrn.frame.height : 900
-            let offset = CGSize(width: 0, height: newPage == 1 ? -scrnH : 0)
-            swiftDOMEngine.reconcile(cameraOffset: offset, viewportSize: CGSize(width: scrnW, height: scrnH))
             NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: newPage)
             DesktopWindowManager.shared.syncCurrentStation(fromPage: newPage, appDisplayStage: appDisplayStage, isTopSearchBarPoppedDown: isTopSearchBarPoppedDown)
         }
         .onChange(of: appDisplayStageRaw) { _, newRaw in
             if newRaw != AppDisplayStage.hidden.rawValue {
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                    isLeftChatDockOpen = false
                     isRightChatDockOpen = false
                     isRightAppsDockOpen = false
                     isTopSearchBarPoppedDown = false
@@ -939,7 +915,6 @@ struct DesktopGridView: View {
         .onChange(of: isTopSearchBarPoppedDown) { _, isPopped in
             if isPopped {
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                    isLeftChatDockOpen = false
                     isRightChatDockOpen = false
                     isRightAppsDockOpen = false
                     appDisplayStage = .hidden
@@ -947,30 +922,19 @@ struct DesktopGridView: View {
             }
             DesktopWindowManager.shared.syncCurrentStation(fromPage: currentPage, appDisplayStage: appDisplayStage, isTopSearchBarPoppedDown: isTopSearchBarPoppedDown)
         }
-        .onChange(of: isLeftChatDockOpen) { _, isOpen in
-            if isOpen {
-                withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                    isRightChatDockOpen = false
-                    isRightAppsDockOpen = false
-                    isTopSearchBarPoppedDown = false
-                    appDisplayStage = .hidden
-                }
-            }
-        }
         .onChange(of: isRightChatDockOpen) { _, isOpen in
             if isOpen {
+                isRightChatDockOpen = false
+                FinderChatWindowManager.shared.show()
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                    isLeftChatDockOpen = false
                     isRightAppsDockOpen = false
                     isTopSearchBarPoppedDown = false
-                    appDisplayStage = .hidden
                 }
             }
         }
         .onChange(of: isRightAppsDockOpen) { _, isOpen in
             if isOpen {
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                    isLeftChatDockOpen = false
                     isRightChatDockOpen = false
                     isTopSearchBarPoppedDown = false
                     appDisplayStage = .hidden
@@ -1019,11 +983,6 @@ struct DesktopGridView: View {
             if appDisplayStage == .hidden {
                 appDisplayStage = .fullScreen
             }
-            let targetScrn = screen ?? NSScreen.main ?? NSScreen()
-            let scrnW = targetScrn.frame.width > 0 ? targetScrn.frame.width : 1440
-            let scrnH = targetScrn.frame.height > 0 ? targetScrn.frame.height : 900
-            swiftDOMEngine.buildUniverseTree(screenWidth: scrnW, screenHeight: scrnH)
-            swiftDOMEngine.reconcile(cameraOffset: .zero, viewportSize: CGSize(width: scrnW, height: scrnH))
             wallpaperSampler.refresh()
             withAnimation(.linear(duration: 60.0).repeatForever(autoreverses: false)) {
                 animPhase = 360.0
@@ -1150,6 +1109,7 @@ struct DesktopGridView: View {
 
             if mouseMonitor == nil {
                 mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged]) { _ in
+                    guard self.currentPage == 1 else { return }
                     let mouseLoc = NSEvent.mouseLocation
                     let currentScreen = self.screen ?? NSScreen.main ?? (NSScreen.screens.first ?? NSScreen())
                     if NSPointInRect(mouseLoc, currentScreen.frame) {
@@ -1158,8 +1118,10 @@ struct DesktopGridView: View {
                         let loc = CGPoint(x: localX, y: localY)
                         Task { @MainActor in
                             self.mouseLocation = loc
-                            self.updateCursorTrail(loc)
-                            if localY <= 16.0 && self.currentPage == 1 && !self.isTopSearchBarPoppedDown {
+                            if self.cursorFxType != "None" {
+                                self.updateCursorTrail(loc)
+                            }
+                            if localY <= 16.0 && !self.isTopSearchBarPoppedDown {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
                                     self.isTopSearchBarPoppedDown = true
                                 }
@@ -1203,215 +1165,15 @@ struct DesktopGridView: View {
 
     @ViewBuilder
     private func continuousVerticalScrollBar(screenSize: CGSize) -> some View {
-        let currentStationIndex: Int = {
-            switch windowManager.currentStation {
-            case .chat: return 0
-            case .desktop: return 1
-            case .applications: return 2
-            }
-        }()
-
-        let slotDistance: CGFloat = 26.0
-        let baseThumbOffset: CGFloat = {
-            switch currentStationIndex {
-            case 0: return -slotDistance // Top (Chat)
-            case 2: return slotDistance  // Bottom (Apps)
-            default: return 0.0          // Center (Desktop)
-            }
-        }()
-
-        let activeOffset: CGFloat = isDraggingStationSlider
-            ? max(-slotDistance - 6, min(slotDistance + 6, baseThumbOffset + stationDragOffsetY))
-            : baseThumbOffset
-
-        let activeColor: Color = {
-            if activeOffset < -10.0 || currentStationIndex == 0 {
-                return Color.cyan
-            } else if activeOffset > 10.0 || currentStationIndex == 2 {
-                return Color(red: 1.0, green: 0.55, blue: 0.15)
-            } else {
-                return Color.white
-            }
-        }()
-
-        HStack(spacing: 0) {
+        HStack {
             Spacer()
-
-            // Right ~2 inches scroll-catcher zone overlay (width: 170, full vertical height)
-            // Allows fluid scrolling up/down from anywhere along the right screen margin
-            ContinuousSpacesScrollBridge { delta in
-                let now = ProcessInfo.processInfo.systemUptime
-                guard now - lastVerticalScrollTime > 0.12 else { return }
-                if delta > 1.2 {
-                    // Scrolling Up -> Go to Zenith (Chat) or back to Horizon (Desktop)
-                    lastVerticalScrollTime = now
-                    HapticFeedback.selection()
-                    withAnimation(.spring(response: 0.36, dampingFraction: 0.80)) {
-                        if currentStationIndex == 2 {
-                            DesktopWindowManager.shared.switchToStation(.desktop)
-                        } else if currentStationIndex == 1 {
-                            DesktopWindowManager.shared.switchToStation(.chat)
-                        }
-                    }
-                } else if delta < -1.2 {
-                    // Scrolling Down -> Go to Horizon (Desktop) or Nadir (Applications)
-                    lastVerticalScrollTime = now
-                    HapticFeedback.selection()
-                    withAnimation(.spring(response: 0.36, dampingFraction: 0.80)) {
-                        if currentStationIndex == 0 {
-                            DesktopWindowManager.shared.switchToStation(.desktop)
-                        } else if currentStationIndex == 1 {
-                            DesktopWindowManager.shared.switchToStation(.applications)
-                        }
-                    }
-                }
-            }
-            .frame(width: 170)
-            .overlay(
-                ZStack(alignment: .center) {
-                    // Glass Track Capsule with Native Ultra-Thin Liquid Glass
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: isVerticalScrollBarHovered ? 18 : 14, height: 86)
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [
-                                            isVerticalScrollBarHovered ? activeColor.opacity(0.40) : Color.white.opacity(0.20),
-                                            Color.white.opacity(0.08)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: isVerticalScrollBarHovered ? 0.8 : 0.5
-                                )
-                        )
-                        .shadow(color: Color.black.opacity(0.18), radius: 4, y: 1)
-
-                    // Active Station Indicator Pill (Crisp, clean liquid glass - no blinding flashlight halo)
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    activeColor.opacity(0.35),
-                                    activeColor.opacity(0.18)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(width: isVerticalScrollBarHovered ? 14 : 10, height: 20)
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(activeColor.opacity(0.60), lineWidth: 0.75)
-                        )
-                        .offset(y: activeOffset)
-                        .animation(isDraggingStationSlider ? .interactiveSpring() : .spring(response: 0.32, dampingFraction: 0.78), value: activeOffset)
-
-                    // 3 Clickable Station Dots along the vertical line
-                    VStack(spacing: 0) {
-                        // Zenith: Chat Dot (Top)
-                        let isChat = (activeOffset < -10.0 || currentStationIndex == 0)
-                        Button(action: {
-                            HapticFeedback.selection()
-                            withAnimation(.spring(response: 0.36, dampingFraction: 0.80)) {
-                                DesktopWindowManager.shared.switchToStation(.chat)
-                            }
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(isChat ? Color.cyan : Color.white.opacity(0.35))
-                                    .frame(width: isChat ? (isVerticalScrollBarHovered ? 7.0 : 6.0) : 4.0,
-                                           height: isChat ? (isVerticalScrollBarHovered ? 7.0 : 6.0) : 4.0)
-                            }
-                            .frame(width: 28, height: 26)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Dialogue Studio (Chat) 💬")
-
-                        // Horizon: Desktop Dot (Center)
-                        let isDesktop = (abs(activeOffset) <= 10.0 && currentStationIndex == 1)
-                        Button(action: {
-                            HapticFeedback.selection()
-                            withAnimation(.spring(response: 0.36, dampingFraction: 0.80)) {
-                                DesktopWindowManager.shared.switchToStation(.desktop)
-                            }
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(isDesktop ? Color.white : Color.white.opacity(0.35))
-                                    .frame(width: isDesktop ? (isVerticalScrollBarHovered ? 7.0 : 6.0) : 4.0,
-                                           height: isDesktop ? (isVerticalScrollBarHovered ? 7.0 : 6.0) : 4.0)
-                            }
-                            .frame(width: 28, height: 26)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Desktop Canvas 🖥️")
-
-                        // Nadir: Applications Dot (Bottom)
-                        let isApps = (activeOffset > 10.0 || currentStationIndex == 2)
-                        Button(action: {
-                            HapticFeedback.selection()
-                            withAnimation(.spring(response: 0.36, dampingFraction: 0.80)) {
-                                DesktopWindowManager.shared.switchToStation(.applications)
-                            }
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(isApps ? Color.orange : Color.white.opacity(0.35))
-                                    .frame(width: isApps ? (isVerticalScrollBarHovered ? 7.0 : 6.0) : 4.0,
-                                           height: isApps ? (isVerticalScrollBarHovered ? 7.0 : 6.0) : 4.0)
-                            }
-                            .frame(width: 28, height: 26)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Applications Atelier ")
-                    }
-                }
-                .scaleEffect(isVerticalScrollBarHovered ? 1.05 : 1.0)
-                .animation(.spring(response: 0.24, dampingFraction: 0.76), value: isVerticalScrollBarHovered)
-                .contentShape(Capsule())
-                .onHover { h in
-                    withAnimation(.spring(response: 0.24, dampingFraction: 0.76)) {
-                        isVerticalScrollBarHovered = h
-                    }
-                }
-                .highPriorityGesture(
-                    DragGesture(minimumDistance: 8)
-                        .onChanged { val in
-                            if !isDraggingStationSlider {
-                                isDraggingStationSlider = true
-                                HapticFeedback.selection()
-                            }
-                            stationDragOffsetY = val.translation.height
-                        }
-                        .onEnded { val in
-                            let totalY = baseThumbOffset + val.translation.height
-                            isDraggingStationSlider = false
-                            stationDragOffsetY = 0
-                            withAnimation(.spring(response: 0.36, dampingFraction: 0.80)) {
-                                if totalY < -10.0 {
-                                    DesktopWindowManager.shared.switchToStation(.chat)
-                                } else if totalY > 10.0 {
-                                    DesktopWindowManager.shared.switchToStation(.applications)
-                                } else {
-                                    DesktopWindowManager.shared.switchToStation(.desktop)
-                                }
-                            }
-                        }
-                )
-                .padding(.trailing, 58),
-                alignment: .trailing
-            )
+            RunningApplicationSlider()
+                .padding(.trailing, 58)
         }
         .frame(maxHeight: .infinity, alignment: .trailing)
     }
 
-// MARK: - Continuous Panoramic Horizontal Spaces Scrollbar Bridge & View [1][2][3]
+// MARK: - Continuous Panoramic Spaces Scroll Bridge
 
 struct ContinuousSpacesScrollBridge: NSViewRepresentable {
     var onScrollDelta: (CGFloat) -> Void
@@ -1440,139 +1202,30 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
     }
 }
 
-public struct ContinuousHorizontalScrollBarView: View {
-    let screenSize: CGSize
-    let dockAvoidanceEnabled: Bool
-    @State private var lastSpacesScrollTime: TimeInterval = 0
-
-    public var body: some View {
-        let activeSpace = MacDesktopsManager.shared.currentSpaceIndex
-
-        VStack {
-            Spacer()
-
-            HStack(spacing: 8) {
-                ForEach([1, 2, 3], id: \.self) { spaceIndex in
-                    let isCurrent = activeSpace == spaceIndex
-                    Button(action: {
-                        HapticFeedback.selection()
-                        MacDesktopsManager.shared.switchToDesktop(index: spaceIndex)
-                    }) {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(isCurrent ? Color.white : Color.white.opacity(0.35))
-                                .frame(width: 5, height: 5)
-                            Text("\(spaceIndex)")
-                                .font(.system(size: 11, weight: isCurrent ? .semibold : .regular, design: .rounded))
-                                .foregroundColor(isCurrent ? .white : .white.opacity(0.60))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(isCurrent ? Color.white.opacity(0.24) : Color.white.opacity(0.06))
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help("Switch to Architectural Space \(spaceIndex)")
-                }
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .background(
-                Capsule()
-                    .fill(Color.black.opacity(0.28))
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
-                    )
-            )
-            .background(
-                ContinuousSpacesScrollBridge { delta in
-                    let now = ProcessInfo.processInfo.systemUptime
-                    guard now - lastSpacesScrollTime > 0.28 else { return }
-                    if delta < -1.5 {
-                        let next = min(3, activeSpace + 1)
-                        if next != activeSpace {
-                            lastSpacesScrollTime = now
-                            HapticFeedback.selection()
-                            MacDesktopsManager.shared.switchToDesktop(index: next)
-                        }
-                    } else if delta > 1.5 {
-                        let prev = max(1, activeSpace - 1)
-                        if prev != activeSpace {
-                            lastSpacesScrollTime = now
-                            HapticFeedback.selection()
-                            MacDesktopsManager.shared.switchToDesktop(index: prev)
-                        }
-                    }
-                }
-            )
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 8)
-                    .onEnded { gesture in
-                        let dx = gesture.translation.width
-                        if dx < -12 {
-                            let next = min(3, activeSpace + 1)
-                            if next != activeSpace {
-                                HapticFeedback.selection()
-                                MacDesktopsManager.shared.switchToDesktop(index: next)
-                            }
-                        } else if dx > 12 {
-                            let prev = max(1, activeSpace - 1)
-                            if prev != activeSpace {
-                                HapticFeedback.selection()
-                                MacDesktopsManager.shared.switchToDesktop(index: prev)
-                            }
-                        }
-                    }
-            )
-            .padding(.bottom, dockAvoidanceEnabled ? 74 : 24)
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-}
-
-    // MARK: - Continuous Panoramic Horizontal Spaces Scrollbar [1][2][3]
-
-    @ViewBuilder
-    private func continuousHorizontalScrollBar(screenSize: CGSize) -> some View {
-        ContinuousHorizontalScrollBarView(screenSize: screenSize, dockAvoidanceEnabled: dockAvoidanceEnabled)
-    }
-
     // MARK: - Top Floating Overlays & Interaction Components
 
     @ViewBuilder
     private func topFloatingOverlays(screenSize: CGSize, usableWidth: CGFloat, usableHeight: CGFloat, topClearance: CGFloat, bottomClearance: CGFloat, sideMargin: CGFloat) -> some View {
-        // 1. Top Floating Arcade HUD
+        // 1. Top Floating Arcade HUD (Disabled for commercial production release)
+        /*
         if currentPage == 1 && pinballModeEnabled && !isEditing {
             arcadeScoreHud(screenSize: screenSize, topClearance: topClearance, sideMargin: sideMargin)
         }
+        */
 
         // 2. Editing Done Button
         if isEditing {
             editingDoneButton(topClearance: topClearance, sideMargin: sideMargin)
         }
 
-        // 3. Apple System Search & Notebook Note Bar
-        if (currentPage == 1 || isTopSearchBarPoppedDown) && !isEditing {
-            let nameH = showAppNames ? (textSize + 8.0) : 0.0
-            let metrics = SurroundGridMetrics.calculate(
-                screenSize: screenSize,
-                usableWidth: usableWidth,
-                usableHeight: usableHeight,
-                topClearance: topClearance,
-                sideMargin: sideMargin,
-                iconSize: CGFloat(iconSize),
-                spacing: CGFloat(itemSpacing),
-                nameHeight: nameH,
-                count: apps.count,
-                desktopSplitMode: desktopSplitMode
-            )
-            let _ = metrics
-
-
+        // 3. Liquid Glass Top Pull-Down Dashboard Panel
+        if isTopSearchBarPoppedDown && !isEditing {
+            LiquidGlassTopDashboardView(isPresented: $isTopSearchBarPoppedDown, screenSize: screenSize)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
+                .zIndex(99)
         }
 
 
@@ -1594,68 +1247,39 @@ public struct ContinuousHorizontalScrollBarView: View {
         // Disabled completely per user request ("the right side bar you have on the right near with the buttons get rid of them put them in the chat")
     }
 
-    // MARK: - 📱 Left-Edge Sliding Chat Dock ("cursor left screen pops out our chat dock")
-    @ViewBuilder
-    private func leftEdgeChatDockContainer(screenSize: CGSize, topClearance: CGFloat, bottomClearance: CGFloat) -> some View {
-        let usableHeight = max(320, screenSize.height - topClearance - bottomClearance - 28)
-
-        ZStack(alignment: .leading) {
-            if isLeftChatDockOpen {
-                RightSideChatDockView(
-                    isRightChatDockOpen: $isLeftChatDockOpen,
-                    isRightAppsDockOpen: $isRightAppsDockOpen,
-                    edge: .leading
-                )
-                .frame(height: usableHeight)
-                .transition(.asymmetric(
-                    insertion: .move(edge: .leading).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                ))
-            }
-        }
-        .padding(.leading, 6)
-        .padding(.top, topClearance + 12)
-        .padding(.bottom, bottomClearance + 12)
-        .frame(width: screenSize.width, height: screenSize.height, alignment: .leading)
-    }
-
     // MARK: - 📱 Right-Edge Sliding Unified Dock (Chat, Applications, Screen Matrix, Settings)
     @ViewBuilder
     private func rightEdgeDocksContainer(screenSize: CGSize, topClearance: CGFloat, bottomClearance: CGFloat) -> some View {
         let usableHeight = max(320, screenSize.height - topClearance - bottomClearance - 28)
-        let isDockOpen = isRightChatDockOpen || isRightAppsDockOpen
+        let isDockOpen = isRightAppsDockOpen
 
         ZStack(alignment: .trailing) {
             // Unified Single Glass Dock (Zero overlap)
             if isDockOpen {
                 RightSideUnifiedDockView(
-                    isOpen: Binding(
-                        get: { isRightChatDockOpen || isRightAppsDockOpen },
-                        set: { open in
-                            isRightChatDockOpen = open
-                            isRightAppsDockOpen = false
-                        }
-                    ),
-                    initialTab: isRightAppsDockOpen ? .apps : .chat,
+                    isOpen: $isRightAppsDockOpen,
+                    initialTab: .apps,
                     edge: .trailing
                 )
                 .frame(height: usableHeight)
+                // RightEdgeDockTabsView's resting width (8pt leading + 28pt icon + 6pt trailing).
+                // Without this the panel and the icon strip share the same trailing edge and overlap.
+                .padding(.trailing, 42)
                 .transition(.asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .trailing).combined(with: .opacity)
                 ))
             }
 
-            // Right-Edge Floating Trigger Tabs (Hidden when Dock is actively open to avoid overlap)
-            if !isDockOpen {
-                RightEdgeDockTabsView(
-                    isRightChatDockOpen: $isRightChatDockOpen,
-                    isRightAppsDockOpen: $isRightAppsDockOpen,
-                    coexistMode: rightDocksCoexistMode
-                )
-                .frame(maxHeight: .infinity, alignment: .trailing)
-                .transition(.opacity)
-            }
+            // Keep the trigger dock visible as the anchor for the sliding panel.
+            RightEdgeDockTabsView(
+                isRightChatDockOpen: $isRightChatDockOpen,
+                isRightAppsDockOpen: $isRightAppsDockOpen,
+                coexistMode: rightDocksCoexistMode
+            )
+            .frame(maxHeight: .infinity, alignment: .trailing)
+            .zIndex(20)
+            .transition(.opacity)
         }
         .frame(width: screenSize.width, height: screenSize.height, alignment: .trailing)
     }
@@ -1733,7 +1357,6 @@ public struct ContinuousHorizontalScrollBarView: View {
                 HapticFeedback.selection()
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
                     appDisplayStage = .fullScreen
-                    isLeftChatDockOpen = false
                     isRightChatDockOpen = false
                     isRightAppsDockOpen = false
                     isTopSearchBarPoppedDown = false
@@ -1799,7 +1422,6 @@ public struct ContinuousHorizontalScrollBarView: View {
                         currentPage = 1
                         appDisplayStage = .fullScreen
                         isTopSearchBarPoppedDown = false
-                        isLeftChatDockOpen = false
                         isRightChatDockOpen = false
                         isRightAppsDockOpen = false
                     }
@@ -1912,6 +1534,15 @@ public struct ContinuousHorizontalScrollBarView: View {
             )
             .padding(.bottom, 12)
             .shadow(color: Color.black.opacity(0.35), radius: 4, x: 0, y: 2)
+            // Stays out of the way until you reach for it: the pill is invisible but still
+            // hit-testable, so moving the cursor over its spot fades it in.
+            .opacity(isPageIndicatorHovered ? 1.0 : 0.0)
+            .contentShape(Rectangle().inset(by: -10))
+            .onHover { hovering in
+                withAnimation(.easeOut(duration: 0.18)) {
+                    isPageIndicatorHovered = hovering
+                }
+            }
         }
         .frame(width: screenSize.width, height: screenSize.height)
     }
@@ -2094,14 +1725,23 @@ public struct ContinuousHorizontalScrollBarView: View {
 
         let isNatural = event.isDirectionInvertedFromDevice
         // Physical UP: Fingers pushed upward on trackpad toward screen (or traditional wheel rolled up)
-        let isSwipeUp: Bool = isNatural
+        var isSwipeUp: Bool = isNatural
             ? (vDelta <= -flickThreshold || scrollAccumulator <= -longPullThreshold)
             : (vDelta >= flickThreshold || scrollAccumulator >= longPullThreshold)
 
         // Physical DOWN: Fingers pulled downward on trackpad toward user (or traditional wheel rolled down)
-        let isSwipeDown: Bool = isNatural
+        var isSwipeDown: Bool = isNatural
             ? (vDelta >= flickThreshold || scrollAccumulator >= longPullThreshold)
             : (vDelta <= -flickThreshold || scrollAccumulator <= -longPullThreshold)
+
+        // When slideDownShowsTopStation is active (default: true), sliding wheel DOWN reveals the top screen (Zenith).
+        // The reverseStationScrollWheelDirection toggle flips this back or forth.
+        let slideDownShowsTop = (UserDefaults.standard.object(forKey: PrefKey.wheelSlideDownShowsTopStation) as? Bool ?? true) != UserDefaults.standard.bool(forKey: PrefKey.reverseStationScrollWheelDirection)
+        if slideDownShowsTop {
+            let temp = isSwipeUp
+            isSwipeUp = isSwipeDown
+            isSwipeDown = temp
+        }
 
         // Determine current station
         let currentStation = DesktopWindowManager.shared.currentStation
@@ -2191,11 +1831,13 @@ let screenSize: CGSize
 
 struct ClearWaterCausticsCanvas: View {
     @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
-let screenSize: CGSize
+    let screenSize: CGSize
+    var isPaused: Bool = false
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: isPaused)) { timeline in
             Canvas { ctx, size in
+                guard !isPaused else { return }
                 let time = timeline.date.timeIntervalSinceReferenceDate
                 let w = size.width
                 let h = size.height
@@ -2661,6 +2303,89 @@ let wallpaperEnabled: Bool
             let foxBody = Path(ellipseIn: CGRect(x: fx - 10, y: fy - 10, width: 20, height: 20))
             context.fill(foxBody, with: .color(Color.white))
             context.stroke(foxBody, with: .color(Color.pink.opacity(0.8)), lineWidth: 1.5)
+
+        case "Japanese Koi Sanctuary 🎏":
+            let t = time * 0.40
+            // Two graceful koi swimming in harmony
+            for koiIdx in 0..<2 {
+                let phase = Double(koiIdx) * .pi
+                var kx = (W * 0.20) + (W * 0.60) * (0.5 + 0.5 * sin(t * 0.7 + phase))
+                var ky = (H * 0.25) + (H * 0.50) * (0.5 + 0.5 * cos(t * 0.5 + phase))
+                if let mouse = mouse {
+                    let dx = mouse.x - kx, dy = mouse.y - ky
+                    let dist = hypot(dx, dy)
+                    if dist < 350 {
+                        kx += dx * 0.35 * (1.0 - dist / 350)
+                        ky += dy * 0.35 * (1.0 - dist / 350)
+                    }
+                }
+                // Ripple ring around koi
+                let rippleRadius = 18.0 + CGFloat((time * 20.0 + Double(koiIdx * 15)).truncatingRemainder(dividingBy: 24.0))
+                var ripple = Path()
+                ripple.addEllipse(in: CGRect(x: kx - rippleRadius, y: ky - rippleRadius * 0.6, width: rippleRadius * 2, height: rippleRadius * 1.2))
+                context.stroke(ripple, with: .color(Color.cyan.opacity(0.25)), lineWidth: 1.0)
+
+                // Koi Body
+                var koiBody = Path()
+                koiBody.addEllipse(in: CGRect(x: kx - 14, y: ky - 7, width: 28, height: 14))
+                let koiColor = koiIdx == 0 ? Color(red: 1.0, green: 0.35, blue: 0.1) : Color.white
+                context.fill(koiBody, with: .color(koiColor.opacity(0.88)))
+                context.stroke(koiBody, with: .color(Color.white.opacity(0.9)), lineWidth: 1.2)
+
+                // Tail Fin Wave
+                let tailAngle = sin(time * 4.5 + phase) * 0.4
+                var tail = Path()
+                tail.move(to: CGPoint(x: kx - 14, y: ky))
+                tail.addLine(to: CGPoint(x: kx - 24 + CGFloat(cos(tailAngle) * 4), y: ky - 8 + CGFloat(sin(tailAngle) * 6)))
+                tail.addLine(to: CGPoint(x: kx - 24 + CGFloat(cos(tailAngle) * 4), y: ky + 8 + CGFloat(sin(tailAngle) * 6)))
+                tail.closeSubpath()
+                context.fill(tail, with: .color(Color.red.opacity(0.75)))
+
+                // Pectoral Fins
+                var fin = Path()
+                fin.addEllipse(in: CGRect(x: kx + 2, y: ky - 10, width: 8, height: 4))
+                fin.addEllipse(in: CGRect(x: kx + 2, y: ky + 6, width: 8, height: 4))
+                context.fill(fin, with: .color(Color.orange.opacity(0.7)))
+            }
+
+        case "Pixel Yoshi Companion 🦖":
+            let t = time * 0.90
+            var yx = (W * 0.15) + (W * 0.70) * (0.5 + 0.5 * sin(t * 0.8))
+            var yy = (H * 0.25) + (H * 0.50) * (0.5 + 0.5 * cos(t * 0.6))
+            if let mouse = mouse {
+                let dx = mouse.x - yx, dy = mouse.y - yy
+                let dist = hypot(dx, dy)
+                if dist < 320 {
+                    yx += dx * 0.45 * (1.0 - dist / 320)
+                    yy += dy * 0.45 * (1.0 - dist / 320)
+                }
+            }
+            // Pixel Dino Body (Vibrant Green)
+            var yoshi = Path()
+            yoshi.addRoundedRect(in: CGRect(x: yx - 12, y: yy - 12, width: 24, height: 24), cornerSize: CGSize(width: 6, height: 6))
+            context.fill(yoshi, with: .color(Color(red: 0.2, green: 0.85, blue: 0.25)))
+            context.stroke(yoshi, with: .color(Color.white), lineWidth: 1.5)
+
+            // White Belly & Cheeks
+            let belly = Path(roundedRect: CGRect(x: yx - 4, y: yy - 2, width: 14, height: 12), cornerRadius: 3)
+            context.fill(belly, with: .color(Color.white.opacity(0.9)))
+
+            // Red Saddle Shell
+            let shell = Path(roundedRect: CGRect(x: yx - 15, y: yy - 4, width: 6, height: 10), cornerRadius: 2)
+            context.fill(shell, with: .color(Color(red: 0.95, green: 0.2, blue: 0.15)))
+
+            // Orange Pixel Boots (Stepping animation)
+            let step = sin(time * 8.0) * 4.0
+            let boot1 = Path(roundedRect: CGRect(x: yx - 10, y: yy + 12 + CGFloat(step), width: 8, height: 6), cornerRadius: 2)
+            let boot2 = Path(roundedRect: CGRect(x: yx + 2, y: yy + 12 - CGFloat(step), width: 8, height: 6), cornerRadius: 2)
+            context.fill(boot1, with: .color(Color.orange))
+            context.fill(boot2, with: .color(Color.orange))
+
+            // Big Friendly Pixel Eye
+            let eye = Path(ellipseIn: CGRect(x: yx + 2, y: yy - 10, width: 6, height: 8))
+            context.fill(eye, with: .color(Color.white))
+            let pupil = Path(ellipseIn: CGRect(x: yx + 4, y: yy - 8, width: 3, height: 4))
+            context.fill(pupil, with: .color(Color.black))
 
         case "Deep Void Star Kraken 🦑":
             let t = time * 0.28
@@ -4121,7 +3846,7 @@ let apps: [AppInfo]
 
     // Dance to Music: every app icon grooves while audio plays on the default output.
     @ObservedObject private var musicMonitor: MusicPlaybackMonitor = .shared
-    @AppStorage(PrefKey.danceToMusicEnabled) private var danceToMusicEnabled: Bool = true
+    @AppStorage(PrefKey.danceToMusicEnabled) private var danceToMusicEnabled: Bool = false
     @AppStorage(PrefKey.dockAnimationIntensity) private var dockAnimationIntensity: Double = 0.7
 
     private var isDancing: Bool {
@@ -4897,7 +4622,8 @@ let apps: [AppInfo]
                 let r = i / cols
                 let c = i % cols
                 let px = startX + CGFloat(c) * stepX
-                let waveY = sin(Double(c) * 0.85 + Double(r) * 1.2) * Double(amplitude)
+                let waveAngle: Double = Double(c) * 0.85 + Double(r) * 1.2
+                let waveY: Double = sin(waveAngle) * Double(amplitude)
                 let py = startY + CGFloat(r) * stepY + CGFloat(waveY)
                 nodes[app.id] = AppFormationNode(center: clampToScreen(CGPoint(x: px, y: py)), scale: 1.0)
             }
@@ -4943,7 +4669,9 @@ let apps: [AppInfo]
         case "Crescent Moon 🌙":
             let r = min(min(usableWidth, usableHeight) * 0.44, CGFloat(count) * (minClearance * 0.18) + (minClearance * 1.2))
             for (i, app) in apps.enumerated() {
-                let frac = (Double(i) / Double(max(1, count - 1))) * .pi * 1.3 - 0.45
+                let denom: Double = Double(max(1, count - 1))
+                let ratio: Double = Double(i) / denom
+                let frac: Double = ratio * (.pi * 1.3) - 0.45
                 let px = cx + CGFloat(cos(frac)) * r
                 let py = cy + CGFloat(sin(frac)) * r
                 nodes[app.id] = AppFormationNode(center: clampToScreen(CGPoint(x: px, y: py)), scale: 1.0)
@@ -6675,6 +6403,30 @@ let icon: NSImage
                     .fill(Color(red: 0.80, green: 0.15, blue: 0.10))
                     .frame(width: size * 1.08, height: size * 0.08)
                     .offset(y: -size * 0.38)
+            }
+
+        case "Pixel Heart Armor ❤️":
+            ZStack {
+                // Outer 8-Bit Pixelated Border
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(
+                        LinearGradient(colors: [Color.pink, Color.red, Color.purple], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 2.5
+                    )
+                    .frame(width: size * 1.10, height: size * 1.10)
+                    .shadow(color: Color.pink.opacity(0.8), radius: 4)
+
+                // 8-Bit Glowing Crest Heart at top right
+                Image(systemName: "heart.fill")
+                    .font(.system(size: size * 0.28, weight: .black))
+                    .foregroundColor(.pink)
+                    .offset(x: size * 0.42, y: -size * 0.42)
+                    .shadow(color: Color.red, radius: 4)
+
+                // Corner Pixel Rivets
+                Circle().fill(Color.white).frame(width: 3, height: 3).offset(x: -size * 0.50, y: -size * 0.50)
+                Circle().fill(Color.white).frame(width: 3, height: 3).offset(x: -size * 0.50, y: size * 0.50)
+                Circle().fill(Color.white).frame(width: 3, height: 3).offset(x: size * 0.50, y: size * 0.50)
             }
 
         case "Golden Halo Corona 😇":

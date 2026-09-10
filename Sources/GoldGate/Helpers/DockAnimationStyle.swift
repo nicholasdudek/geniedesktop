@@ -18,7 +18,7 @@ public enum DockAnimationStyle: String, CaseIterable, Identifiable {
     public static let preferenceKey = PrefKey.dockAnimationStyle
     public static let intensityKey = PrefKey.dockAnimationIntensity
     public static let danceKey = PrefKey.danceToMusicEnabled
-    public static let defaultStyle: DockAnimationStyle = .classicMagnify
+    public static let defaultStyle: DockAnimationStyle = .none
 
     public var id: String { rawValue }
 
@@ -172,8 +172,10 @@ public enum DockAnimationEngine {
         return t
     }
 
-    /// Apple Dock style magnification falloff around the hovered icon.
-    private static func magnify(distance: Int, k: CGFloat, dir: CGFloat) -> DockIconTransform {
+    /// Apple Dock style magnification falloff around the hovered icon. Public so any row of
+    /// buttons elsewhere in the app (settings sidebar, theme swatch pills, etc.) can pick up the
+    /// same "grows near the cursor" feel as the real dock, not just `RealMacOSMiniDockView`.
+    public static func magnify(distance: Int, k: CGFloat, dir: CGFloat = 0) -> DockIconTransform {
         switch distance {
         case 0: return DockIconTransform(scale: 1.0 + 0.36 * k, offset: CGSize(width: 0, height: dir * 6.0 * k))
         case 1: return DockIconTransform(scale: 1.0 + 0.16 * k, offset: CGSize(width: 0, height: dir * 2.5 * k))
@@ -198,3 +200,46 @@ public enum DockAnimationEngine {
         )
     }
 }
+
+// MARK: - 🎨 Dock Formations (Next-Gen macOS Desktop Formations)
+public enum DockFormation: String, CaseIterable, Identifiable, Sendable {
+    case floatingIsland = "Floating Island (Liquid Glass)"
+    case bottomShelf = "Cupertino Grounded Shelf"
+    case notchWing = "Dynamic Notch Wing"
+    case verticalRail = "Pro Vertical Rail"
+    case compactHub = "Spatial Trigger Hub"
+
+    public var id: String { rawValue }
+
+    public static let preferenceKey = PrefKey.dockFormation
+    public static let defaultFormation: DockFormation = .floatingIsland
+
+    public var icon: String {
+        switch self {
+        case .floatingIsland: return "capsule.portrait.fill"
+        case .bottomShelf: return "rectangle.bottomhalf.filled"
+        case .notchWing: return "chevron.compact.down"
+        case .verticalRail: return "sidebar.right"
+        case .compactHub: return "circle.hexagongrid.fill"
+        }
+    }
+
+    public var subtitle: String {
+        switch self {
+        case .floatingIsland: return "Modern translucent floating pill with liquid glass bevels"
+        case .bottomShelf: return "Grounded to screen bottom with authentic macOS shelf reflection"
+        case .notchWing: return "Snaps flush beneath the MacBook display notch with winglet wings"
+        case .verticalRail: return "Vertical side strip for ultra-wide displays and multi-window pros"
+        case .compactHub: return "Ultra-compact 44pt spatial badge that unfolds dynamically on hover"
+        }
+    }
+
+    public var isVertical: Bool {
+        self == .verticalRail
+    }
+
+    public init(preferenceValue: String?) {
+        self = DockFormation(rawValue: preferenceValue ?? "") ?? .defaultFormation
+    }
+}
+

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gcloud": {
+      "command": "/Users/nicholasdudek/.npm-global/bin/gcloud-mcp",
+      "args": ["--config", ".gcloud-mcp.json"]
+    }
+  }
+}

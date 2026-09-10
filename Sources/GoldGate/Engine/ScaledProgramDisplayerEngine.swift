@@ -435,7 +435,7 @@ public final class ScaledProgramDisplayerEngine: ObservableObject {
             var totalLatency: Double = 0.0
 
             for target in activeSlotTargets {
-                if let imageRef = CGWindowListCreateImage(
+                if let imageRef = safeCGWindowListCreateImage(
                     .null,
                     .optionIncludingWindow,
                     target.wid,

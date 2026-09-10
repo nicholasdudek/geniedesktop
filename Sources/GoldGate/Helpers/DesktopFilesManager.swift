@@ -40,19 +40,12 @@ final class DesktopFilesManager: ObservableObject {
         CFPreferencesSetAppValue("CreateDesktop" as CFString, (visible ? kCFBooleanTrue : kCFBooleanFalse), "com.apple.finder" as CFString)
         CFPreferencesAppSynchronize("com.apple.finder" as CFString)
 
-        // 3. Update macOS defaults and refresh Finder
+        // 3. Refresh Finder so the change takes effect.
+        // The `defaults write` that used to run here was a duplicate of the
+        // CFPreferences write in step 2, and `killall Finder` is just a
+        // forced terminate — Finder is relaunched by launchd either way.
         DispatchQueue.global(qos: .userInitiated).async {
-            let p1 = Process()
-            p1.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-            p1.arguments = ["write", "com.apple.finder", "CreateDesktop", "-bool", visible ? "true" : "false"]
-            try? p1.run()
-            p1.waitUntilExit()
-
-            let p2 = Process()
-            p2.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
-            p2.arguments = ["Finder"]
-            try? p2.run()
-            p2.waitUntilExit()
+            GenieNativeSystem.restartFinder()
         }
     }
 

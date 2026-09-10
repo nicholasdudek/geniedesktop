@@ -83,7 +83,7 @@ public final class UnifiedCommandWindowManager: NSObject, NSWindowDelegate, Obse
         p.isOpaque = false
         p.backgroundColor = .clear
         p.hasShadow = false                 // the SwiftUI card draws its own
-        p.level = .floating
+        p.level = .normal
         p.isMovable = true
         p.isMovableByWindowBackground = false   // the strip is the drag region; the chat area keeps its gestures
         p.becomesKeyOnlyIfNeeded = true

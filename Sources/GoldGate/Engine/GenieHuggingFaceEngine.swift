@@ -140,6 +140,12 @@ public final class GenieHuggingFaceEngine: ObservableObject {
     // MARK: - 2. 1-Click Hugging Face Model Pulling to Local Ollama/MLX
     public func pullHuggingFaceModel(card: HFModelCard) {
         guard !isPullingModel else { return }
+        // Pulling a model means driving the local `ollama` binary, which the
+        // sandboxed build cannot execute.
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            pullProgressMessage = GenieCapabilities.unavailableMessage("Local model pulls")
+            return
+        }
         isPullingModel = true
         pullingModelId = card.id
         pullProgressMessage = "Connecting to Hugging Face Hub (hf.co) for \(card.displayName)..."

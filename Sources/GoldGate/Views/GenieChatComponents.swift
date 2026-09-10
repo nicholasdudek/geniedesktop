@@ -343,35 +343,6 @@ public struct GenieStreamingCursorView: View {
     }
 }
 
-// MARK: - ⚡️ Agentic Trajectory Step Tray View
-public struct GenieAgentStepTrayView: View {
-    public let icon: String
-    public let title: String
-    public let status: String
-
-    public var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 9.5, weight: .bold))
-                .foregroundColor(.cyan)
-
-            Text(title)
-                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                .foregroundColor(.white.opacity(0.85))
-
-            Text("•")
-                .foregroundColor(.white.opacity(0.30))
-
-            Text(status)
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundColor(.cyan.opacity(0.80))
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(Capsule().fill(Color.cyan.opacity(0.12)))
-        .overlay(Capsule().stroke(Color.cyan.opacity(0.30), lineWidth: 0.5))
-    }
-}
 
 // MARK: - 📝 Rich Markdown Segment Parser & Renderer
 public struct GenieMarkdownMessageView: View {
@@ -546,6 +517,8 @@ public struct GenieSlashCommandsBarView: View {
         ("/swarm", "Swarm Codebase", "ant.fill", .purple),
         ("/notes", "Desktop Notes", "note.text", .orange),
         ("/code", "Generate Code", "chevron.left.forwardslash.chevron.right", .green),
+        ("/spaces", "Desktop Spaces", "square.3.layers.3d.down.right", .cyan),
+        ("/recent", "Latest Creations", "sparkles", .yellow),
         ("/clear", "Clear Chat", "trash.fill", .red)
     ]
 

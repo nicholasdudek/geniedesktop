@@ -1,6 +1,18 @@
 import AppKit
 import SwiftUI
 
+private func logDesktop(_ msg: String) {
+    let line = "[GENIE_DESKTOP] \(Date()): \(msg)\n"
+    fputs(line, stderr)
+    fflush(stderr)
+    if let data = line.data(using: .utf8),
+       let stream = OutputStream(toFileAtPath: "/tmp/genie_desktop_debug.txt", append: true) {
+        stream.open()
+        _ = data.withUnsafeBytes { stream.write($0.bindMemory(to: UInt8.self).baseAddress!, maxLength: data.count) }
+        stream.close()
+    }
+}
+
 // MARK: - Desktop Plane Window
 
 final class DesktopPlaneWindow: NSWindow {
@@ -27,8 +39,7 @@ final class DesktopPlaneWindow: NSWindow {
         self.isExcludedFromWindowsMenu = true
         self.sharingType = .readOnly
         self.hidesOnDeactivate = false
-        self.canHide = false
-        self.ignoresMouseEvents = false
+        self.ignoresMouseEvents = true
         self.acceptsMouseMovedEvents = true
     }
 
@@ -78,6 +89,10 @@ final class DesktopPlaneWindow: NSWindow {
     }
 
     override func mouseDown(with event: NSEvent) {
+        guard DesktopWindowManager.shared.currentPage == 1 else {
+            super.mouseDown(with: event)
+            return
+        }
         NSApp.activate()
         self.makeKey()
         if !UserDefaults.standard.bool(forKey: PrefKey.isChatLockedInPlace) {
@@ -182,6 +197,9 @@ final class DesktopWindowManager: ObservableObject {
     private var dockHoverStartTime: TimeInterval = 0.0
     private var topHoverStartTime: TimeInterval = 0.0
     private var rightHoverStartTime: TimeInterval = 0.0
+    private var hasBumpedRightEdge: Bool = false
+    /// How far back from the edge the cursor is nudged when it hits the right-edge island.
+    static let rightEdgeBumpDistance: CGFloat = 14.0
     @Published public var currentPage: Int = 1
     @Published public var currentStation: WorkspaceStation = .applications
 
@@ -199,7 +217,20 @@ final class DesktopWindowManager: ObservableObject {
         switchToStation(next)
     }
 
+    public func closeRightChatDock() {
+        UserDefaults.standard.set(false, forKey: PrefKey.isRightChatDockOpen)
+        UserDefaults.standard.set(false, forKey: PrefKey.isRightAppsDockOpen)
+    }
+
     public func switchToStation(_ station: WorkspaceStation) {
+        if station == .chat {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                UserDefaults.standard.set(true, forKey: PrefKey.isRightChatDockOpen)
+                UserDefaults.standard.set(false, forKey: PrefKey.isRightAppsDockOpen)
+            }
+            return
+        }
+        closeRightChatDock()
         currentStation = station
         updateDockTile(for: station)
 
@@ -266,7 +297,10 @@ final class DesktopWindowManager: ObservableObject {
     }
 
     var isEnabled: Bool {
-        UserDefaults.standard.bool(forKey: PrefKey.desktopPlaneEnabled)
+        if UserDefaults.standard.object(forKey: PrefKey.desktopPlaneEnabled) == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: PrefKey.desktopPlaneEnabled)
     }
 
     func setPage(_ page: Int) {
@@ -296,17 +330,18 @@ final class DesktopWindowManager: ObservableObject {
                 win.sharingType = .readOnly
                 win.ignoresMouseEvents = false
             } else {
-                // Dismissed: Keep at desktop plane level above icons with gestures fully active
+                // Dismissed: Keep at desktop plane level below icons with gestures fully active and mouse events passing to macOS Desktop
                 win.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
                 win.isExcludedFromWindowsMenu = true
                 win.sharingType = .readOnly
-                win.ignoresMouseEvents = false
+                win.ignoresMouseEvents = true
                 win.resignKey()
-                let desktopLevel = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+                let desktopLevel = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)) - 1)
                 win.level = desktopLevel
                 win.orderFrontRegardless()
             }
         }
+        updateDesktopClickThrough()
         if page == 1 {
             NSApp.activate()
             let mouseLoc = NSEvent.mouseLocation
@@ -344,6 +379,7 @@ final class DesktopWindowManager: ObservableObject {
     }
 
     func setup(appModel: AppModel) {
+        logDesktop("setup(appModel:) called")
         self.appModel = appModel
         cleanup()
 
@@ -382,13 +418,16 @@ final class DesktopWindowManager: ObservableObject {
             queue: .main
         ) { [weak self] notif in
             MainActor.assumeIsolated {
-                guard let self = self, self.currentPage == 1 else { return }
-                let alwaysOn = UserDefaults.standard.bool(forKey: PrefKey.alwaysOnDesktop)
-                let pinned = UserDefaults.standard.bool(forKey: PrefKey.pinToDesktopEnabled)
-                guard !alwaysOn && !pinned else { return }
+                guard let self = self else { return }
                 if let activatedApp = notif.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                    activatedApp.bundleIdentifier != Bundle.main.bundleIdentifier {
-                    self.setPage(0)
+                    let alwaysOn = UserDefaults.standard.bool(forKey: PrefKey.alwaysOnDesktop)
+                    let pinned = UserDefaults.standard.bool(forKey: PrefKey.pinToDesktopEnabled)
+                    if !alwaysOn && !pinned && self.currentPage == 1 {
+                        self.setPage(0)
+                    }
+                    self.closeRightChatDock()
+                    FinderChatWindowManager.shared.hide()
                 }
             }
         }
@@ -468,26 +507,7 @@ final class DesktopWindowManager: ObservableObject {
         ) { [weak self] notif in
             MainActor.assumeIsolated {
                 guard let self = self else { return }
-                let isVis = (notif.object as? Bool) ?? true
-                let alwaysOn = UserDefaults.standard.bool(forKey: PrefKey.alwaysOnDesktop)
-                for win in self.desktopWindows {
-                    if !isVis {
-                        // Desktop files hidden: elevate to cover wallpaper and desktop space cleanly
-                        win.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
-                        win.ignoresMouseEvents = false
-                        win.orderFrontRegardless()
-                    } else {
-                        if alwaysOn {
-                            win.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
-                            win.ignoresMouseEvents = false
-                            win.orderFrontRegardless()
-                        } else {
-                            win.level = .floating
-                            win.ignoresMouseEvents = false
-                            win.orderFrontRegardless()
-                        }
-                    }
-                }
+                self.updateWindowsForPage(self.currentPage)
             }
         }
         notificationObservers.append(o8)
@@ -497,8 +517,17 @@ final class DesktopWindowManager: ObservableObject {
             forName: NSNotification.Name("NexusSetDesktopPage"),
             object: nil,
             queue: .main
-        ) { notif in
-            NotificationCenter.default.post(name: NSNotification.Name("NexusSetDesktopPage"), object: notif.object)
+        ) { [weak self] notif in
+            let pageInt: Int
+            if let intVal = notif.object as? Int {
+                pageInt = intVal
+            } else if let strVal = notif.object as? String, let intVal = Int(strVal) {
+                pageInt = intVal
+            } else {
+                pageInt = 1
+            }
+            self?.setPage(pageInt)
+            NotificationCenter.default.post(name: NSNotification.Name("NexusSetDesktopPage"), object: pageInt)
         }
         notificationObservers.append(o9)
 
@@ -509,18 +538,7 @@ final class DesktopWindowManager: ObservableObject {
         ) { [weak self] notif in
             MainActor.assumeIsolated {
                 guard let self = self else { return }
-                let isAlwaysOn = (notif.object as? Bool) ?? UserDefaults.standard.bool(forKey: PrefKey.alwaysOnDesktop)
-                for win in self.desktopWindows {
-                    if isAlwaysOn {
-                        win.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
-                        win.ignoresMouseEvents = false
-                        win.orderFrontRegardless()
-                    } else {
-                        win.level = .floating
-                        win.ignoresMouseEvents = false
-                        win.orderFrontRegardless()
-                    }
-                }
+                self.updateWindowsForPage(self.currentPage)
             }
         }
         notificationObservers.append(o10)
@@ -530,6 +548,18 @@ final class DesktopWindowManager: ObservableObject {
             cursorPollingTimer = Timer.scheduledTimer(withTimeInterval: 0.04, repeats: true) { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self = self, self.isEnabled else { return }
+
+                    let brEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomRightHotCorner)
+                    let trEnabled = UserDefaults.standard.bool(forKey: PrefKey.topRightHotCorner)
+                    let tlEnabled = UserDefaults.standard.bool(forKey: PrefKey.topLeftHotCorner)
+                    let blEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomLeftHotCorner)
+                    let bottomEdgeEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomEdgeCursorTrigger)
+                    let topEdgeEnabled = UserDefaults.standard.object(forKey: PrefKey.topEdgeCursorTrigger) as? Bool ?? false
+                    let rightEdgeEnabled = UserDefaults.standard.bool(forKey: PrefKey.rightEdgeCursorTrigger)
+
+                    guard brEnabled || trEnabled || tlEnabled || blEnabled || bottomEdgeEnabled || topEdgeEnabled || rightEdgeEnabled else {
+                        return
+                    }
 
                     let mouseLoc = NSEvent.mouseLocation
                     guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLoc) }) ?? NSScreen.main else { return }
@@ -541,7 +571,6 @@ final class DesktopWindowManager: ObservableObject {
                     let cornerExitThreshold: CGFloat = 45.0
 
                     // 1. Bottom-Right Hot Corner
-                    let brEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomRightHotCorner)
                     if brEnabled {
                         let brAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerBottomRightAction) ?? "none"
                         if brAction != "none" {
@@ -558,7 +587,6 @@ final class DesktopWindowManager: ObservableObject {
                     }
 
                     // 2. Top-Right Hot Corner
-                    let trEnabled = UserDefaults.standard.bool(forKey: PrefKey.topRightHotCorner)
                     if trEnabled {
                         let trAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerTopRightAction) ?? "chat_bar"
                         if trAction != "none" {
@@ -575,7 +603,6 @@ final class DesktopWindowManager: ObservableObject {
                     }
 
                     // 3. Top-Left Hot Corner
-                    let tlEnabled = UserDefaults.standard.bool(forKey: PrefKey.topLeftHotCorner)
                     if tlEnabled {
                         let tlAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerTopLeftAction) ?? "none"
                         if tlAction != "none" {
@@ -592,7 +619,6 @@ final class DesktopWindowManager: ObservableObject {
                     }
 
                     // 4. Bottom-Left Hot Corner
-                    let blEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomLeftHotCorner)
                     if blEnabled {
                         let blAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerBottomLeftAction) ?? "none"
                         if blAction != "none" {
@@ -611,9 +637,7 @@ final class DesktopWindowManager: ObservableObject {
                     // ═══════════════════════════════════════════════════════════════════════════════════════
                     // SECTION B: Screen Edge Latches (Global Bottom, Top, and Right Summoning)
                     // ═══════════════════════════════════════════════════════════════════════════════════════
-                    let bottomEdgeEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomEdgeCursorTrigger)
-                    let topEdgeEnabled = UserDefaults.standard.object(forKey: PrefKey.topEdgeCursorTrigger) as? Bool ?? true
-                    let rightEdgeEnabled = UserDefaults.standard.bool(forKey: PrefKey.rightEdgeCursorTrigger)
+                    let rightEdgeBumpEnabled = UserDefaults.standard.object(forKey: PrefKey.rightEdgeBumpEnabled) as? Bool ?? true
 
                     guard bottomEdgeEnabled || topEdgeEnabled || rightEdgeEnabled else {
                         self.isAtBottomEdge = false
@@ -670,21 +694,34 @@ final class DesktopWindowManager: ObservableObject {
                         self.topHoverStartTime = 0.0
                     }
 
-                    // 3. Right Edge Latch
+                    // 3. Right Edge Latch (Brings out the Chat Dock — cursor buoy)
+                    // The edge behaves like a physical island: the first time the cursor reaches it,
+                    // it gets nudged back a few points so you feel a bump and have to push through
+                    // (or go around it) rather than the dock firing off an accidental brush.
                     if rightEdgeEnabled {
                         let isNearRight = mouseLoc.x >= screen.frame.maxX - 4 && mouseLoc.y >= screen.frame.minY + 50 && mouseLoc.y <= screen.frame.maxY - 50
                         if isNearRight {
                             if self.rightHoverStartTime == 0.0 {
                                 self.rightHoverStartTime = ProcessInfo.processInfo.systemUptime
-                            } else if ProcessInfo.processInfo.systemUptime - self.rightHoverStartTime >= 0.75 {
+                                if rightEdgeBumpEnabled && !self.hasBumpedRightEdge {
+                                    self.hasBumpedRightEdge = true
+                                    let bumpX = screen.frame.maxX - Self.rightEdgeBumpDistance
+                                    CGWarpMouseCursorPosition(
+                                        CGPoint(x: bumpX, y: (NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY) - mouseLoc.y)
+                                    )
+                                    CGAssociateMouseAndMouseCursorPosition(1)
+                                    HapticFeedback.heavy()
+                                }
+                            } else if ProcessInfo.processInfo.systemUptime - self.rightHoverStartTime >= 0.20 {
                                 if !self.isAtRightEdge {
                                     self.isAtRightEdge = true
-                                    NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDesktopGrid"), object: nil)
+                                    NotificationCenter.default.post(name: NSNotification.Name("NexusToggleRightChatDock"), object: nil)
                                 }
                             }
                         } else if mouseLoc.x < screen.frame.maxX - 35 {
                             self.isAtRightEdge = false
                             self.rightHoverStartTime = 0.0
+                            self.hasBumpedRightEdge = false
                         }
                     }
                 }
@@ -696,6 +733,13 @@ final class DesktopWindowManager: ObservableObject {
             globalScrollMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.scrollWheel]) { [weak self] event in
                 Task { @MainActor [weak self] in
                     guard let self = self, self.isEnabled else { return }
+                    let pointer = NSEvent.mouseLocation
+                    let onRightDock = NSScreen.screens.contains { screen in
+                        pointer.x >= screen.frame.maxX - 150 && pointer.y >= screen.frame.minY + 40 && pointer.y <= screen.frame.maxY - 40
+                    }
+                    if onRightDock {
+                        NotificationCenter.default.post(name: NSNotification.Name("NexusRightDockScrollWheel"), object: CGFloat(event.scrollingDeltaY))
+                    }
                     guard event.momentumPhase.isEmpty else { return }
 
                     // Strict Active Application Isolation:
@@ -710,6 +754,13 @@ final class DesktopWindowManager: ObservableObject {
         if localScrollMonitor == nil {
             localScrollMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel]) { [weak self] event in
                 guard let self = self, self.isEnabled else { return event }
+                let pointer = NSEvent.mouseLocation
+                let onRightDock = NSScreen.screens.contains { screen in
+                    pointer.x >= screen.frame.maxX - 150 && pointer.y >= screen.frame.minY + 40 && pointer.y <= screen.frame.maxY - 40
+                }
+                if onRightDock {
+                    NotificationCenter.default.post(name: NSNotification.Name("NexusRightDockScrollWheel"), object: CGFloat(event.scrollingDeltaY))
+                }
                 guard event.momentumPhase.isEmpty else { return event }
                 NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopScrollWheel"), object: event)
                 return event
@@ -734,6 +785,7 @@ final class DesktopWindowManager: ObservableObject {
                 }
             }
         }
+
 
         // Double-Tap Control or Option Key Quick Summon
         if flagsMonitor == nil {
@@ -796,6 +848,21 @@ final class DesktopWindowManager: ObservableObject {
         if let mag = magnifyMonitor { NSEvent.removeMonitor(mag); magnifyMonitor = nil }
         cursorPollingTimer?.invalidate()
         cursorPollingTimer = nil
+    }
+
+    /// Claims mouse events only where the plane actually has something to click.
+    ///
+    /// While the plane is presenting (page 1) it owns the screen. While it is dismissed the
+    /// window is invisible but still covers the display, so anything the hosting view does not
+    /// hit-test has to fall through to whatever is underneath, normally the Finder desktop.
+    public func updateDesktopClickThrough() {
+        for win in desktopWindows {
+            if currentPage == 0 {
+                if !win.ignoresMouseEvents { win.ignoresMouseEvents = true }
+            } else {
+                if win.ignoresMouseEvents { win.ignoresMouseEvents = false }
+            }
+        }
     }
 
     func isOverDesktopOrEmptySpace() -> Bool {
@@ -894,7 +961,10 @@ final class DesktopWindowManager: ObservableObject {
         }
         desktopWindows.removeAll()
 
-        guard isEnabled else { return }
+        let enabled = isEnabled
+        let raw = String(describing: UserDefaults.standard.object(forKey: PrefKey.desktopPlaneEnabled))
+        logDesktop("rebuildWindows called. isEnabled=\(enabled), rawObj=\(raw), screens=\(NSScreen.screens.count)")
+        guard enabled else { return }
 
         for screen in NSScreen.screens {
             let win = DesktopPlaneWindow(screen: screen)
@@ -909,15 +979,16 @@ final class DesktopWindowManager: ObservableObject {
             win.contentView?.layer?.contentsScale = screen.backingScaleFactor
             win.contentView?.layer?.rasterizationScale = screen.backingScaleFactor
 
-            // Keep all applications on the same plane (desktop sits immediately above wallpaper/icons)
-            let desktopLevel = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+            // Keep at desktop plane level below icons so desktop clicks hit Finder/Desktop
+            let desktopLevel = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)) - 1)
             win.level = desktopLevel
             win.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
             win.isExcludedFromWindowsMenu = true
             win.sharingType = .readOnly
-            win.ignoresMouseEvents = false
+            win.ignoresMouseEvents = true
             win.orderFrontRegardless()
             desktopWindows.append(win)
+            logDesktop("window created: win=\(win.windowNumber), frame=\(win.frame), level=\(win.level.rawValue)")
         }
         updateWindowsForPage(currentPage)
     }

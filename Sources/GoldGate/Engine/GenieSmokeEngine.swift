@@ -102,15 +102,15 @@ public final class GenieSmokeEngine: ObservableObject {
         case .topGlyph(let xPercent):
             startX = bounds.width * max(0.08, min(0.92, xPercent))
             startY = 4.0
-            vyBase = 1.8 // Downward flow from top glyph
+            vyBase = 3.6 // Snappy downward flow from top glyph
         case .dock:
             startX = bounds.width * 0.50
             startY = bounds.height - 8.0
-            vyBase = -2.8 // Upward eruption from dock
+            vyBase = -5.5 // Fast upward eruption from dock
         case .center:
             startX = bounds.width * 0.50
             startY = bounds.height * 0.50
-            vyBase = -0.5
+            vyBase = -1.2
         }
 
         var newParticles: [GenieSmokeParticle] = []
@@ -118,15 +118,15 @@ public final class GenieSmokeEngine: ObservableObject {
         for i in 0..<count {
             let isSparkle = (i % 4 == 0)
             let angle = Double.random(in: 0...(2.0 * .pi))
-            let speed = isSparkle ? CGFloat.random(in: 1.5...4.5) : CGFloat.random(in: 0.8...3.2)
+            let speed = isSparkle ? CGFloat.random(in: 3.5...7.5) : CGFloat.random(in: 2.2...5.5)
 
-            let spreadX = CGFloat(cos(angle)) * speed * 2.2
+            let spreadX = CGFloat(cos(angle)) * speed * 2.5
             let spreadY = (CGFloat(sin(angle)) * speed) + vyBase
 
-            let initialSize: CGFloat = isSparkle ? CGFloat.random(in: 3.0...6.0) : CGFloat.random(in: 12.0...22.0)
-            let targetSize: CGFloat = isSparkle ? initialSize * 1.5 : CGFloat.random(in: 40.0...85.0)
+            let initialSize: CGFloat = isSparkle ? CGFloat.random(in: 3.0...6.0) : CGFloat.random(in: 14.0...26.0)
+            let targetSize: CGFloat = isSparkle ? initialSize * 1.5 : CGFloat.random(in: 45.0...95.0)
 
-            let lifespan: Double = isSparkle ? Double.random(in: 0.45...0.90) : Double.random(in: 0.75...1.45)
+            let lifespan: Double = isSparkle ? Double.random(in: 0.28...0.55) : Double.random(in: 0.35...0.70)
             let maxOp: Double = isSparkle ? Double.random(in: 0.75...0.95) : Double.random(in: 0.38...0.68)
 
             let color = isSparkle ? emberCol : ((i % 2 == 0) ? primCol : secCol)
@@ -171,21 +171,21 @@ public final class GenieSmokeEngine: ObservableObject {
         let p = GenieSmokeParticle(
             x: rx,
             y: ry,
-            vx: CGFloat.random(in: -0.6...0.6),
-            vy: CGFloat.random(in: 0.3...1.0),
+            vx: CGFloat.random(in: -1.2...1.2),
+            vy: CGFloat.random(in: 0.8...2.4),
             size: CGFloat.random(in: 16...28),
             targetSize: CGFloat.random(in: 45...70),
             rotation: Double.random(in: 0...6.28),
-            rotSpeed: Double.random(in: -1.2...1.2),
+            rotSpeed: Double.random(in: -2.5...2.5),
             opacity: 0.02,
             maxOpacity: Double.random(in: 0.18...0.30),
             age: 0,
-            lifespan: Double.random(in: 1.2...2.2),
+            lifespan: Double.random(in: 0.5...1.0),
             color: primCol,
             secondaryColor: secCol,
             isSparkle: false,
             swirlPhase: Double.random(in: 0...6.28),
-            swirlSpeed: 1.8
+            swirlSpeed: 3.2
         )
         particles.append(p)
         startEngineLoopIfNeeded()
@@ -203,28 +203,28 @@ public final class GenieSmokeEngine: ObservableObject {
 
             let progress = p.age / p.lifespan
 
-            // Expand as smoke billows
-            p.size = p.size + (p.targetSize - p.size) * CGFloat(dt * 2.8)
+            // Expand as smoke billows - fast and snappy
+            p.size = p.size + (p.targetSize - p.size) * CGFloat(dt * 6.5)
 
             // Swirling turbulence curl
-            p.swirlPhase += p.swirlSpeed * dt
-            let curlX = CGFloat(sin(p.swirlPhase)) * 0.85
-            let curlY = CGFloat(cos(p.swirlPhase)) * 0.40
+            p.swirlPhase += p.swirlSpeed * dt * 1.8
+            let curlX = CGFloat(sin(p.swirlPhase)) * 1.4
+            let curlY = CGFloat(cos(p.swirlPhase)) * 0.70
 
             // Apply velocity with atmospheric resistance
             p.x += (p.vx + curlX)
             p.y += (p.vy + curlY)
-            p.vx *= 0.965
-            p.vy *= 0.965
+            p.vx *= 0.94
+            p.vy *= 0.94
 
             // Spin
             p.rotation += p.rotSpeed * dt
 
             // Opacity curve: Fast rise, lingering plume, soft fade
-            if progress < 0.22 {
-                p.opacity = p.maxOpacity * (progress / 0.22)
+            if progress < 0.20 {
+                p.opacity = p.maxOpacity * (progress / 0.20)
             } else {
-                let fade = 1.0 - ((progress - 0.22) / 0.78)
+                let fade = 1.0 - ((progress - 0.20) / 0.80)
                 p.opacity = p.maxOpacity * pow(fade, 1.4)
             }
 

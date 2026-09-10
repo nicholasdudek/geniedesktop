@@ -109,11 +109,6 @@ public final class MetalTypographySharpeningProcessor: @unchecked Sendable {
     #include <metal_stdlib>
     using namespace metal;
 
-    enum FilterMode {
-        FilterModeLanczos3 = 0,
-        FilterModeBicubicCatmullRom = 1,
-        FilterModeSubpixelStemPreserving = 2
-    };
 
     struct TypographyParams {
         float targetScale;

@@ -12,9 +12,12 @@ public enum ChatInlinePreviewType: Equatable {
     case terminal(cmd: String, output: String)
     case visualLookup(image: NSImage, ocrText: String, lineCount: Int, wordCount: Int)
     case tricksterApp(appName: String, profile: VirtualScreenProfile, targetSize: CGSize, slot: Int)
+    case creationsGallery
 
     public static func == (lhs: ChatInlinePreviewType, rhs: ChatInlinePreviewType) -> Bool {
         switch (lhs, rhs) {
+        case (.creationsGallery, .creationsGallery):
+            return true
         case let (.wallpaper(a), .wallpaper(b)):
             return a.id == b.id
         case let (.customWallpaper(p1, _), .customWallpaper(p2, _)):
@@ -47,60 +50,107 @@ public final class ChatInlinePreviewManager: ObservableObject {
     @Published public var activePreview: ChatInlinePreviewType? = nil
     @Published public var previewNotice: String? = nil
 
+    /// Most recent creations shown in the tray, newest first, capped to `maxRecentCreations`.
+    /// Feeds `.creationsGallery` (see `showCreationsGallery`).
+    @Published public private(set) var recentCreations: [ChatInlinePreviewType] = []
+    private let maxRecentCreations = 12
+
     private init() {}
 
+    private func recordCreation(_ preview: ChatInlinePreviewType) {
+        recentCreations.removeAll { $0 == preview }
+        recentCreations.insert(preview, at: 0)
+        if recentCreations.count > maxRecentCreations {
+            recentCreations.removeLast(recentCreations.count - maxRecentCreations)
+        }
+    }
+
     public func showTricksterAppPreview(appName: String, profile: VirtualScreenProfile, targetSize: CGSize, slot: Int, notice: String? = nil) {
+        let preview = ChatInlinePreviewType.tricksterApp(appName: appName, profile: profile, targetSize: targetSize, slot: slot)
+        recordCreation(preview)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-            self.activePreview = .tricksterApp(appName: appName, profile: profile, targetSize: targetSize, slot: slot)
+            self.activePreview = preview
             self.previewNotice = notice ?? "Virtual Screen Size Spoofed: \(appName) 🎩"
         }
         HapticFeedback.selection()
     }
 
     public func showVisualLookupPreview(image: NSImage, ocrText: String, lineCount: Int, wordCount: Int, notice: String? = nil) {
+        let preview = ChatInlinePreviewType.visualLookup(image: image, ocrText: ocrText, lineCount: lineCount, wordCount: wordCount)
+        recordCreation(preview)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-            self.activePreview = .visualLookup(image: image, ocrText: ocrText, lineCount: lineCount, wordCount: wordCount)
+            self.activePreview = preview
             self.previewNotice = notice ?? "Atomic Visual Grounding Active 👁️"
         }
         HapticFeedback.selection()
     }
 
     public func showWallpaperPreview(item: WallpaperItem, notice: String? = nil) {
+        let preview = ChatInlinePreviewType.wallpaper(item: item)
+        recordCreation(preview)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-            self.activePreview = .wallpaper(item: item)
+            self.activePreview = preview
             self.previewNotice = notice ?? "Wallpaper Selected 🖼️"
         }
         HapticFeedback.selection()
     }
 
     public func showCustomWallpaperPreview(path: String, name: String, notice: String? = nil) {
+        let preview = ChatInlinePreviewType.customWallpaper(path: path, name: name)
+        recordCreation(preview)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-            self.activePreview = .customWallpaper(path: path, name: name)
+            self.activePreview = preview
             self.previewNotice = notice ?? "Custom Wallpaper Ready 🖼️"
         }
         HapticFeedback.selection()
     }
 
     public func showCodePreview(fileName: String, code: String, language: String, notice: String? = nil) {
+        let preview = ChatInlinePreviewType.code(fileName: fileName, code: code, language: language)
+        recordCreation(preview)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-            self.activePreview = .code(fileName: fileName, code: code, language: language)
+            self.activePreview = preview
             self.previewNotice = notice ?? "Code Generated 💻"
         }
         HapticFeedback.selection()
     }
 
     public func showSettingPreview(title: String, paneURL: String, description: String, notice: String? = nil) {
+        let preview = ChatInlinePreviewType.systemSetting(title: title, paneURL: paneURL, description: description)
+        recordCreation(preview)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-            self.activePreview = .systemSetting(title: title, paneURL: paneURL, description: description)
+            self.activePreview = preview
             self.previewNotice = notice ?? "System Setting Action ⚙️"
         }
         HapticFeedback.selection()
     }
 
     public func showThemePreview(id: String, name: String, icon: String, notice: String? = nil) {
+        let preview = ChatInlinePreviewType.theme(id: id, name: name, icon: icon)
+        recordCreation(preview)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-            self.activePreview = .theme(id: id, name: name, icon: icon)
+            self.activePreview = preview
             self.previewNotice = notice ?? "Theme Activated 🎨"
+        }
+        HapticFeedback.selection()
+    }
+
+    /// Shows the "latest top artifact creations" gallery: a strip of everything recently
+    /// shown in the tray (code, wallpapers, themes, etc.), newest first, tap to reopen.
+    public func showCreationsGallery(notice: String? = nil) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+            self.activePreview = .creationsGallery
+            self.previewNotice = notice ?? "Latest Creations ✨"
+        }
+        HapticFeedback.selection()
+    }
+
+    /// Re-opens a past creation from the gallery as the active preview, without re-recording it
+    /// (it's already in `recentCreations`).
+    public func reopen(_ preview: ChatInlinePreviewType, notice: String? = nil) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+            self.activePreview = preview
+            self.previewNotice = notice
         }
         HapticFeedback.selection()
     }
@@ -114,558 +164,293 @@ public final class ChatInlinePreviewManager: ObservableObject {
     }
 }
 
-// MARK: - 🪟 Chat Inline Preview Tray View (Floats Above Search Bar)
+// MARK: - 🎬 Chat Inline Preview Tray (Renderer)
+// Floats above the chat input bar and renders whatever `ChatInlinePreviewManager.shared`
+// is currently showing. Self-contained: drop it into a `ZStack(alignment: .bottom)` in
+// any chat surface and it shows/hides itself as `activePreview` changes.
 public struct ChatInlinePreviewTrayView: View {
-    @ObservedObject var previewManager = ChatInlinePreviewManager.shared
-    @ObservedObject var wallpaperManager = WallpaperManager.shared
+    @ObservedObject private var manager = ChatInlinePreviewManager.shared
 
     public init() {}
 
     public var body: some View {
-        if let preview = previewManager.activePreview {
-            VStack(spacing: 0) {
-                // Top Header Notice & Dismiss
-                HStack(spacing: 8) {
-                    Image(systemName: headerIcon(for: preview))
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(headerTint(for: preview))
+        Group {
+            if let preview = manager.activePreview {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text(manager.previewNotice ?? "Preview")
+                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.90))
+                            .lineLimit(1)
 
-                    Text(previewManager.previewNotice ?? "INLINE LIVE PREVIEW")
-                        .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.85))
+                        Spacer()
 
-                    Spacer()
-
-                    Button(action: {
-                        previewManager.dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.45))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("Dismiss Inline Preview")
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 6)
-
-                Divider().background(Color.white.opacity(0.12))
-
-                // Preview Card Body Content
-                Group {
-                    switch preview {
-                    case let .wallpaper(item):
-                        wallpaperPreviewCard(item: item)
-                    case let .customWallpaper(path, name):
-                        customWallpaperPreviewCard(path: path, name: name)
-                    case let .code(fileName, code, language):
-                        codePreviewCard(fileName: fileName, code: code, language: language)
-                    case let .systemSetting(title, paneURL, description):
-                        systemSettingPreviewCard(title: title, paneURL: paneURL, description: description)
-                    case let .theme(id, name, icon):
-                        themePreviewCard(id: id, name: name, icon: icon)
-                    case let .web(url, title):
-                        webPreviewCard(url: url, title: title)
-                    case let .terminal(cmd, output):
-                        terminalPreviewCard(cmd: cmd, output: output)
-                    case let .visualLookup(image, ocrText, lineCount, wordCount):
-                        visualLookupPreviewCard(image: image, ocrText: ocrText, lineCount: lineCount, wordCount: wordCount)
-                    case let .tricksterApp(appName, profile, targetSize, slot):
-                        tricksterAppPreviewCard(appName: appName, profile: profile, targetSize: targetSize, slot: slot)
-                    }
-                }
-                .padding(10)
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(red: 0.10, green: 0.12, blue: 0.16).opacity(0.96))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [headerTint(for: preview).opacity(0.6), Color.white.opacity(0.12)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(color: Color.black.opacity(0.45), radius: 14, x: 0, y: 6)
-            .padding(.horizontal, 14)
-            .padding(.bottom, 6)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-        }
-    }
-
-    // MARK: - 🖼️ Wallpaper Preview Card
-    private func wallpaperPreviewCard(item: WallpaperItem) -> some View {
-        HStack(spacing: 12) {
-            // High-Res Thumbnail Image
-            if let thumb = wallpaperManager.thumbnail(for: item) {
-                Image(nsImage: thumb)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 90, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
-                    )
-            } else {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 90, height: 56)
-                    .overlay(
-                        Image(systemName: "mountain.2.fill")
-                            .foregroundColor(.white.opacity(0.7))
-                    )
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.name)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-
-                Text("Category: \(item.category.rawValue) • 4K Resolution")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.55))
-
-                HStack(spacing: 6) {
-                    Button(action: {
-                        WallpaperManager.shared.setSystemWallpaper(path: item.path)
-                        previewManager.previewNotice = "Applied \(item.name) to Desktop! ✨"
-                        HapticFeedback.heavy()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 9.5))
-                            Text("Set as Wallpaper")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                        Button(action: { manager.dismiss() }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.55))
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.blue.opacity(0.85)))
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(PlainButtonStyle())
 
-                    Button(action: {
-                        cycleNextWallpaper(currentItem: item)
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "forward.fill")
-                                .font(.system(size: 8))
-                            Text("Next")
-                                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                        }
-                        .foregroundColor(.white.opacity(0.85))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.white.opacity(0.12)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    previewContent(for: preview)
                 }
-                .padding(.top, 2)
+                .padding(12)
+                .frame(maxWidth: .infinity)
+                .genieLiquidGlass(cornerRadius: 16, tint: tint(for: preview))
+                .padding(.horizontal, 10)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-
-            Spacer()
         }
     }
 
-    // MARK: - 🖼️ Custom Wallpaper Preview Card
-    private func customWallpaperPreviewCard(path: String, name: String) -> some View {
-        HStack(spacing: 12) {
-            if let img = NSImage(contentsOfFile: path) {
-                Image(nsImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 90, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
-                    )
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Text("Custom Image • \(path)")
-                    .font(.system(size: 9.5))
-                    .foregroundColor(.white.opacity(0.5))
-                    .lineLimit(1)
-
-                Button(action: {
-                    WallpaperManager.shared.setSystemWallpaper(path: path)
-                    previewManager.previewNotice = "Desktop Wallpaper Updated! ✨"
-                }) {
-                    Text("Apply to Desktop 🖼️")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.blue))
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            Spacer()
-        }
-    }
-
-    // MARK: - 💻 Code Snippet Preview Card
-    private func codePreviewCard(fileName: String, code: String, language: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Image(systemName: "curlybraces.square.fill")
-                    .foregroundColor(Color(red: 0.95, green: 0.45, blue: 0.20))
-                Text(fileName)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-                Spacer()
-                Button(action: {
-                    MovablePopupManager.shared.openPopup(id: "vscode", title: "VS Code Studio", icon: "curlybraces.square.fill", tint: Color(red: 0.95, green: 0.45, blue: 0.20), initialSize: CGSize(width: 720, height: 480))
-                }) {
-                    Text("Open in VS Code 💻")
-                        .font(.system(size: 9.5, weight: .bold))
-                        .foregroundColor(.cyan)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.cyan.opacity(0.15)))
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Button(action: {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(code, forType: .string)
-                    previewManager.previewNotice = "Code Copied to Clipboard! 📋"
-                }) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-
-            Text(code.prefix(200) + (code.count > 200 ? "..." : ""))
-                .font(.system(size: 10, weight: .regular, design: .monospaced))
-                .foregroundColor(.white.opacity(0.8))
-                .lineLimit(3)
-                .padding(6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.35)))
-        }
-    }
-
-    // MARK: - ⚙️ System Setting Preview Card
-    private func systemSettingPreviewCard(title: String, paneURL: String, description: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 20))
-                .foregroundColor(.cyan)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.cyan.opacity(0.15)))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Text(description)
-                    .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.6))
-                    .lineLimit(2)
-            }
-
-            Spacer()
-
-            Button(action: {
-                if let url = URL(string: paneURL) {
-                    NSWorkspace.shared.open(url)
-                }
-                previewManager.previewNotice = "Opened \(title) Pane ⚙️"
-            }) {
-                Text("Open Settings ↗")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill(Color.cyan.opacity(0.85)))
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-    }
-
-    // MARK: - 🎨 Theme Preview Card
-    private func themePreviewCard(id: String, name: String, icon: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundColor(.purple)
-                .frame(width: 40, height: 40)
-                .background(Circle().fill(Color.purple.opacity(0.18)))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Theme: \(name)")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Text("Real-time GPU Shader & Visual Material")
-                    .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.6))
-            }
-            Spacer()
-        }
-    }
-
-    // MARK: - 🌐 Web Preview Card
-    private func webPreviewCard(url: URL, title: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "globe")
-                .foregroundColor(.blue)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.white)
-                Text(url.absoluteString)
-                    .font(.system(size: 9.5))
-                    .foregroundColor(.white.opacity(0.55))
-                    .lineLimit(1)
-            }
-            Spacer()
-            Button("Open Browser 🌐") {
-                MiniBrowserManager.shared.browse(url: url)
-                MovablePopupManager.shared.openPopup(id: "browser", title: "Mini Browser", icon: "globe", tint: .blue, initialSize: CGSize(width: 680, height: 460))
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.mini)
-        }
-    }
-
-    // MARK: - 💻 Terminal Preview Card
-    private func terminalPreviewCard(cmd: String, output: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("$ \(cmd)")
-                    .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                    .foregroundColor(.green)
-                Spacer()
-                Button("Open Terminal ⚡️") {
-                    MovablePopupManager.shared.openPopup(id: "terminal", title: "Terminal Shell", icon: "terminal.fill", tint: .green, initialSize: CGSize(width: 640, height: 420))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.mini)
-            }
-            Text(output.prefix(180))
-                .font(.system(size: 9.5, design: .monospaced))
-                .foregroundColor(.white.opacity(0.75))
-                .lineLimit(2)
-        }
-    }
-
-    // MARK: - 👁️ Atomic Visual Lookup Preview Card
     @ViewBuilder
-    private func visualLookupPreviewCard(image: NSImage, ocrText: String, lineCount: Int, wordCount: Int) -> some View {
-        HStack(spacing: 12) {
-            // High-Res Retina Framebuffer Snapshot
-            Image(nsImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 90, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.cyan.opacity(0.8), Color.purple.opacity(0.6)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.2
-                        )
-                )
-                .shadow(color: Color.cyan.opacity(0.3), radius: 6, x: 0, y: 2)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text("Apple Vision OCR")
-                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-
-                    Text("• \(wordCount) words, \(lineCount) lines")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundColor(.cyan)
-                }
-
-                Text(ocrText.prefix(140).replacingOccurrences(of: "\n", with: " "))
-                    .font(.system(size: 9.5, weight: .regular, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.75))
-                    .lineLimit(2)
-
-                HStack(spacing: 6) {
-                    Button(action: {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(ocrText, forType: .string)
-                        previewManager.previewNotice = "OCR Text Copied to Clipboard! 📋"
-                        HapticFeedback.selection()
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "doc.on.doc")
-                                .font(.system(size: 8.5))
-                            Text("Copy OCR")
-                                .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3.5)
-                        .background(Capsule().fill(Color.cyan.opacity(0.75)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: {
-                        _ = DesktopNotePrinter.shared.saveMarkdownToDesktop(content: "# Screen Capture OCR\n\n\(ocrText)")
-                        previewManager.previewNotice = "Saved Optical Note to Desktop 📄"
-                        HapticFeedback.playPrinterSound()
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "note.text.badge.plus")
-                                .font(.system(size: 8.5))
-                            Text("Save Note")
-                                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                        }
-                        .foregroundColor(.white.opacity(0.85))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3.5)
-                        .background(Capsule().fill(Color.white.opacity(0.12)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: {
-                        Task {
-                            _ = await GenieVisionEngine.shared.scanActiveScreenAndRecognize()
-                        }
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 8.5))
-                            Text("Re-Scan")
-                                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                        }
-                        .foregroundColor(.white.opacity(0.85))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3.5)
-                        .background(Capsule().fill(Color.white.opacity(0.12)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                .padding(.top, 2)
-            }
-
-            Spacer()
-        }
-    }
-
-    // MARK: - 🎩 Virtual Screen Size Trickster Preview Card
-    private func tricksterAppPreviewCard(appName: String, profile: VirtualScreenProfile, targetSize: CGSize, slot: Int) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: profile.icon)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.orange)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.orange.opacity(0.18)))
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(appName)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-
-                    Text("Slot \(slot) / 9")
-                        .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                        .foregroundColor(.orange)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1.5)
-                        .background(Capsule().fill(Color.orange.opacity(0.2)))
-                }
-
-                Text("Spoofed Size: \(Int(targetSize.width)) × \(Int(targetSize.height)) pt • \(profile.rawValue)")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.65))
-
-                HStack(spacing: 6) {
-                    Button(action: {
-                        Task {
-                            await AppScreenSizeTricksterEngine.shared.launchWithSpoofedScreenSize(
-                                appName: appName,
-                                profile: profile,
-                                slotIndex: slot
-                            )
-                        }
-                    }) {
-                        Text("Re-Launch Compact 🚀")
-                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3.5)
-                            .background(Capsule().fill(Color.orange.opacity(0.85)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: {
-                        MovablePopupManager.shared.openPopup(id: "matrix3x3", title: "3×3 Program Matrix", icon: "square.grid.3x3.fill", tint: .cyan, initialSize: CGSize(width: 760, height: 520))
-                    }) {
-                        Text("View Matrix ▦")
-                            .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.85))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3.5)
-                            .background(Capsule().fill(Color.white.opacity(0.12)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                .padding(.top, 2)
-            }
-
-            Spacer()
-        }
-    }
-
-    private func cycleNextWallpaper(currentItem: WallpaperItem) {
-        let all = wallpaperManager.availableWallpapers
-        guard !all.isEmpty else { return }
-        if let idx = all.firstIndex(where: { $0.id == currentItem.id }) {
-            let nextIdx = (idx + 1) % all.count
-            let nextItem = all[nextIdx]
-            previewManager.showWallpaperPreview(item: nextItem, notice: "Previewing: \(nextItem.name)")
-        } else if let first = all.first {
-            previewManager.showWallpaperPreview(item: first, notice: "Previewing: \(first.name)")
-        }
-    }
-
-    private func headerIcon(for preview: ChatInlinePreviewType) -> String {
+    private func previewContent(for preview: ChatInlinePreviewType) -> some View {
         switch preview {
-        case .wallpaper, .customWallpaper: return "mountain.2.fill"
-        case .theme: return "paintpalette.fill"
-        case .code: return "curlybraces"
+        case .wallpaper(let item):
+            HStack(spacing: 10) {
+                thumbnailImage(WallpaperManager.shared.thumbnail(for: item))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text(item.category.rawValue)
+                        .font(.system(size: 9.5, design: .rounded))
+                        .foregroundColor(.white.opacity(0.55))
+                }
+                Spacer()
+            }
+
+        case .customWallpaper(let path, let name):
+            HStack(spacing: 10) {
+                thumbnailImage(NSImage(contentsOfFile: path))
+                Text(name)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+
+        case .theme(_, let name, let icon):
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.cyan)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(Color.white.opacity(0.08)))
+                Text(name)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+
+        case .code(let fileName, let code, let language):
+            GenieCodeArtifactView(language: language, code: code, title: fileName)
+
+        case .systemSetting(let title, let paneURL, let description):
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundColor(.white.opacity(0.70))
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                    Spacer()
+                    openButton(title: "Open") {
+                        if let url = URL(string: paneURL) { NSWorkspace.shared.open(url) }
+                    }
+                }
+                Text(description)
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundColor(.white.opacity(0.60))
+            }
+
+        case .web(let url, let title):
+            HStack(spacing: 8) {
+                Image(systemName: "globe")
+                    .foregroundColor(.cyan)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                    Text(url.absoluteString)
+                        .font(.system(size: 9.5, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.50))
+                        .lineLimit(1)
+                }
+                Spacer()
+                openButton(title: "Open") { NSWorkspace.shared.open(url) }
+            }
+
+        case .terminal(let cmd, let output):
+            VStack(alignment: .leading, spacing: 4) {
+                Text("$ \(cmd)")
+                    .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.green.opacity(0.90))
+                    .textSelection(.enabled)
+                if !output.isEmpty {
+                    ScrollView(.vertical, showsIndicators: true) {
+                        Text(verbatim: output)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.80))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 100)
+                }
+            }
+            .padding(8)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.black.opacity(0.35)))
+
+        case .visualLookup(let image, let ocrText, let lineCount, let wordCount):
+            HStack(alignment: .top, spacing: 10) {
+                thumbnailImage(image, size: 56)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text("\(lineCount) lines")
+                        Text("\(wordCount) words")
+                    }
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.50))
+
+                    Text(ocrText)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.75))
+                        .lineLimit(3)
+                }
+            }
+
+        case .tricksterApp(let appName, let profile, let targetSize, let slot):
+            HStack(spacing: 10) {
+                Image(systemName: profile.icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.purple)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(Color.white.opacity(0.08)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(appName)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text("\(profile.rawValue) · \(Int(targetSize.width))×\(Int(targetSize.height)) · slot \(slot)")
+                        .font(.system(size: 9.5, design: .rounded))
+                        .foregroundColor(.white.opacity(0.55))
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+
+        case .creationsGallery:
+            galleryContent
+        }
+    }
+
+    private var galleryContent: some View {
+        Group {
+            if manager.recentCreations.isEmpty {
+                Text("Nothing created yet this session.")
+                    .font(.system(size: 10.5, design: .rounded))
+                    .foregroundColor(.white.opacity(0.55))
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(manager.recentCreations.enumerated()), id: \.offset) { _, item in
+                            Button(action: { manager.reopen(item) }) {
+                                galleryCell(for: item)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+
+    private func galleryCell(for item: ChatInlinePreviewType) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: galleryIcon(for: item))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(tint(for: item))
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(Color.white.opacity(0.08)))
+            Text(galleryLabel(for: item))
+                .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                .foregroundColor(.white.opacity(0.65))
+                .lineLimit(1)
+        }
+        .frame(width: 60)
+    }
+
+    private func galleryIcon(for item: ChatInlinePreviewType) -> String {
+        switch item {
+        case .wallpaper, .customWallpaper: return "photo.fill"
+        case .theme(_, _, let icon): return icon
+        case .code: return "chevron.left.forwardslash.chevron.right"
         case .systemSetting: return "gearshape.fill"
         case .web: return "globe"
         case .terminal: return "terminal.fill"
-        case .visualLookup: return "eye.circle.fill"
-        case .tricksterApp: return "macmini.fill"
+        case .visualLookup: return "eye.fill"
+        case .tricksterApp(_, let profile, _, _): return profile.icon
+        case .creationsGallery: return "sparkles"
         }
     }
 
-    private func headerTint(for preview: ChatInlinePreviewType) -> Color {
+    private func galleryLabel(for item: ChatInlinePreviewType) -> String {
+        switch item {
+        case .wallpaper(let wp): return wp.name
+        case .customWallpaper(_, let name): return name
+        case .theme(_, let name, _): return name
+        case .code(let fileName, _, _): return fileName
+        case .systemSetting(let title, _, _): return title
+        case .web(_, let title): return title
+        case .terminal(let cmd, _): return cmd
+        case .visualLookup: return "Visual Lookup"
+        case .tricksterApp(let appName, _, _, _): return appName
+        case .creationsGallery: return "Gallery"
+        }
+    }
+
+    private func thumbnailImage(_ image: NSImage?, size: CGFloat = 44) -> some View {
+        Group {
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Color.white.opacity(0.08)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func openButton(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            HapticFeedback.selection()
+            action()
+        }) {
+            Text(title)
+                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                .foregroundColor(.cyan)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color.cyan.opacity(0.15)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func tint(for preview: ChatInlinePreviewType) -> Color {
         switch preview {
-        case .wallpaper, .customWallpaper: return .blue
+        case .wallpaper, .customWallpaper: return .orange
         case .theme: return .purple
-        case .code: return Color(red: 0.95, green: 0.45, blue: 0.20)
-        case .systemSetting: return .cyan
-        case .web: return .blue
+        case .code: return .green
+        case .systemSetting: return .white
+        case .web: return .cyan
         case .terminal: return .green
         case .visualLookup: return .cyan
-        case .tricksterApp: return .orange
+        case .tricksterApp: return .purple
+        case .creationsGallery: return .cyan
         }
     }
 }
+

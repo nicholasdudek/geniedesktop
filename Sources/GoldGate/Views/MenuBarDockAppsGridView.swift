@@ -13,7 +13,7 @@ public struct MenuBarDockAppsGridView: View {
     @AppStorage(PrefKey.dockAlwaysShowSettings) var dockAlwaysShowSettings: Bool = true
     @AppStorage(PrefKey.dockAlwaysShowTrash) var dockAlwaysShowTrash: Bool = true
     @AppStorage(PrefKey.dockAlwaysShowGenie) var dockAlwaysShowGenie: Bool = true
-    @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = true
+    @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = false
     @AppStorage(PrefKey.smokeStyle) var smokeStyle: String = "Mystical Cyan 🧞‍♂️"
 
     @State private var dockItems: [DockAppItem] = []

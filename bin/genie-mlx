@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Genie 3 MLX Engine Launcher (Apple Silicon Metal Native)
+# Runs high-performance Apple Silicon Unified Memory LLM server for Genie Desktop
+
+PORT=8080
+MODEL="${1:-mlx-community/Qwen2.5-Coder-7B-Instruct-4bit}"
+
+echo "=================================================="
+echo "🧞 Genie 3 — Apple MLX Metal Native Engine"
+echo "=================================================="
+echo "⚡️ Architecture: Apple Silicon Unified Memory"
+echo "⚡️ Model:        $MODEL"
+echo "⚡️ Port:         http://localhost:$PORT"
+echo "=================================================="
+
+# Check for mlx_lm.server
+MLX_BIN="$(which mlx_lm.server 2>/dev/null)"
+if [ -z "$MLX_BIN" ]; then
+    if [ -x "$HOME/.local/bin/mlx_lm.server" ]; then
+        MLX_BIN="$HOME/.local/bin/mlx_lm.server"
+    elif [ -x "$HOME/.local/bin/uv" ]; then
+        MLX_BIN="$HOME/.local/bin/uv tool run mlx-lm mlx_lm.server"
+    else
+        echo "Error: MLX is not installed. Run: uv tool install mlx-lm"
+        exit 1
+    fi
+fi
+
+exec $MLX_BIN \
+    --model "$MODEL" \
+    --port "$PORT" \
+    --prompt-cache-size 10 \
+    --log-level INFO

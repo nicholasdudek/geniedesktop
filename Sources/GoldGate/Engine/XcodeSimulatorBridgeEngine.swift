@@ -59,6 +59,7 @@ public final class XcodeSimulatorBridgeEngine: ObservableObject {
 
     // MARK: - Discover Simulators via xcrun simctl
     public func refreshAvailableSimulators() {
+        guard GenieCapabilities.canSpawnSubprocesses else { return }
         Task.detached(priority: .userInitiated) {
             let process = Process()
             let pipe = Pipe()
@@ -205,6 +206,9 @@ public final class XcodeSimulatorBridgeEngine: ObservableObject {
 
     // MARK: - Execute CLI Helper
     private func executeCommand(executable: String, args: [String]) async -> String {
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            return GenieCapabilities.unavailableMessage("Xcode and Simulator tools")
+        }
         return await Task.detached(priority: .userInitiated) {
             let p = Process()
             let pipe = Pipe()

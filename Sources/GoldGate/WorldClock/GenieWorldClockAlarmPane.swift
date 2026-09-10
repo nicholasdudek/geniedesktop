@@ -24,7 +24,7 @@ public struct GenieWorldClockAlarmPane: View {
             // 1. Mini Watch Dock
             glassCard(title: "Mini Watch Dock", icon: "watchface.applewatch.case", tint: orange) {
                 VStack(spacing: 10) {
-                    toggleRow("Show Floating Mini Watch Dock", subtitle: "A row of tiny watch faces, one per city, in its own floating panel. It snaps just below the menu bar and you can drag it anywhere by its grip.", isOn: $clockVM.dockSettings.isEnabled)
+                    toggleRow("Show Watch Strip in Chat", subtitle: "A row of tiny watch faces, one per city, pinned under the header of the Genie chat dock. Tap any watch to open that city here.", isOn: $clockVM.dockSettings.isEnabled)
 
                     if clockVM.dockSettings.isEnabled {
                         MiniWatchDockView(
@@ -37,23 +37,6 @@ public struct GenieWorldClockAlarmPane: View {
                         .padding(.horizontal, -16)
 
                         Divider().opacity(0.2)
-
-                        HStack {
-                            Text("Snap To").font(.system(size: 12, weight: .medium)).foregroundColor(.white)
-                            Spacer()
-                            Picker("", selection: Binding(
-                                get: { clockVM.dockSettings.position },
-                                set: { clockVM.dockSettings.position = $0; MiniWatchDockPanelManager.shared.snapToConfiguredEdge() }
-                            )) {
-                                Label("Below Menu Bar", systemImage: MiniWatchDockPosition.top.icon).tag(MiniWatchDockPosition.top)
-                                Label("Above Dock", systemImage: MiniWatchDockPosition.bottom.icon).tag(MiniWatchDockPosition.bottom)
-                            }
-                            .pickerStyle(.segmented)
-                            .frame(width: 260)
-                            pillButton("Re-snap", icon: "arrow.uturn.backward", tint: .white.opacity(0.8)) {
-                                MiniWatchDockPanelManager.shared.snapToConfiguredEdge()
-                            }
-                        }
 
                         HStack {
                             Text("Watch Size").font(.system(size: 12, weight: .medium)).foregroundColor(.white)

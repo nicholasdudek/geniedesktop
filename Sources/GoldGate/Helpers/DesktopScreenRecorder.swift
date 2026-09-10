@@ -21,6 +21,13 @@ public final class DesktopScreenRecorder: ObservableObject {
     @discardableResult
     public func startRecording(duration: TimeInterval? = nil, destinationFolder: URL? = nil) -> URL? {
         guard !isRecording else { return nil }
+        // This records by spawning /usr/sbin/screencapture. Screen recording
+        // itself is sandbox-legal via ScreenCaptureKit, but *this*
+        // implementation is not — see GenieCapabilities.canRecordScreen.
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            statusMessage = GenieCapabilities.unavailableMessage("Screen recording")
+            return nil
+        }
 
         let folder = destinationFolder ?? GenieStandardDirectories.recordingsURL
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -108,6 +115,10 @@ public final class DesktopScreenRecorder: ObservableObject {
     /// Takes a one-shot screenshot and saves it to Polaroids
     @discardableResult
     public func captureSnapshot(destinationFolder: URL? = nil) -> URL? {
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            statusMessage = GenieCapabilities.unavailableMessage("Screenshots")
+            return nil
+        }
         let folder = destinationFolder ?? GenieStandardDirectories.polaroidsURL
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 

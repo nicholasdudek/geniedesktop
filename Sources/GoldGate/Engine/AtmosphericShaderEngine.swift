@@ -7,15 +7,18 @@ import simd
 public struct AtmosphericShaderCanvas: View {
     public let type: String
     public let intensity: CGFloat
+    public let isPaused: Bool
 
-    public init(type: String, intensity: CGFloat = 0.35) {
+    public init(type: String, intensity: CGFloat = 0.35, isPaused: Bool = false) {
         self.type = type
         self.intensity = intensity
+        self.isPaused = isPaused
     }
 
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: isPaused)) { timeline in
             Canvas { context, size in
+                guard !isPaused else { return }
                 let time = timeline.date.timeIntervalSinceReferenceDate
                 AtmosphericShaderEngine.draw(
                     context: context,
@@ -392,7 +395,7 @@ public struct AtmosphericShaderEngine {
                 }
             }
 
-        case "Sakura Petal Blizzard 🌸":
+        case "4K Sakura Petal Blizzard 🌸", "Sakura Petal Blizzard 🌸":
             for petalIndex in 0..<32 {
                 let petalRandomSeed = Double(petalIndex) * 23.45
                 let verticalVelocity = 35.0 + Double(petalIndex % 6) * 12.0
@@ -403,7 +406,7 @@ public struct AtmosphericShaderEngine {
                 context.fill(blossomPetalPath, with: .color(Color(red: 1.0, green: 0.72, blue: 0.82, opacity: Double(opacityAlpha * 0.65))))
             }
 
-        case "Retro CRT Vector Grid 🕹️":
+        case "Retro CRT Vector Scanline Grid 🕹️", "Retro CRT Vector Grid 🕹️":
             let horizonLineY = canvasHeight * 0.62
             let vanishingPoint = CGPoint(x: canvasWidth * 0.5, y: horizonLineY)
             for columnIndex in 0...16 {

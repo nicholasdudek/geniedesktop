@@ -1,6 +1,6 @@
 # Architecture — Genie for macOS
 
-This document provides a technical deep-dive into the engineering decisions, subsystem design, and macOS API usage that underpin Genie.
+* [ ]
 
 ---
 
@@ -30,17 +30,17 @@ struct GoldGateAppMain: App {
 
 macOS assigns every window a `CGWindowLevel` integer. Incorrect level choices cause the two most critical Genie failure modes: covering the system menu bar, or stealing key focus from it.
 
-| Window | Level | Constant |
-|---|---|---|
-| macOS Menu Bar | 24 | `NSWindow.Level.mainMenu` |
-| `MenuBarPopoverPanel` | 25 | `NSWindow.Level.statusBar` |
-| `DesktopPlaneWindow` (active) | 3 | `NSWindow.Level.floating` |
-| `DesktopPlaneWindow` (dismissed) | −2 | `desktopIconWindow − 1` |
+| Window                             | Level | Constant                     |
+| ---------------------------------- | ----- | ---------------------------- |
+| macOS Menu Bar                     | 24    | `NSWindow.Level.mainMenu`  |
+| `MenuBarPopoverPanel`            | 25    | `NSWindow.Level.statusBar` |
+| `DesktopPlaneWindow` (active)    | 3     | `NSWindow.Level.floating`  |
+| `DesktopPlaneWindow` (dismissed) | −2   | `desktopIconWindow − 1`   |
 
-**Why `.statusBar` for the popover?**  
+**Why `.statusBar` for the popover?**
 Using `popUpMenuWindow + 20` (level 121) — the original implementation — placed the panel above every native macOS menu. Clicking any menu bar item (Terminal, Apple menu, Wi-Fi) would route mouse events to Genie's transparent window layer first, blocking system menus. `.statusBar` (level 25) places the panel above the menu bar strip cosmetically, while still allowing native menus to open on top.
 
-**Why `canBecomeKey = false` on `DesktopPlaneWindow`?**  
+**Why `canBecomeKey = false` on `DesktopPlaneWindow`?**
 When a floating window can become key, macOS may route keyboard events and first-responder focus to it in preference to the frontmost application. Setting `canBecomeKey = false` ensures the desktop canvas is purely visual — it receives mouse events but never competes for key input focus.
 
 ---
@@ -147,6 +147,7 @@ NSEvent.addGlobalMonitorForEvents([.scrollWheel])
 Results are deduplicated by `bundleIdentifier`, filtered by user-configured hidden list, and sorted by the custom order stored in `UserDefaults`.
 
 Icon resolution uses a priority chain:
+
 1. `NSWorkspace.icon(forFile:)` at 1024×1024 for full Retina quality
 2. `NSBundle.image(forResource:)` fallback
 3. Generic `NSImage(named: NSImage.applicationIconName)` fallback
@@ -178,22 +179,22 @@ During App Review, App Store Connect creates a sandbox environment. When no prod
 
 Genie uses three notification channels:
 
-| Channel | Usage |
-|---|---|
-| `NotificationCenter.default` | Internal inter-module communication |
-| `DistributedNotificationCenter.default()` | External triggers from Terminal scripts or CLI tools |
-| `NSWorkspace.shared.notificationCenter` | macOS workspace events (app launches, screen changes) |
+| Channel                                     | Usage                                                 |
+| ------------------------------------------- | ----------------------------------------------------- |
+| `NotificationCenter.default`              | Internal inter-module communication                   |
+| `DistributedNotificationCenter.default()` | External triggers from Terminal scripts or CLI tools  |
+| `NSWorkspace.shared.notificationCenter`   | macOS workspace events (app launches, screen changes) |
 
 Key internal notifications:
 
-| Name | Direction | Purpose |
-|---|---|---|
-| `NexusDesktopPageChanged` | Grid → Manager | Page transition, window level update |
-| `NexusBottomEdgeHit` | Manager → Grid | Summon app matrix |
-| `NexusTopEdgeHit` | Manager → Grid | Dismiss app matrix |
-| `NexusToggleDesktopGrid` | Any → Grid | Dock icon click, double-click, keyboard |
-| `NexusRefreshApps` | Studio → Model | Reload application catalogue |
-| `NexusClose` | Studio → Delegate | Close popover |
+| Name                        | Direction          | Purpose                                 |
+| --------------------------- | ------------------ | --------------------------------------- |
+| `NexusDesktopPageChanged` | Grid → Manager    | Page transition, window level update    |
+| `NexusBottomEdgeHit`      | Manager → Grid    | Summon app matrix                       |
+| `NexusTopEdgeHit`         | Manager → Grid    | Dismiss app matrix                      |
+| `NexusToggleDesktopGrid`  | Any → Grid        | Dock icon click, double-click, keyboard |
+| `NexusRefreshApps`        | Studio → Model    | Reload application catalogue            |
+| `NexusClose`              | Studio → Delegate | Close popover                           |
 
 ---
 
