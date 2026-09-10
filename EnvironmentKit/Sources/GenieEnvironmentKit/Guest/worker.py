@@ -17,7 +17,7 @@ TOOLS = {
     'shell.run', 'python.run', 'filesystem.read', 'filesystem.write', 'filesystem.list',
     'browser.navigate', 'browser.inspect', 'browser.click', 'browser.fill', 'browser.select',
     'browser.press', 'browser.scroll', 'browser.screenshot', 'browser.tabs', 'browser.new_tab',
-    'browser.viewport',
+    'browser.viewport', 'browser.preview',
     'browser.switch_tab', 'browser.close_tab', 'browser.back', 'browser.forward', 'browser.reload',
     'browser.evaluate', 'browser.upload', 'browser.wait', 'browser.dialog',
 }
@@ -336,6 +336,14 @@ class Browser:
                     raise ValueError('Close a tab before opening more than 8 tabs')
                 page = self.page = await self.context.new_page()
             await page.goto(data['url'], wait_until='domcontentloaded')
+        elif action == 'preview':
+            # Renders a file the model wrote, without loosening navigate: the
+            # workspace guard still refuses anything outside this environment,
+            # so file:// cannot be used to read the rest of the guest.
+            target = within(self.workspace, data['path'])
+            if not target.is_file():
+                raise ValueError('No such file in this workspace: ' + str(data['path']))
+            await page.goto(target.as_uri(), wait_until='domcontentloaded')
         elif action == 'switch_tab':
             page = self.page = self.pages[data['tab']]
         elif action == 'close_tab':
