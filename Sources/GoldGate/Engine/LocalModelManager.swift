@@ -206,18 +206,18 @@ public final class LocalModelManager: ObservableObject {
     }
 
     // ── The One Model ────────────────────────────────────────────────────────
-    // Genie ships a single local model. `genie-master` is qwen3-coder-30b-a3b
-    // (MoE, Q4_K_M) with native tool calling and a 64k context window; its
-    // profile lives in scripts/models/genie-master.Modelfile.
+    // Genie ships a single local model. `genie-master` is qwen3.8 (dense 27.3B,
+    // qwen35) with native tool calling AND vision via a CLIP projector, so the
+    // agent can look at the screenshots it takes instead of routing them through
+    // OCR. Its profile lives in scripts/models/genie-master.Modelfile.
     public static let primaryModelID = "genie-master"
 
-    /// Context window Genie requests per generation. The base weights go to
-    /// 262144, but the cache is what constrains it: this model keeps 4 KV heads
-    /// over 48 layers, so a token costs about 96 KB at f16 and 256k would want
-    /// ~25 GB on top of 17.5 GB of weights, past what the GPU may wire.
-    /// 128k fits on a 48 GB machine once Ollama runs with OLLAMA_FLASH_ATTENTION=1
-    /// and OLLAMA_KV_CACHE_TYPE=q8_0, which halve that per-token cost.
-    public static let localContextWindow = 131072
+    /// Context window Genie requests per generation. The previous base was an MoE
+    /// with 4 KV heads, which made 128k affordable. qwen3.8 is dense with a 5120
+    /// embedding, so a token costs several times more KV and the vision encoder
+    /// needs headroom besides — 128k no longer loads on 48 GB and the server dies
+    /// with "llama-server process has terminated". 32k is what fits reliably.
+    public static let localContextWindow = 32768
 
     /// Cap on chained tool -> model -> tool rounds in `runAgentContinuation`,
     /// so a model that keeps emitting commands can't loop forever.
@@ -229,7 +229,7 @@ public final class LocalModelManager: ObservableObject {
             name: primaryModelID,
             provider: .local,
             displayName: "Genie Master",
-            description: "30B local agent — native file, shell & desktop tools, 64k context"
+            description: "27B local agent — vision, native file, shell & desktop tools, 32k context"
         )
     ]
     public var cloudModels: [CloudModelItem] { Self.cloudModels }

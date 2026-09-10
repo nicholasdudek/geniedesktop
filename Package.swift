@@ -16,7 +16,7 @@ let isMASBuild = ProcessInfo.processInfo.environment["GENIE_MAS"] == "1"
 
 let package = Package(
     name: "Genie",
-    platforms: [.macOS("27.0")],
+    platforms: [.macOS("14.0")],
     dependencies: [.package(path: "AgentRuntime"), .package(path: "EnvironmentKit")],
     targets: [
         .target(
