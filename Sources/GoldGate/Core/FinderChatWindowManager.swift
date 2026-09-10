@@ -247,7 +247,10 @@ public final class FinderChatWindowManager: ObservableObject {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.isExcludedFromWindowsMenu = false
         panel.sharingType = .readOnly
-        panel.minSize = NSSize(width: 760, height: 460)
+        // The floor is the tall, narrow shape the chat is actually used at. Below roughly this
+        // width the tab row (Genie / Chat / Files / Settings / model chip) collides with itself,
+        // and below this height the transcript collapses to a couple of visible lines.
+        panel.minSize = NSSize(width: 460, height: 680)
 
         let host = NSHostingView(rootView: FinderStyleChatWindowView().ignoresSafeArea())
         host.autoresizingMask = [.width, .height]

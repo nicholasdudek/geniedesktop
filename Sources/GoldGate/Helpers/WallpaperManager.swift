@@ -52,6 +52,9 @@ public final class WallpaperManager: ObservableObject {
 
     private init() {
         thumbnailCache.countLimit = 30
+        // Each entry is a screen-sized 32-bit bitmap (~19 MB at 2704x1756@2x); keep only the
+        // current wallpaper plus the one either side of a switch.
+        displayReadyCache.countLimit = 3
         loadAvailableWallpapers()
         refresh()
         setupLiveMonitoring()
@@ -325,6 +328,94 @@ public final class WallpaperManager: ObservableObject {
         return nil
     }
 
+    // MARK: - Display-Ready Flattening
+    //
+    // Every resolver above hands back a lazily-decoded, file-backed NSImage at the panel's native
+    // resolution — typically a 6K HEIC tagged Display P3. SwiftUI keeps no decoded copy of that,
+    // so each frame touching the wallpaper layer re-reads the raw bytes through a direct data
+    // provider and runs a full CMS conversion (img_data_lock → vImageConvert_AnyToAny). At launch
+    // that pinned the main thread at 95% of a core for 90 seconds. Flattening the source once into
+    // a screen-sized bitmap in the display's own colour space turns every later draw into a blit.
+
+    private let displayReadyCache = NSCache<NSString, NSImage>()
+
+    private func displayReadyWallpaper(_ image: NSImage, key: String) -> NSImage {
+        let cacheKey = key as NSString
+        if let cached = displayReadyCache.object(forKey: cacheKey) {
+            return cached
+        }
+
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        let scale = screen?.backingScaleFactor ?? 2.0
+        let bounds = screen?.frame.size ?? CGSize(width: 1920, height: 1080)
+        let budget = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+
+        var rect = CGRect(origin: .zero, size: image.size)
+        guard rect.width >= 1, rect.height >= 1,
+              let source = image.cgImage(forProposedRect: &rect, context: nil, hints: nil)
+        else { return image }
+
+        // Aspect ratio is preserved untouched — callers still apply their own
+        // .aspectRatio(contentMode: .fill) / .clipped(), so framing is unchanged.
+        // Only the pixel count and the colour space change.
+        let srcW = CGFloat(source.width)
+        let srcH = CGFloat(source.height)
+        let cover = max(budget.width / srcW, budget.height / srcH)
+        let factor = min(1.0, cover) // never upscale past the source
+        let pixelsWide = max(1, Int((srcW * factor).rounded()))
+        let pixelsHigh = max(1, Int((srcH * factor).rounded()))
+
+        let space = screen?.colorSpace?.cgColorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)
+        guard let space,
+              let ctx = CGContext(
+                  data: nil,
+                  width: pixelsWide,
+                  height: pixelsHigh,
+                  bitsPerComponent: 8,
+                  bytesPerRow: 0,
+                  space: space,
+                  bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+              )
+        else { return image }
+
+        ctx.interpolationQuality = .high
+        ctx.draw(source, in: CGRect(x: 0, y: 0, width: pixelsWide, height: pixelsHigh))
+
+        guard let flattened = ctx.makeImage() else { return image }
+
+        let ready = NSImage(
+            cgImage: flattened,
+            size: CGSize(width: CGFloat(pixelsWide) / scale, height: CGFloat(pixelsHigh) / scale)
+        )
+        displayReadyCache.setObject(ready, forKey: cacheKey)
+        return ready
+    }
+
+    /// Publishes a wallpaper, flattening it first and dropping no-op updates on the floor.
+    /// `refresh()` fires on every space change and on a 2.5s poll; re-assigning an equivalent
+    /// image invalidates every view observing this manager for nothing.
+    private func publishWallpaper(_ image: NSImage?, key: String?) {
+        guard let image, let key else {
+            if activeWallpaperImage != nil {
+                activeWallpaperImage = nil
+            }
+            return
+        }
+        let ready = displayReadyWallpaper(image, key: key)
+        if activeWallpaperImage === ready { return }
+        activeWallpaperImage = ready
+    }
+
+    /// Identity of whatever `resolveLiveSystemWallpaper()` just loaded: the path it recorded,
+    /// plus its mod date so an edit in place still busts the cache.
+    private func resolvedSourceKey() -> String? {
+        guard let path = lastLoadedPath else { return nil }
+        let stamp = (try? FileManager.default.attributesOfItem(atPath: path))
+            .flatMap { $0[.modificationDate] as? Date }
+            .map { String($0.timeIntervalSince1970) } ?? "-"
+        return "\(path)#\(stamp)"
+    }
+
     func refresh() {
         let wallpaperMode = UserDefaults.standard.string(forKey: PrefKey.wallpaperMode) ?? "Genie"
         let sameWallpaper = UserDefaults.standard.object(forKey: PrefKey.sameWallpaperMode) == nil
@@ -335,14 +426,14 @@ public final class WallpaperManager: ObservableObject {
 
         // 0. Translucent Mode: Pure frosted glass
         if wallpaperMode == "Translucent" {
-            self.activeWallpaperImage = nil
+            publishWallpaper(nil, key: nil)
             return
         }
 
         // 1. "Genie" / "1:1 Camouflage" Mode: ALWAYS load active macOS desktop wallpaper
         if wallpaperMode == "Genie" || wallpaperMode == "1:1 Camouflage" || sameWallpaper || matchingStyle == "Exact Mirror (1:1)" {
             if let img = resolveLiveSystemWallpaper() {
-                self.activeWallpaperImage = img
+                publishWallpaper(img, key: resolvedSourceKey())
                 return
             }
         }
@@ -351,7 +442,7 @@ public final class WallpaperManager: ObservableObject {
         if !customPath.isEmpty, FileManager.default.fileExists(atPath: customPath) {
             lastLoadedPath = customPath
             if let img = NSImage(contentsOfFile: customPath) {
-                self.activeWallpaperImage = img
+                publishWallpaper(img, key: resolvedSourceKey())
                 return
             }
         }
@@ -359,13 +450,13 @@ public final class WallpaperManager: ObservableObject {
         // 3. Curated 4K Wallpaper (when not in sameWallpaperMode)
         if !sameWallpaper && matchingStyle != "Exact Mirror (1:1)" {
             let img = generateCuratedWallpaper(named: matchingStyle, targetSize: CGSize(width: 3840, height: 2160))
-            self.activeWallpaperImage = img
+            publishWallpaper(img, key: "curated:\(matchingStyle)")
             return
         }
 
         // 4. Live System Desktop Wallpaper Fallback
         if let img = resolveLiveSystemWallpaper() {
-            self.activeWallpaperImage = img
+            publishWallpaper(img, key: resolvedSourceKey())
             return
         }
     }
