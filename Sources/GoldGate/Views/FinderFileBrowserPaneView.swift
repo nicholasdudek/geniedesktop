@@ -307,15 +307,7 @@ public struct FinderFileBrowserPaneView: View {
                     .onTapGesture {
                         selectedItemID = item.id
                     }
-                    .contextMenu {
-                        Button("Open") { handleActivate(item: item) }
-                        Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([item.url]) }
-                        Divider()
-                        Button("Copy Path") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(item.url.path, forType: .string)
-                        }
-                    }
+                    .contextMenu { finderContextMenu(for: item) }
                 }
             }
             .padding(14)
@@ -366,21 +358,76 @@ public struct FinderFileBrowserPaneView: View {
                     .onTapGesture {
                         selectedItemID = item.id
                     }
-                    .contextMenu {
-                        Button("Open") { handleActivate(item: item) }
-                        Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([item.url]) }
-                        Divider()
-                        Button("Copy Path") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(item.url.path, forType: .string)
-                        }
-                    }
+                    .contextMenu { finderContextMenu(for: item) }
                 }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
           }
         }
+    }
+
+
+    // MARK: - Finder-standard context menu
+    //
+    // Ordered and grouped the way Finder's own menu is, so muscle memory carries over:
+    // open actions, then Quick Look, then reveal, then clipboard, then destructive last
+    // and separated. Quick Look uses the real QLPreviewPanel rather than a bespoke
+    // sheet, which gets every file type's system renderer for free.
+    @ViewBuilder
+    private func finderContextMenu(for item: FinderFileItem) -> some View {
+        Button("Open") { handleActivate(item: item) }
+
+        if item.url.isBrowserRenderable {
+            Button("Open in Browser") {
+                NSWorkspace.shared.open(item.url)
+            }
+        }
+
+        Button("Quick Look") {
+            QuickLookPresenter.shared.present(filteredItems.map(\.url), current: item.url)
+        }
+
+        Divider()
+
+        Button("Reveal in Finder") {
+            NSWorkspace.shared.activateFileViewerSelecting([item.url])
+        }
+
+        Divider()
+
+        Button("Copy") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.writeObjects([item.url as NSURL])
+        }
+        Button("Copy Path") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(item.url.path, forType: .string)
+        }
+        Button("Duplicate") {
+            duplicate(item.url)
+        }
+
+        Divider()
+
+        Button("Move to Trash") {
+            try? FileManager.default.trashItem(at: item.url, resultingItemURL: nil)
+        }
+    }
+
+    /// Finder's "copy 2" naming, so repeated duplicates do not collide.
+    private func duplicate(_ url: URL) {
+        let base = url.deletingPathExtension().lastPathComponent
+        let ext = url.pathExtension
+        let dir = url.deletingLastPathComponent()
+        var candidate = dir.appendingPathComponent(ext.isEmpty ? "\(base) copy" : "\(base) copy.\(ext)")
+        var n = 2
+        while FileManager.default.fileExists(atPath: candidate.path) {
+            let name = ext.isEmpty ? "\(base) copy \(n)" : "\(base) copy \(n).\(ext)"
+            candidate = dir.appendingPathComponent(name)
+            n += 1
+        }
+        try? FileManager.default.copyItem(at: url, to: candidate)
     }
 
     private var emptyDirectoryView: some View {

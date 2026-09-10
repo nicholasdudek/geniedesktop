@@ -220,6 +220,7 @@ public struct FinderStyleChatWindowView: View {
     @State private var promptText: String = ""
     @State private var statusFeedback: String? = nil
     @State private var previewCreation: (title: String, html: String, fileURL: URL?)? = nil
+    @State private var headerWidth: CGFloat = 0
     @State private var droppedAttachments: [URL] = []
     @State private var isChatDropTargeted: Bool = false
 
@@ -308,8 +309,15 @@ public struct FinderStyleChatWindowView: View {
                         fileBrowserPane
                             .frame(width: totalW, height: totalH)
                     } else if layoutMode == .worldClock {
-                        GenieWorldClockAlarmPane()
-                            .frame(width: totalW, height: totalH)
+                        // The pane lays out as one tall column of cards, so it needs a
+                        // scroller of its own — the tab gives it a fixed height and the
+                        // alarms list below the fold was otherwise unreachable.
+                        ScrollView(.vertical) {
+                            GenieWorldClockAlarmPane()
+                                .frame(width: totalW, alignment: .top)
+                                .padding(.bottom, 16)
+                        }
+                        .frame(width: totalW, height: totalH)
                     } else if layoutMode == .settingsOnly {
                         settingsPane
                             .frame(width: totalW, height: totalH)
@@ -664,22 +672,45 @@ public struct FinderStyleChatWindowView: View {
 
             Spacer(minLength: 0)
 
+            // Width is not hardcoded: the tab set has grown and a fixed frame crushes
+            // the control until its labels wrap mid-word. .fixedSize lets the segmented
+            // control take its intrinsic width, and below ~620pt the titles drop to
+            // symbols — the same thing Apple's own toolbars do when space runs out.
             Picker("Workspace", selection: Binding(get: { layoutMode }, set: { layoutMode = $0 })) {
                 ForEach(ChatWindowLayoutMode.consolidatedTabs) { mode in
-                    Text(mode.tabTitle).tag(mode)
+                    if headerIsCompact {
+                        Image(systemName: mode.icon).tag(mode)
+                            .accessibilityLabel(mode.tabTitle)
+                    } else {
+                        Text(mode.tabTitle).tag(mode)
+                    }
                 }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 204)
+            .fixedSize()
             .accessibilityLabel("Workspace")
 
+            Spacer(minLength: 8)
+
+            // Lower priority than the tabs, so the model name truncates instead of
+            // shoving the segmented control into the tab titles.
             modelQuickSwitcher
-                .frame(minWidth: 90, maxWidth: 230)
+                .frame(minWidth: 0, maxWidth: 200, alignment: .trailing)
+                .layoutPriority(0)
         }
         .frame(height: 32)
+        .background(
+            GeometryReader { geo in
+                Color.clear.onAppear { headerWidth = geo.size.width }
+                    .onChange(of: geo.size.width) { _, w in headerWidth = w }
+            }
+        )
         .environment(\.colorScheme, .dark)
     }
+
+    /// Below this the workspace tabs show symbols instead of titles.
+    private var headerIsCompact: Bool { headerWidth > 0 && headerWidth < 620 }
 
     private func windowControl(_ title: String, color: Color, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {

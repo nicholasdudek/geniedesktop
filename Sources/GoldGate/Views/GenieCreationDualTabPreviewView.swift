@@ -30,6 +30,9 @@ public struct GenieCreationDualTabPreviewView: View {
     @State private var isCopied: Bool = false
     @State private var reloadToken: UUID = UUID()
     @State private var statusFeedback: String? = nil
+    /// Nil until the user types. Once set, this is what renders and what gets saved,
+    /// so edits in the source tab show up in Visual Output.
+    @State private var editedHtml: String? = nil
 
     public init(
         title: String,
@@ -58,11 +61,17 @@ public struct GenieCreationDualTabPreviewView: View {
         let baseName = safeTitle.isEmpty ? "AI Creation" : safeTitle
         let desktop = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
         let url = desktop.appendingPathComponent("\(baseName).html")
-        try? self.formattedSelfContainedHtml.write(to: url, atomically: true, encoding: .utf8)
+        try? self.effectiveHtml.write(to: url, atomically: true, encoding: .utf8)
         return url
     }
 
     // Guarantee self-contained, high-fidelity HTML boilerplate
+    /// What the rest of the view renders, copies and writes: the user's edits when
+    /// there are any, otherwise the model's original output.
+    private var effectiveHtml: String {
+        editedHtml ?? formattedSelfContainedHtml
+    }
+
     private var formattedSelfContainedHtml: String {
         let code = rawHtml.trimmingCharacters(in: .whitespacesAndNewlines)
         if code.contains("<!DOCTYPE html") || code.contains("<html") {
@@ -100,11 +109,11 @@ public struct GenieCreationDualTabPreviewView: View {
     }
 
     private var lineCount: Int {
-        formattedSelfContainedHtml.components(separatedBy: "\n").count
+        effectiveHtml.components(separatedBy: "\n").count
     }
 
     private var byteCount: Int {
-        formattedSelfContainedHtml.utf8.count
+        effectiveHtml.utf8.count
     }
 
     public var body: some View {
@@ -122,6 +131,11 @@ public struct GenieCreationDualTabPreviewView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        // Re-render on the way back to Visual Output rather than per keystroke, so
+        // typing in the source stays smooth but the preview is never stale.
+        .onChange(of: selectedTab) { _, tab in
+            if tab == .visual { reloadToken = UUID() }
         }
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -264,40 +278,22 @@ public struct GenieCreationDualTabPreviewView: View {
     }
 
     // MARK: - 📑 Tab Selector Capsule
+    /// A stock segmented control rather than a custom capsule row. The hand-rolled
+    /// version had no intrinsic width, so in a narrow pane its labels wrapped mid-word
+    /// ("Visu al Outp ut"). AppKit's own control never does that, and it picks up
+    /// keyboard focus, accessibility and the platform's selection behaviour for free.
     private var tabSelector: some View {
-        HStack(spacing: 2) {
+        Picker("View", selection: $selectedTab) {
             ForEach(CreationPreviewTab.allCases) { tab in
-                Button(action: {
-                    withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                        selectedTab = tab
-                    }
-                    HapticFeedback.selection()
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 9.5, weight: .bold))
-                        Text(tab.rawValue)
-                            .font(.system(size: 10, weight: selectedTab == tab ? .bold : .medium, design: .rounded))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4.5)
-                    .background(
-                        Capsule()
-                            .fill(selectedTab == tab ? emotion.accentColor.opacity(0.35) : Color.clear)
-                    )
-                    .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.60))
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(selectedTab == tab ? emotion.accentColor.opacity(0.60) : Color.clear, lineWidth: 0.8)
-                    )
-                }
-                .buttonStyle(.plain)
+                Label(tab.rawValue, systemImage: tab.icon).tag(tab)
             }
         }
-        .padding(2)
-        .background(Capsule().fill(Color.black.opacity(0.45)))
-        .overlay(Capsule().strokeBorder(Color.white.opacity(0.12), lineWidth: 0.6))
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .accessibilityLabel("Preview mode")
     }
+
 
     // MARK: - 👁️ Visual Output Tab
     private var visualOutputTab: some View {
@@ -306,7 +302,7 @@ public struct GenieCreationDualTabPreviewView: View {
             Color(red: 0.05, green: 0.06, blue: 0.09)
 
             InteractiveHtmlWebView(
-                htmlString: formattedSelfContainedHtml,
+                htmlString: effectiveHtml,
                 emotionColorHex: emotion.accentColor.toHex()
             )
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -367,13 +363,19 @@ public struct GenieCreationDualTabPreviewView: View {
 
                     Divider().opacity(0.15)
 
-                    // Code text
-                    Text(verbatim: formattedSelfContainedHtml)
-                        .font(.system(size: 10.5, weight: .regular, design: .monospaced))
-                        .foregroundColor(Color(red: 0.88, green: 0.92, blue: 0.98))
-                        .padding(8)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // Editable source. Typing here re-renders Visual Output and is what
+                    // Copy, Save and Open in Safari all act on.
+                    TextEditor(text: Binding(
+                        get: { effectiveHtml },
+                        set: { editedHtml = $0 }
+                    ))
+                    .font(.system(size: 10.5, weight: .regular, design: .monospaced))
+                    .foregroundColor(Color(red: 0.88, green: 0.92, blue: 0.98))
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .padding(4)
+                    .frame(maxWidth: .infinity, minHeight: 220, alignment: .leading)
+                    .accessibilityLabel("HTML source")
                 }
             }
             .background(Color(red: 0.06, green: 0.07, blue: 0.10))
@@ -383,7 +385,7 @@ public struct GenieCreationDualTabPreviewView: View {
     // MARK: - 🚀 Actions
     private func copyRawHtml() {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(formattedSelfContainedHtml, forType: .string)
+        NSPasteboard.general.setString(effectiveHtml, forType: .string)
         HapticFeedback.success()
         withAnimation {
             isCopied = true
