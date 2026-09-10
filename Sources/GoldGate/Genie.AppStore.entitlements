@@ -2,10 +2,73 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Mac App Store distribution profile: sandboxed, zero network entitlements. -->
-    <key>com.apple.security.app-sandbox</key>
-    <true/>
-    <key>com.apple.security.files.user-selected.read-write</key>
-    <true/>
+	<!-- ============================================================
+	     Mac App Store profile ("Genie Lite"). Sandboxed.
+	     Built with -DGENIE_MAS, which compiles out the subsystems that
+	     have no sandbox-legal equivalent (see GenieCapabilities.swift).
+	     ============================================================ -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+
+	<!-- Network: 7 files use URLSession (HuggingFace, Ollama on localhost,
+	     Gemini/OpenAI). The previous profile granted NO network entitlement,
+	     so every one of those requests failed silently under the sandbox. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Local model servers (Ollama on 127.0.0.1) + AirDrop/local-network engine. -->
+	<key>com.apple.security.network.server</key>
+	<true/>
+
+	<!-- Camera: declared NSCameraUsageDescription without this entitlement
+	     before, so capture failed under the sandbox. -->
+	<key>com.apple.security.device.camera</key>
+	<true/>
+
+	<!-- File access. Full Disk Access is not available to sandboxed apps;
+	     Genie Lite uses user-selected scope + security-scoped bookmarks. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
+	<key>com.apple.security.files.pictures.read-write</key>
+	<true/>
+	<key>com.apple.security.assets.movies.read-write</key>
+	<true/>
+	<key>com.apple.security.assets.music.read-write</key>
+	<true/>
+
+	<!-- Apple Events, scoped to the specific apps Genie automates.
+	     Enumerated exceptions are reviewable; a blanket exception is not.
+	     Each of these appears in a `tell application` block in the source. -->
+	<key>com.apple.security.temporary-exception.apple-events</key>
+	<array>
+		<string>com.apple.finder</string>
+		<string>com.apple.systemevents</string>
+		<string>com.apple.Music</string>
+		<string>com.apple.Notes</string>
+		<string>com.apple.Stickies</string>
+		<string>com.spotify.client</string>
+	</array>
+	<key>com.apple.security.scripting-targets</key>
+	<dict>
+		<key>com.apple.finder</key>
+		<array>
+			<string>com.apple.finder.file-management</string>
+		</array>
+	</dict>
+
+	<!-- Sign in with Apple (GenieAppleAuth). Sandbox-safe; requires the capability
+	     on the App ID and in the provisioning profile. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.nicholasdudek.genie</string>
+	</array>
 </dict>
 </plist>

@@ -76,7 +76,7 @@ public struct LocalModelInfo: Identifiable, Hashable {
 }
 
 // MARK: - Chat Message Model for Persistent Multi-Turn Conversation
-public struct ChatMessage: Identifiable, Codable, Equatable {
+public struct ChatMessage: Identifiable, Codable, Equatable, Sendable {
     public let id: UUID
     public let role: String // "user" or "assistant"
     public let content: String
@@ -108,21 +108,37 @@ public struct ChatMessage: Identifiable, Codable, Equatable {
 }
 
 // MARK: - Saved Chat Session for Full Multi-Turn Conversation History
-public struct SavedChatSession: Identifiable, Codable, Equatable {
+public struct SavedChatSession: Identifiable, Codable, Equatable, Sendable {
     public let id: UUID
     public var title: String
     public var createdAt: Date
     public var updatedAt: Date
     public var messages: [ChatMessage]
     public var model: String
+    /// Set once the user names the conversation themselves, so auto-titling
+    /// from the first message stops overwriting it. Absent in sessions saved
+    /// by earlier builds, which decode as `false`.
+    public var hasCustomTitle: Bool
 
-    public init(id: UUID = UUID(), title: String, createdAt: Date = Date(), updatedAt: Date = Date(), messages: [ChatMessage], model: String = "") {
+    public init(id: UUID = UUID(), title: String, createdAt: Date = Date(), updatedAt: Date = Date(), messages: [ChatMessage], model: String = "", hasCustomTitle: Bool = false) {
         self.id = id
         self.title = title
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.messages = messages
         self.model = model
+        self.hasCustomTitle = hasCustomTitle
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        messages = try c.decode([ChatMessage].self, forKey: .messages)
+        model = (try? c.decode(String.self, forKey: .model)) ?? ""
+        hasCustomTitle = (try? c.decode(Bool.self, forKey: .hasCustomTitle)) ?? false
     }
 }
 
@@ -132,7 +148,16 @@ public final class LocalModelManager: ObservableObject {
     public static let shared = LocalModelManager()
 
     // ── BYOK API Keys & Endpoints ──────────────────────────────────────────
-    @AppStorage(PrefKey.geminiApiKey) public var geminiApiKey: String = "AQ.Ab8RN6KQdZll5kIJEFdF5jHHFDp8s5NxF8kZTRItnCRHb84ltw"
+    /// Stored in the Keychain, not UserDefaults — see `GenieKeychain`. Earlier builds
+    /// kept this in the preference plist and registered a hardcoded `AQ.` token as its
+    /// default, re-injecting it on every launch so clearing the field never stuck.
+    public var geminiApiKey: String {
+        get { GenieKeychain.gemini.read() ?? "" }
+        set {
+            objectWillChange.send()
+            GenieKeychain.gemini.write(newValue)
+        }
+    }
     @AppStorage(PrefKey.claudeApiKey) public var claudeApiKey: String = ""
     @AppStorage(PrefKey.openaiApiKey) public var openaiApiKey: String = ""
     @AppStorage(PrefKey.ollamaHost) public var ollamaHost: String = "http://localhost:11434"
@@ -161,39 +186,39 @@ public final class LocalModelManager: ObservableObject {
     @Published public var activeEmotionRaw: String = ""
     @Published public var isConnectedToLocalEngine: Bool = false
     @Published public var activeEngineName: String = "Ollama"
+    @Published public var generationStartedAt: Date? = nil
+    @Published public var lastTokensPerSecond: Double = 0
 
     private var activeTask: Task<Void, Never>? = nil
 
-    // Curated Cloud & Local Models Catalog
+    // ── Dynamic Hardware RAM & Apple Silicon Helpers ────────────────────────
+    public static var detectedRAMGigabytes: Int {
+        let bytes = ProcessInfo.processInfo.physicalMemory
+        return max(8, Int((bytes + 536_870_912) / (1024 * 1024 * 1024)))
+    }
+
+    public static var detectedRAMString: String {
+        "\(detectedRAMGigabytes) GB"
+    }
+
+    // ── The One Model ────────────────────────────────────────────────────────
+    // Genie ships a single local model. `genie-master` is qwen3-coder-30b-a3b
+    // (MoE, Q4_K_M) with native tool calling and a 64k context window; its
+    // profile lives in scripts/models/genie-master.Modelfile.
+    public static let primaryModelID = "genie-master"
+
+    /// Context window Genie requests per generation. The base weights go to
+    /// 262144; 64k is what fits alongside the app on a 48 GB machine.
+    public static let localContextWindow = 65536
+
     public static let cloudModels: [CloudModelItem] = [
-        // Flagship Genie Autonomous macOS Agent (Trained for GUI, OCR, Bash & File Ops)
-        CloudModelItem(id: "genie", name: "genie", provider: .local, displayName: "Genie macOS Agent (Trained)", description: "Autonomous macOS Computer Use, Vision OCR, File & Shell"),
-        CloudModelItem(id: "genie-macos-agent", name: "genie-macos-agent", provider: .local, displayName: "Genie Agent (Autonomous)", description: "Specialized for GUI control, OCR & Bash execution"),
-        CloudModelItem(id: "genie-codebase-expert", name: "genie-codebase-expert", provider: .local, displayName: "Genie Codebase Expert", description: "Specialized codebase intelligence model"),
-
-        // Google Gemma 2 & AGY Local Agent (Offline / Zero Key Required!)
-        CloudModelItem(id: "agy", name: "agy", provider: .local, displayName: "AGY (Antigravity Agent)", description: "Local Google Agent CLI (Offline / Zero Key)"),
-        CloudModelItem(id: "gemma-2", name: "gemma-2", provider: .local, displayName: "Gemma 2 (Local/Offline)", description: "Google's open weights model via Ollama"),
-        CloudModelItem(id: "gemma-2-27b-it", name: "gemma-2-27b-it", provider: .local, displayName: "Gemma 2 27B", description: "High-parameter open weights model"),
-        CloudModelItem(id: "gemma-2-9b-it", name: "gemma-2-9b-it", provider: .local, displayName: "Gemma 2 9B", description: "Fast & lightweight reasoning"),
-
-        // Google Gemini
-        CloudModelItem(id: "gemini-2.0-flash", name: "gemini-2.0-flash", provider: .gemini, displayName: "Gemini 2.0 Flash", description: "Ultra-fast multimodal reasoning"),
-        CloudModelItem(id: "gemini-1.5-pro", name: "gemini-1.5-pro", provider: .gemini, displayName: "Gemini 1.5 Pro", description: "Advanced reasoning & coding"),
-        CloudModelItem(id: "gemini-2.0-flash", name: "gemini-2.0-flash", provider: .gemini, displayName: "Gemini 2.0 Flash", description: "Ultra-fast low latency"),
-        CloudModelItem(id: "gemini-1.5-pro", name: "gemini-1.5-pro", provider: .gemini, displayName: "Gemini 1.5 Pro", description: "Long-context reasoning"),
-
-        // Anthropic Claude
-        CloudModelItem(id: "claude-3-7-sonnet-20250219", name: "claude-3-7-sonnet-20250219", provider: .claude, displayName: "Claude 3.7 Sonnet", description: "Hybrid reasoning & coding"),
-        CloudModelItem(id: "claude-3-5-sonnet-20241022", name: "claude-3-5-sonnet-20241022", provider: .claude, displayName: "Claude 3.5 Sonnet", description: "Industry standard code & analysis"),
-        CloudModelItem(id: "claude-3-5-haiku-20241022", name: "claude-3-5-haiku-20241022", provider: .claude, displayName: "Claude 3.5 Haiku", description: "High-speed responses"),
-        CloudModelItem(id: "claude-3-opus-20240229", name: "claude-3-opus-20240229", provider: .claude, displayName: "Claude 3 Opus", description: "Deep complex tasks"),
-
-        // OpenAI
-        CloudModelItem(id: "gpt-4o", name: "gpt-4o", provider: .openai, displayName: "GPT-4o", description: "Flagship omni model"),
-        CloudModelItem(id: "gpt-4o-mini", name: "gpt-4o-mini", provider: .openai, displayName: "GPT-4o mini", description: "Fast, affordable intelligence"),
-        CloudModelItem(id: "o3-mini", name: "o3-mini", provider: .openai, displayName: "o3-mini", description: "STEM & coding reasoning"),
-        CloudModelItem(id: "o1", name: "o1", provider: .openai, displayName: "o1", description: "Broad reasoning engine")
+        CloudModelItem(
+            id: primaryModelID,
+            name: primaryModelID,
+            provider: .local,
+            displayName: "Genie Master",
+            description: "30B local agent — native file, shell & desktop tools, 64k context"
+        )
     ]
     public var cloudModels: [CloudModelItem] { Self.cloudModels }
 
@@ -217,10 +242,11 @@ public final class LocalModelManager: ObservableObject {
     }
 
     public var effectiveModel: String {
-        if autoSelectEnabled || manualSelectedModel.isEmpty {
-            return autoSelectBestModel()
-        }
-        return manualSelectedModel
+        // Single-model build. This deliberately ignores `manualSelectedModel`:
+        // an install upgrading from a version that had a picker will still have
+        // something like "gemini-2.0-flash" persisted in AppStorage, and honouring
+        // it would silently route chat to a provider that is no longer offered.
+        LocalModelManager.primaryModelID
     }
 
     public var selectedModelDisplayName: String {
@@ -244,22 +270,27 @@ public final class LocalModelManager: ObservableObject {
     }
 
     private init() {
-        let currentKey = self.geminiApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if currentKey.isEmpty || currentKey == "AQ.Ab8RN6K6XUFX2BFihmrdf6MxilstIPFooUlLITjJsN_h3bownw" {
-            self.geminiApiKey = "AQ.Ab8RN6KQdZll5kIJEFdF5jHHFDp8s5NxF8kZTRItnCRHb84ltw"
-        }
+        GenieKeychain.migrateLegacyGeminiKey(defaultsKey: PrefKey.geminiApiKey)
         loadChatHistory()
         refreshAvailableModels()
     }
 
     public func loadChatHistory() {
-        if let data = UserDefaults.standard.data(forKey: PrefKey.persistedChatHistory),
-           let decoded = try? JSONDecoder().decode([ChatMessage].self, from: data) {
-            self.chatHistory = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: PrefKey.savedChatSessions),
-           let decoded = try? JSONDecoder().decode([SavedChatSession].self, from: data) {
-            self.savedSessions = decoded
+        if let diskSessions = GenieAIChatCacheManager.shared.loadSessionsFromDisk(), !diskSessions.isEmpty {
+            self.savedSessions = diskSessions
+            if let first = diskSessions.first {
+                self.chatHistory = first.messages
+                self.currentSessionId = first.id
+            }
+        } else {
+            if let data = UserDefaults.standard.data(forKey: PrefKey.persistedChatHistory),
+               let decoded = try? JSONDecoder().decode([ChatMessage].self, from: data) {
+                self.chatHistory = decoded
+            }
+            if let data = UserDefaults.standard.data(forKey: PrefKey.savedChatSessions),
+               let decoded = try? JSONDecoder().decode([SavedChatSession].self, from: data) {
+                self.savedSessions = decoded
+            }
         }
     }
 
@@ -284,7 +315,8 @@ public final class LocalModelManager: ObservableObject {
         if let idx = savedSessions.firstIndex(where: { $0.id == currentSessionId }) {
             savedSessions[idx].messages = chatHistory
             savedSessions[idx].updatedAt = now
-            if savedSessions[idx].title.isEmpty || savedSessions[idx].title.hasPrefix("Chat ") {
+            if !savedSessions[idx].hasCustomTitle,
+               savedSessions[idx].title.isEmpty || savedSessions[idx].title.hasPrefix("Chat ") {
                 savedSessions[idx].title = autoTitle
             }
         } else {
@@ -299,6 +331,8 @@ public final class LocalModelManager: ObservableObject {
             savedSessions.insert(session, at: 0)
         }
 
+        // Persist to APFS file storage asynchronously and keep UserDefaults synced as backup
+        GenieAIChatCacheManager.shared.persistSessionsToDisk(savedSessions)
         if let data = try? JSONEncoder().encode(savedSessions) {
             UserDefaults.standard.set(data, forKey: PrefKey.savedChatSessions)
         }
@@ -320,6 +354,40 @@ public final class LocalModelManager: ObservableObject {
         self.chatHistory = session.messages
         if let data = try? JSONEncoder().encode(chatHistory) {
             UserDefaults.standard.set(data, forKey: PrefKey.persistedChatHistory)
+        }
+    }
+
+    /// Names a conversation. An empty or whitespace-only name clears the
+    /// custom title and hands the session back to auto-titling.
+    public func renameSession(id: UUID, to newTitle: String) {
+        guard let idx = savedSessions.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            savedSessions[idx].hasCustomTitle = false
+            if let firstUser = savedSessions[idx].messages.first(where: { $0.role == "user" }) {
+                savedSessions[idx].title = String(firstUser.content.trimmingCharacters(in: .whitespacesAndNewlines).prefix(45))
+            }
+        } else {
+            savedSessions[idx].title = String(trimmed.prefix(80))
+            savedSessions[idx].hasCustomTitle = true
+        }
+        savedSessions[idx].updatedAt = Date()
+        persistSessions()
+    }
+
+    /// Makes sure the live conversation has a saved session to rename, then names it.
+    @discardableResult
+    public func renameCurrentSession(to newTitle: String) -> UUID {
+        if !savedSessions.contains(where: { $0.id == currentSessionId }) {
+            autoSyncCurrentSession()
+        }
+        renameSession(id: currentSessionId, to: newTitle)
+        return currentSessionId
+    }
+
+    public func persistSessions() {
+        if let data = try? JSONEncoder().encode(savedSessions) {
+            UserDefaults.standard.set(data, forKey: PrefKey.savedChatSessions)
         }
     }
 
@@ -441,43 +509,11 @@ public final class LocalModelManager: ObservableObject {
         }
     }
 
-    // MARK: - Heuristic for Auto-Selecting the Best Model
+    // MARK: - Model Resolution
+    // There is exactly one model, so selection is not a heuristic any more.
+    // Discovery still runs, but only to report whether the local engine is up.
     private func autoSelectBestModel() -> String {
-        // If local models are shut off or none discovered, prioritize cloud models
-        if !localModelsEnabled || availableModels.isEmpty {
-            if hasGeminiKey { return "gemini-2.5-flash" }
-            if hasClaudeKey { return "claude-3-5-sonnet-20241022" }
-            if hasOpenAIKey { return "gpt-4o-mini" }
-            return localModelsEnabled ? "qwen3.8:latest" : "gemini-2.5-flash"
-        }
-
-        let preferredRankings = [
-            "genie-macos-agent",
-            "genie",
-            "genie-codebase-expert",
-            "genie-goldgate-expert",
-            "genie-apple-browser-master",
-            "qwen3.8",
-            "qwen3.6",
-            "deepseek-r1",
-            "codestral",
-            "qwen3-coder",
-            "llama3.3",
-            "llama3.2",
-            "llama3.1",
-            "mistral",
-            "phi4",
-            "gemma2",
-            "qwen2.5"
-        ]
-
-        for pref in preferredRankings {
-            if let match = availableModels.first(where: { $0.name.lowercased().contains(pref) }) {
-                return match.name
-            }
-        }
-
-        return availableModels.first?.name ?? "gemini-2.5-flash"
+        LocalModelManager.primaryModelID
     }
 
     // MARK: - Local Model Power & RAM Management (Shut Off / Eject)
@@ -560,6 +596,13 @@ public final class LocalModelManager: ObservableObject {
             var discovered: [LocalModelInfo] = []
             var foundEngine = false
 
+            // 0. Scan Apple MLX Metal Native Engine (Port 8080)
+            if let mlxModels = await fetchMLXModels(), !mlxModels.isEmpty {
+                discovered.append(contentsOf: mlxModels)
+                foundEngine = true
+                self.activeEngineName = "Apple MLX (Metal ⚡️)"
+            }
+
             // 1. Scan Ollama HTTP API
             if let ollamaModels = await fetchOllamaModels() {
                 discovered.append(contentsOf: ollamaModels)
@@ -592,19 +635,43 @@ public final class LocalModelManager: ObservableObject {
                 }
             }
 
-            // 4. Discover Google AGY (Antigravity Agent) & Gemma 2 Local Offline Engines
-            let agyBin = "/Users/nicholasdudek/.local/bin/agy"
-            if FileManager.default.isExecutableFile(atPath: agyBin) {
-                if !discovered.contains(where: { $0.name == "agy" }) {
-                    discovered.insert(LocalModelInfo(name: "agy", parameterSize: "Agent", sizeBytes: nil, source: "Antigravity"), at: 0)
+            // 4. Discover Google AGY (Antigravity Agent) & bundled Gemma profile (gated for App Store)
+            if GenieCapabilities.canSpawnSubprocesses {
+                let candidatePaths = [
+                    NSHomeDirectory() + "/.local/bin/agy",
+                    "/usr/local/bin/agy",
+                    "/opt/homebrew/bin/agy"
+                ]
+                if candidatePaths.contains(where: { FileManager.default.isExecutableFile(atPath: $0) }) {
+                    if !discovered.contains(where: { $0.name == "agy" }) {
+                        discovered.insert(LocalModelInfo(name: "agy", parameterSize: "Agent", sizeBytes: nil, source: "Antigravity"), at: 0)
+                    }
+                    if !discovered.contains(where: { $0.name == "gemma-2" }) {
+                        discovered.insert(LocalModelInfo(name: "gemma-2", parameterSize: "Offline", sizeBytes: nil, source: "Google"), at: 1)
+                    }
+                    if !discovered.contains(where: { $0.name == "gemma4:4b" }) {
+                        discovered.insert(LocalModelInfo(name: "gemma4:4b", parameterSize: "4B", sizeBytes: nil, source: "Google Gemma 4 profile"), at: 1)
+                    }
+                    if !foundEngine {
+                        foundEngine = true
+                        self.activeEngineName = "AGY Engine"
+                    }
                 }
-                if !discovered.contains(where: { $0.name == "gemma-2" }) {
-                    discovered.insert(LocalModelInfo(name: "gemma-2", parameterSize: "Offline", sizeBytes: nil, source: "Google"), at: 1)
-                }
-                if !foundEngine {
-                    foundEngine = true
-                    self.activeEngineName = "AGY Engine"
-                }
+            }
+
+            // 5. Always include Genie's Built-in Local AI Engine (App Store optimized, zero-server required)
+            let builtInModel = LocalModelInfo(
+                name: "genie-built-in",
+                parameterSize: "On-Device",
+                sizeBytes: nil,
+                source: "Genie Core"
+            )
+            if !discovered.contains(where: { $0.name == builtInModel.name }) {
+                discovered.append(builtInModel)
+            }
+            if !foundEngine {
+                foundEngine = true
+                self.activeEngineName = "Genie Built-in (Local Engine)"
             }
 
             self.availableModels = discovered
@@ -617,6 +684,31 @@ public final class LocalModelManager: ObservableObject {
                     self.manualSelectedModel = best
                 }
             }
+        }
+    }
+
+    private func fetchMLXModels() async -> [LocalModelInfo]? {
+        guard let url = URL(string: "http://localhost:8080/v1/models") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 1.0
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                return nil
+            }
+            struct MLXList: Codable {
+                struct Item: Codable {
+                    let id: String
+                }
+                let data: [Item]?
+            }
+            guard let parsed = try? JSONDecoder().decode(MLXList.self, from: data),
+                  let list = parsed.data, !list.isEmpty else {
+                return nil
+            }
+            return list.map { LocalModelInfo(name: $0.id, parameterSize: "MLX Metal", sizeBytes: nil, source: "Apple MLX") }
+        } catch {
+            return nil
         }
     }
 
@@ -688,11 +780,23 @@ public final class LocalModelManager: ObservableObject {
     }
 
     private func fetchCLIModels() async -> [LocalModelInfo] {
+        // The HTTP path (Ollama on 127.0.0.1) still works under the sandbox;
+        // only this CLI enumeration needs the binary.
+        guard GenieCapabilities.canSpawnSubprocesses else { return [] }
         return await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
+                let candidatePaths = [
+                    "/opt/homebrew/bin/ollama",
+                    "/usr/local/bin/ollama",
+                    NSHomeDirectory() + "/.local/bin/ollama"
+                ]
+                guard let ollamaBin = candidatePaths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else {
+                    continuation.resume(returning: [])
+                    return
+                }
                 let process = Process()
                 let pipe = Pipe()
-                process.executableURL = URL(fileURLWithPath: "/usr/local/bin/ollama")
+                process.executableURL = URL(fileURLWithPath: ollamaBin)
                 process.arguments = ["list"]
                 process.standardOutput = pipe
                 process.standardError = Pipe()
@@ -728,9 +832,38 @@ public final class LocalModelManager: ObservableObject {
 
     public var modelToolsSystemPrompt: String {
         var prompts: [String] = []
+
+        // Who Genie is talking to, when the user has signed in with Apple.
+        // Apple only releases the name on first authorization, so this is blank
+        // for anyone who signed in before Genie asked for the full-name scope.
+        let signedInName = GenieAppleAuth.shared.isSignedIn
+            ? GenieAppleAuth.shared.conversationalName
+            : ""
+        if !signedInName.isEmpty {
+            prompts.append("""
+You are talking with \(signedInName), who is signed in to Genie with their Apple Account. \
+Address them by name when it reads naturally. This is a continuing conversation, not a \
+series of unrelated questions: refer back to what you have already discussed instead of \
+reintroducing yourself or restating context they gave you earlier.
+""")
+        } else {
+            prompts.append("""
+This is a continuing conversation, not a series of unrelated questions: refer back to what \
+you have already discussed instead of reintroducing yourself or restating context the user \
+gave you earlier.
+""")
+        }
+
         prompts.append("""
-You are Genie AI, an advanced native assistant running on macOS.
+You are Genie AI, the assistant built into Genie, an independent macOS utility app made by Nicholas Dudek (Golden Gate Engineering). You are NOT made, owned, or operated by Apple, and you must never claim Apple (or any other company) as your creator or employer — if asked who made you, say you're the built-in assistant in the Genie app by Nicholas Dudek.
 You are equipped with a powerful suite of native tools to build presentations, compile executive PDFs, render interactive charts and Mermaid diagrams, capture photos, save documents, control macOS applications, and execute shell commands.
+Genie CAN capture and see the screen — screen sharing/viewing requests should be treated as a request to use the screen-capture tools below (```polaroid```, ```record_screen```, or ```desktop_agent``` with `snapshot`), not declined as impossible.
+Genie has NO access to email, messaging, calendars, contacts, cloud storage, or any other external or online account. It cannot read, send, check, or search mail. When asked to do anything of that kind, decline with exactly this wording and nothing more:
+"I'm sorry, but I don't have access to your email or any other external services. If you need to check your email, you'll need to open your email client or use a web-based email service directly. Is there anything else I can assist you with?"
+Do not offer to try anyway, do not suggest workarounds, and never imply the capability might exist behind a setting.
+Genie's file writing is confined to the Desktop. It may freely create, edit, organise, and delete files anywhere under ~/Desktop, and it may not write anywhere else — not elsewhere in the home folder, and never to system locations. This is enforced in code, so a write outside the Desktop will fail rather than succeed silently; say so plainly instead of claiming a broader reach.
+
+You run on Genie Master, a 30B local model with native tool calling and a 64k context window. Computer vision, desktop management, and file creation tools are available when their Genie settings are enabled. Home-folder and full-disk access are permission-gated by macOS and must be granted by the user; never claim those permissions without checking. Ask before destructive operations such as deleting, overwriting, moving, or formatting data.
 
 You can invoke any of the following tools by formatting your response with the specified code blocks:
 
@@ -854,20 +987,48 @@ Format webpage visits inside a ```browse <url>``` block.
         }
 
         prompts.append("""
-12. 📱 APPLE MESSAGES & IPHONE PHONE BRIDGE:
-You are directly connected to Nicholas Dudek's iPhone and macOS Messages.app via GeniePhoneBridgeManager.
-- To send an iMessage to Nicholas's phone or a contact:
-Format with a ```imessage [recipient=nicholas.dudek@icloud.com] block containing your message.
+12. 📱 APPLE MESSAGES (IMESSAGE & ICHAT CONTROL) & IPHONE BRIDGE:
+You are directly connected to Nicholas Dudek's Apple ID (\(GenieAppleAuth.shared.email.isEmpty ? "nicholas.dudek@icloud.com" : GenieAppleAuth.shared.email)), iPhone, and macOS Messages/iChat via GeniePhoneBridgeManager and GenieiMessageExtensionManager.
+- To send an iMessage or iChat message to Nicholas's phone or a contact:
+Format with a ```imessage [recipient=...] or ```ichat [recipient=...] block containing your message.
 Example:
 ```imessage
-Build completed successfully! All 19 tests passed and the bridge is active.
+Build completed successfully! All tests passed and the bridge is active.
 ```
-- To send an instant status ping or attach the latest chat reply to Nicholas's iPhone:
+- To send an instant status ping to Nicholas's iPhone or Apple ID:
 Format with a ```phone_ping <optional summary text>``` block.
 - To check or toggle the phone bridge server:
 Format with a ```phone_bridge <status|start|stop>``` block.
 """)
 
+        prompts.append("""
+13. 🛠️ POLYGLOT PROGRAMMING & FULL STACK CREATION ENGINE:
+You are an expert polyglot software engineer capable of writing, compiling, debugging, and building software in ANY programming language to build anything requested by the user:
+- Swift / SwiftUI / AppKit / Metal (native Apple Silicon apps)
+- Python (scientific computing, machine learning, data processing, backend web)
+- Rust (high-performance systems engineering, memory safety, CLI tools)
+- Go (concurrent network services, microservices, cloud tooling)
+- TypeScript / JavaScript / HTML / CSS / React / Vue / WebKit DOM
+- C / C++ / Objective-C (low-level systems, POSIX, graphics)
+- Kotlin / Java (mobile, server)
+- Shell / Bash / Zsh (automation scripts, system admin, pipelines)
+- SQL (database architecture, relational queries, migrations)
+When asked to build, scaffold, write code, or create software:
+Provide complete, production-grade, immediately executable code with zero placeholders.
+
+14. 🛰️ NATIVE MACOS AIRDROP & AGENT-TO-AGENT LOCAL NETWORKS:
+- To share files, photos, PDFs, decks, or folders with nearby iPhones, iPads, and Macs via AirDrop:
+Format with a ```airdrop <file path>``` block.
+- To share, sync, or broadcast files across local agent nodes on the local Wi-Fi / LAN:
+Format with a ```agent_network <share:filePath | list_files | peers>``` block.
+Genie automatically stages files into /Users/Shared/Genie/Bridge and broadcasts via Bonjour mDNS (_genie-agent._tcp) on local port 8421.
+
+15. 📚 APPLICATION DOCUMENTATION & SCRIPTING DICTIONARY INSPECTOR:
+To inspect an application's AppleScript scripting dictionary (sdef), commands, classes, Info.plist, URL schemes, and documentation:
+Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app_doc Finder```).
+""")
+
+        prompts.append(GenieChatTaskPolicy.instructions)
         return prompts.joined(separator: "\n\n")
     }
 
@@ -891,6 +1052,7 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         currentResponse = ""
         currentThinking = ""
         lastPrompt = cleanPrompt
+        generationStartedAt = Date()
 
         let modelToUse = overrideModel ?? effectiveModel
         let provider = providerForModel(modelToUse)
@@ -906,21 +1068,151 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         self.chatHistory.append(userMsg)
         self.saveChatHistory()
 
+        // Intercept Direct Slash Commands for iChat / iMessage
+        if cleanPrompt.hasPrefix("/imessage ") || cleanPrompt.hasPrefix("/ichat ") {
+            let prefixLen = cleanPrompt.hasPrefix("/imessage ") ? 10 : 7
+            let msg = String(cleanPrompt.dropFirst(prefixLen)).trimmingCharacters(in: .whitespacesAndNewlines)
+            let success = GeniePhoneBridgeManager.shared.sendiMessage(message: msg)
+            let status = success ? "✓ Sent" : "⚠️ Check Messages.app"
+            let target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? "nicholas.dudek@icloud.com" : GeniePhoneBridgeManager.shared.appleID
+            let response = "📱 **[Apple Messages / iChat Direct]:** \(status) to \(target):\n\"\(msg)\""
+            self.currentResponse = response
+            self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: "system"))
+            self.saveChatHistory()
+            self.isGenerating = false
+            return
+        }
+
+        // Intercept Cache Management Slash Commands
+        if cleanPrompt == "/clearcache" {
+            GenieAIChatCacheManager.shared.clearCache()
+            let response = "🧹 **[AI Chat Cache]:** Cleared in-memory response cache and APFS disk cache."
+            self.currentResponse = response
+            self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: "system"))
+            self.saveChatHistory()
+            self.isGenerating = false
+            return
+        }
+
+        if cleanPrompt == "/cachestats" {
+            let stats = GenieAIChatCacheManager.shared.exportStatsSummary()
+            self.currentResponse = stats
+            self.chatHistory.append(ChatMessage(role: "assistant", content: stats, model: "system"))
+            self.saveChatHistory()
+            self.isGenerating = false
+            return
+        }
+
+        // Intercept Machine Learning Tokenizer & Tagging Slash Command
+        if cleanPrompt.hasPrefix("/tokenizetags") {
+            let query = cleanPrompt.replacingOccurrences(of: "/tokenizetags", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let tokenized = GenieFeatureTokenizer.shared.tokenize(prompt: query.isEmpty ? "open Safari and search web" : query)
+            let shortcuts = tokenized.shortcutTags.map { $0.rawValue }.joined(separator: ", ")
+            let apps = tokenized.programTags.map { $0.rawValue }.joined(separator: ", ")
+            let actions = tokenized.actionTags.map { $0.rawValue }.joined(separator: ", ")
+            let activeDims = tokenized.featureVector.enumerated().filter { $0.element > 0 }.map { "[\($0.offset)]=\(String(format: "%.2f", $0.element))" }.joined(separator: " ")
+            let response = """
+            🏷️ **[Genie Feature Tokenizer & Tagging]**
+            • **Raw Query:** `\(tokenized.rawQuery)`
+            • **Word Tokens (\(tokenized.wordTokens.count)):** `\(tokenized.wordTokens.joined(separator: ", "))`
+            • **Mac Shortcut Tags (\(tokenized.shortcutTags.count)):** `\(shortcuts.isEmpty ? "None" : shortcuts)`
+            • **Mac Program Tags (\(tokenized.programTags.count)):** `\(apps.isEmpty ? "None" : apps)`
+            • **Intent Action Tags (\(tokenized.actionTags.count)):** `\(actions.isEmpty ? "None" : actions)`
+            • **64-D Active Features:** `\(activeDims)`
+            """
+            self.currentResponse = response
+            self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: "ensemble-ml"))
+            self.saveChatHistory()
+            self.isGenerating = false
+            return
+        }
+
+        // Intercept Random Forest & AdaBoost Tool Call Ensemble Slash Command
+        if cleanPrompt.hasPrefix("/ensemble") {
+            let query = cleanPrompt.replacingOccurrences(of: "/ensemble", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let promptToClassify = query.isEmpty ? "open Safari and take a screenshot" : query
+            let (target, conf, diag) = GenieTreeEnsembleEngine.shared.classify(prompt: promptToClassify)
+            let toolResult = GenieTreeEnsembleEngine.shared.classifyAndCallTool(prompt: promptToClassify)
+            
+            let rfBreakdown = diag.rfProbabilities.filter { $0.value > 0.05 }.sorted(by: { $0.value > $1.value }).map { "\($0.key): \(Int($0.value * 100))%" }.joined(separator: ", ")
+            let adaBreakdown = diag.adaProbabilities.filter { $0.value > 0.05 }.sorted(by: { $0.value > $1.value }).map { "\($0.key): \(Int($0.value * 100))%" }.joined(separator: ", ")
+
+            let response = """
+            🌲 **[Random Forest & AdaBoost Ensemble Tool Classifier]**
+            • **Target:** `\(target.rawValue)` (Confidence: **\(Int(conf * 100))%**)
+            • **Inference Latency:** `\(String(format: "%.1f", diag.latencyMicroseconds)) µs`
+            • **Random Forest (10 Trees):** `\(rfBreakdown)`
+            • **AdaBoost (12 Stumps):** `\(adaBreakdown)`
+            • **Active Tags:** `\(diag.topFeatureTags.joined(separator: ", "))`
+
+            \(toolResult != nil ? "🛠️ **Synthesized Tool Call:**\n\(toolResult!.synthesizedToolBlock)" : "💬 **Result:** Conversational fallback (no direct tool needed).")
+            """
+            self.currentResponse = response
+            self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: "ensemble-ml"))
+            self.saveChatHistory()
+            self.isGenerating = false
+            return
+        }
+
+        // Fast-Path Tool Call Execution via Tree Ensemble
+        if cleanPrompt.hasPrefix("/toolcall ") {
+            let query = String(cleanPrompt.dropFirst(10)).trimmingCharacters(in: .whitespacesAndNewlines)
+            if let result = GenieTreeEnsembleEngine.shared.classifyAndCallTool(prompt: query) {
+                let response = """
+                ⚡ **[Sub-Millisecond Ensemble Tool Execution]** (\(String(format: "%.1f", result.diagnostics.latencyMicroseconds)) µs)
+                Target: `\(result.target.rawValue)` (Confidence: \(Int(result.confidence * 100))%)
+
+                \(result.synthesizedToolBlock)
+                """
+                self.currentResponse = response
+                self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: "ensemble-ml"))
+                self.saveChatHistory()
+                self.isGenerating = false
+                return
+            }
+        }
+
+        // Support optional /nocache prefix to bypass cache for one turn
+        let bypassCache = cleanPrompt.hasPrefix("/nocache ")
+        let promptToQuery = bypassCache ? String(cleanPrompt.dropFirst(9)).trimmingCharacters(in: .whitespacesAndNewlines) : cleanPrompt
+
+        // Check Multi-Tier AI Chat Cache for Zero-Latency Instant Response
+        if !bypassCache, let cached = GenieAIChatCacheManager.shared.resolve(prompt: promptToQuery, model: modelToUse, mediaPath: mediaPath) {
+            self.currentResponse = cached.response
+            self.currentThinking = cached.thinking ?? ""
+            self.lastTokensPerSecond = 999.0 // Instantaneous playback from cache
+            self.chatHistory.append(ChatMessage(
+                role: "assistant",
+                content: cached.response,
+                model: modelToUse,
+                thinking: cached.thinking
+            ))
+            self.saveChatHistory()
+            self.isGenerating = false
+            return
+        }
+
         activeTask = Task {
             switch provider {
             case .gemini:
-                await generateGemini(prompt: cleanPrompt, model: modelToUse, apiKey: self.geminiApiKey, mediaPath: mediaPath)
+                await generateGemini(prompt: promptToQuery, model: modelToUse, apiKey: self.geminiApiKey, mediaPath: mediaPath)
             case .claude:
-                await generateClaude(prompt: cleanPrompt, model: modelToUse, apiKey: self.claudeApiKey)
+                await generateClaude(prompt: promptToQuery, model: modelToUse, apiKey: self.claudeApiKey)
             case .openai:
-                await generateOpenAI(prompt: cleanPrompt, model: modelToUse, apiKey: self.openaiApiKey)
+                await generateOpenAI(prompt: promptToQuery, model: modelToUse, apiKey: self.openaiApiKey)
             case .local:
-                await generateLocal(prompt: cleanPrompt, model: modelToUse)
+                await generateLocal(prompt: promptToQuery, model: modelToUse)
             }
 
             guard !Task.isCancelled else {
                 self.isGenerating = false
                 return
+            }
+
+            if let started = self.generationStartedAt {
+                let elapsed = Date().timeIntervalSince(started)
+                let approxTokens = Double(self.currentResponse.count) / 4.0
+                self.lastTokensPerSecond = elapsed > 0 ? approxTokens / elapsed : 0
             }
 
             let chatFolders = GenieStandardDirectories.chatSessionFolderURL(
@@ -1015,8 +1307,13 @@ Format with a ```phone_bridge <status|start|stop>``` block.
                     }()
                     if let targetURL = appURL {
                         NSWorkspace.shared.openApplication(at: targetURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
-                    } else {
-                        Process.launchedProcess(launchPath: "/usr/bin/open", arguments: ["-a", appName])
+                    } else if let fallbackURL = NSWorkspace.shared.urlsForApplications(toOpen: URL(fileURLWithPath: "/Applications")).first(where: { $0.lastPathComponent.lowercased().hasPrefix(appName.lowercased()) }) {
+                        NSWorkspace.shared.openApplication(at: fallbackURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+                    } else if GenieCapabilities.canSpawnSubprocesses {
+                        let proc = Process()
+                        proc.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                        proc.arguments = ["-a", appName]
+                        try? proc.run()
                     }
                 }
                 let block = "\n\n🚀 **[App Launched]:** \(appName)"
@@ -1086,7 +1383,6 @@ Format with a ```phone_bridge <status|start|stop>``` block.
                 self.currentResponse += block
             }
 
-
             // 10. Terminal Tool Auto-Execution
             if self.terminalAccessEnabled && self.terminalAutoExecute {
                 if let cmd = self.extractTerminalCommand(from: self.currentResponse) {
@@ -1143,10 +1439,29 @@ Format with a ```phone_bridge <status|start|stop>``` block.
             if let creation = self.extractCreation(from: self.currentResponse) {
                 self.activeCreationCode = creation.html
                 self.activeCreationTitle = creation.title
+
+                // Automatically write the file to the Desktop and chat documents folder
+                let desktopURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+                let safeTitle = creation.title
+                    .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " ")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let baseName = safeTitle.isEmpty ? "AI Creation" : safeTitle
+                let fileOnDesktop = desktopURL.appendingPathComponent("\(baseName).html")
+                let fileInFolder = chatFolders.documents.appendingPathComponent("\(baseName).html")
+
+                try? creation.html.write(to: fileOnDesktop, atomically: true, encoding: .utf8)
+                try? creation.html.write(to: fileInFolder, atomically: true, encoding: .utf8)
+
                 NotificationCenter.default.post(
                     name: NSNotification.Name("NexusAIDisplayCreation"),
                     object: creation.html,
-                    userInfo: ["title": creation.title]
+                    userInfo: [
+                        "title": creation.title,
+                        "filePath": fileOnDesktop.path,
+                        "fileURL": fileOnDesktop.absoluteString
+                    ]
                 )
             }
 
@@ -1169,6 +1484,19 @@ Format with a ```phone_bridge <status|start|stop>``` block.
                 )
                 self.chatHistory.append(assistantMsg)
                 self.saveChatHistory()
+
+                // Cache completed response into multi-tier AI Chat Cache
+                if !bypassCache {
+                    let elapsedMs = self.generationStartedAt != nil ? Date().timeIntervalSince(self.generationStartedAt!) * 1000 : 0
+                    GenieAIChatCacheManager.shared.store(
+                        prompt: promptToQuery,
+                        model: modelToUse,
+                        response: self.currentResponse,
+                        thinking: thinkText.isEmpty ? nil : thinkText,
+                        mediaPath: mediaPath,
+                        latencyMs: elapsedMs
+                    )
+                }
             }
 
             // 14. Auto-Speak with Genie Native Apple Voice if enabled
@@ -1216,7 +1544,7 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         }
 
         var contents: [[String: Any]] = []
-        for msg in chatHistory.suffix(64) {
+        for msg in chatHistory.suffix(128) {
             let role = (msg.role == "user") ? "user" : "model"
             var parts: [[String: Any]] = [["text": msg.content]]
             if let path = msg.mediaPath, !path.isEmpty,
@@ -1354,13 +1682,20 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         request.setValue(cleanKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
+        var messages: [[String: Any]] = []
+        for msg in chatHistory.suffix(100) {
+            let role = (msg.role == "user") ? "user" : "assistant"
+            messages.append(["role": role, "content": msg.content])
+        }
+        if messages.isEmpty || messages.last?["role"] as? String != "user" {
+            messages.append(["role": "user", "content": prompt])
+        }
+
         var payload: [String: Any] = [
             "model": model,
             "max_tokens": 4096,
             "stream": true,
-            "messages": [
-                ["role": "user", "content": prompt]
-            ]
+            "messages": messages
         ]
         if terminalAccessEnabled || webAccessEnabled {
             payload["system"] = modelToolsSystemPrompt
@@ -1443,7 +1778,7 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         if terminalAccessEnabled || webAccessEnabled {
             messages.append(["role": "system", "content": modelToolsSystemPrompt])
         }
-        for msg in chatHistory.suffix(10) {
+        for msg in chatHistory.suffix(100) {
             messages.append(["role": msg.role, "content": msg.content])
         }
         if messages.isEmpty || messages.last?["role"] as? String != "user" {
@@ -1507,8 +1842,17 @@ Format with a ```phone_bridge <status|start|stop>``` block.
 
     // MARK: - Local Google AGY / Antigravity Agent Generator (Offline / Zero Key Required)
     public func generateAgy(prompt: String) async {
-        let agyBin = "/Users/nicholasdudek/.local/bin/agy"
-        let executable = FileManager.default.isExecutableFile(atPath: agyBin) ? agyBin : "agy"
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            currentResponse = GenieCapabilities.unavailableMessage("The local agy agent")
+            return
+        }
+        let guidedPrompt = modelToolsSystemPrompt + "\n\nUser request:\n" + prompt
+        let candidatePaths = [
+            NSHomeDirectory() + "/.local/bin/agy",
+            "/usr/local/bin/agy",
+            "/opt/homebrew/bin/agy"
+        ]
+        let executable = candidatePaths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) ?? "agy"
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -1518,15 +1862,15 @@ Format with a ```phone_bridge <status|start|stop>``` block.
 
                 if executable.hasPrefix("/") {
                     process.executableURL = URL(fileURLWithPath: executable)
-                    process.arguments = ["--print", prompt]
+                    process.arguments = ["--print", guidedPrompt]
                 } else {
                     process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                    process.arguments = ["agy", "--print", prompt]
+                    process.arguments = ["agy", "--print", guidedPrompt]
                 }
 
                 var env = ProcessInfo.processInfo.environment
                 let path = env["PATH"] ?? ""
-                env["PATH"] = "/Users/nicholasdudek/.local/bin:/usr/local/bin:/opt/homebrew/bin:" + path
+                env["PATH"] = "\(NSHomeDirectory())/.local/bin:/usr/local/bin:/opt/homebrew/bin:" + path
                 process.environment = env
 
                 process.standardOutput = pipe
@@ -1570,10 +1914,85 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         }
     }
 
+    // MARK: - Apple MLX Metal Native Streaming Generator (Port 8080)
+    private func generateMLX(prompt: String, model: String) async {
+        guard let url = URL(string: "http://localhost:8080/v1/chat/completions") else {
+            self.currentResponse = "Invalid MLX Endpoint URL."
+            self.isGenerating = false
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var messages: [[String: Any]] = []
+        messages.append(["role": "system", "content": modelToolsSystemPrompt])
+        for msg in chatHistory.suffix(100) {
+            messages.append(["role": msg.role, "content": msg.content])
+        }
+        if messages.isEmpty || messages.last?["role"] as? String != "user" {
+            messages.append(["role": "user", "content": prompt])
+        }
+
+        let payload: [String: Any] = [
+            "model": model,
+            "messages": messages,
+            "stream": true,
+            "temperature": 0.2,
+            "max_tokens": 4096
+        ]
+
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: payload) else {
+            self.isGenerating = false
+            return
+        }
+        request.httpBody = bodyData
+
+        do {
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                self.currentResponse = "⚠️ Apple MLX Metal Engine is offline.\n\nStart it anytime with:\n`genie-mlx` in Terminal, or launch it from Genie Settings."
+                self.isGenerating = false
+                return
+            }
+
+            for try await line in bytes.lines {
+                if Task.isCancelled { break }
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard trimmed.hasPrefix("data: ") else { continue }
+                let jsonStr = String(trimmed.dropFirst(6))
+                guard !jsonStr.isEmpty, jsonStr != "[DONE]", let lineData = jsonStr.data(using: .utf8) else { continue }
+
+                if let root = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                   let choices = root["choices"] as? [[String: Any]],
+                   let first = choices.first,
+                   let delta = first["delta"] as? [String: Any],
+                   let text = delta["content"] as? String {
+                    self.currentResponse += text
+                }
+            }
+        } catch {
+            if !Task.isCancelled {
+                self.currentResponse = "Apple MLX Connection Error: \(error.localizedDescription)\n\nTip: Run `genie-mlx` in your terminal to start Apple Silicon Metal inference."
+            }
+        }
+
+        self.isGenerating = false
+    }
+
     // MARK: - Local Ollama & Local Models Streaming Generator
     private func generateLocal(prompt: String, model: String) async {
         let lower = model.lowercased()
-        if lower.hasPrefix("agy") || lower.hasPrefix("gemma") || lower.contains("offline") {
+        if lower == "genie-built-in" || lower.contains("built-in") {
+            await generateBuiltInOffline(prompt: prompt)
+            return
+        }
+        if lower.contains("mlx") || availableModels.first(where: { $0.name == model })?.source == "Apple MLX" {
+            await generateMLX(prompt: prompt, model: model)
+            return
+        }
+        if lower == "agy" || (lower.hasPrefix("agy") && !lower.contains("gemma")) {
             await generateAgy(prompt: prompt)
             return
         }
@@ -1585,7 +2004,8 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         }
 
         let cleanHost = ollamaHost.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard let url = URL(string: "\(cleanHost)/api/generate") else {
+        // Use native /api/chat to keep entire chat in the context at all times
+        guard let url = URL(string: "\(cleanHost)/api/chat") else {
             self.currentResponse = "Invalid Ollama Host URL: \(ollamaHost)"
             self.isGenerating = false
             return
@@ -1595,22 +2015,47 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        var payload: [String: Any] = [
+        var messages: [[String: Any]] = []
+        if terminalAccessEnabled || webAccessEnabled {
+            messages.append(["role": "system", "content": modelToolsSystemPrompt])
+        }
+        // Keep our chat in the context at all times. Turns must alternate:
+        // a run that fails or answers with tool calls only leaves no assistant
+        // turn behind, and the model then reads the transcript as the user
+        // talking to themselves and starts writing both sides of it.
+        for msg in chatHistory.suffix(100) {
+            let role = (msg.role == "user") ? "user" : "assistant"
+            if let last = messages.last, last["role"] as? String == role, role == "assistant" {
+                // Merge a split assistant turn rather than emitting two in a row.
+                let merged = ((last["content"] as? String) ?? "") + "\n\n" + msg.content
+                messages[messages.count - 1] = ["role": role, "content": merged]
+                continue
+            }
+            if let last = messages.last, last["role"] as? String == role, role == "user" {
+                // A user turn that never got an answer: acknowledge it so the
+                // roles keep alternating instead of stacking up.
+                messages.append(["role": "assistant", "content": "(no response — interrupted)"])
+            }
+            messages.append(["role": role, "content": msg.content])
+        }
+        if messages.isEmpty || messages.last?["role"] as? String != "user" {
+            messages.append(["role": "user", "content": prompt])
+        }
+
+        let payload: [String: Any] = [
             "model": model,
-            "prompt": prompt,
+            "messages": messages,
             "stream": true,
             "keep_alive": "30m",
             "options": [
-                "num_ctx": 4096,
+                "num_ctx": LocalModelManager.localContextWindow,
+                "num_keep": GenieAIChatCacheManager.shared.systemPromptKeepTokens,
                 "num_thread": max(4, ProcessInfo.processInfo.activeProcessorCount - 2),
                 "num_gpu": 99,
                 "temperature": 0.2,
                 "top_p": 0.9
             ]
         ]
-        if terminalAccessEnabled || webAccessEnabled {
-            payload["system"] = modelToolsSystemPrompt
-        }
 
         guard let bodyData = try? JSONSerialization.data(withJSONObject: payload) else {
             self.isGenerating = false
@@ -1621,12 +2066,20 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         do {
             let (bytes, response) = try await URLSession.shared.bytes(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                self.currentResponse = "Local model '\(model)' is not responding. Please make sure Ollama is running at \(cleanHost)."
-                self.isGenerating = false
+                let offlineFallback = GenieLocalTinyModelEngine.shared.generateOfflineTinyResponse(prompt: prompt)
+                await streamSimulatedText(
+                    "*(Local model daemon non-responsive. Switched to Genie Built-in Local Engine)*\n\n" + offlineFallback
+                )
                 return
             }
 
             struct StreamChunk: Decodable {
+                struct MessageChunk: Decodable {
+                    let role: String?
+                    let content: String?
+                    let thinking: String?
+                }
+                let message: MessageChunk?
                 let response: String?
                 let thinking: String?
                 let done: Bool?
@@ -1640,10 +2093,10 @@ Format with a ```phone_bridge <status|start|stop>``` block.
                 if Task.isCancelled { break }
                 guard let lineData = line.data(using: .utf8) else { continue }
                 if let chunk = try? JSONDecoder().decode(StreamChunk.self, from: lineData) {
-                    if let r = chunk.response {
+                    if let r = chunk.message?.content ?? chunk.response {
                         bufferedResponse += r
                     }
-                    if let t = chunk.thinking {
+                    if let t = chunk.message?.thinking ?? chunk.thinking {
                         bufferedThinking += t
                     }
 
@@ -1676,11 +2129,36 @@ Format with a ```phone_bridge <status|start|stop>``` block.
             }
         } catch {
             if !Task.isCancelled {
-                self.currentResponse = "Unable to connect to local Ollama runner at \(cleanHost). Start Ollama and try again."
+                // If local daemon is offline or unreachable, fall back seamlessly to Genie's built-in on-device engine
+                let offlineFallback = GenieLocalTinyModelEngine.shared.generateOfflineTinyResponse(prompt: prompt)
+                await streamSimulatedText(
+                    "*(Local daemon at \(cleanHost) unreachable. Switched seamlessly to Genie Built-in Local Engine)*\n\n" + offlineFallback
+                )
             }
         }
 
         self.isGenerating = false
+    }
+
+    // MARK: - Native Built-in Offline Local Model (Zero External Dependencies)
+    public func generateBuiltInOffline(prompt: String) async {
+        let response = GenieLocalTinyModelEngine.shared.generateOfflineTinyResponse(prompt: prompt)
+        await streamSimulatedText(response)
+    }
+
+    public func streamSimulatedText(_ fullText: String) async {
+        let words = fullText.split(separator: " ", omittingEmptySubsequences: false)
+        for (i, word) in words.enumerated() {
+            if Task.isCancelled { break }
+            let chunk = (i == 0 ? "" : " ") + String(word)
+            await MainActor.run {
+                self.currentResponse += chunk
+            }
+            try? await Task.sleep(nanoseconds: 12_000_000)
+        }
+        await MainActor.run {
+            self.isGenerating = false
+        }
     }
 
     public func stopGeneration() {
@@ -1716,33 +2194,17 @@ Format with a ```phone_bridge <status|start|stop>``` block.
 
     @discardableResult
     public func cycleNextModel() -> String {
-        let models: [String] = [
-            "gemini-2.0-flash",
-            "gemini-1.5-pro",
-            "claude-3-7-sonnet-20250219",
-            "claude-3-5-sonnet-20241022",
-            "claude-3-5-haiku-20241022",
-            "gpt-4o",
-            "o3-mini",
-            "genie",
-            "agy",
-            "gemma-2"
-        ]
-        let current = effectiveModel
-        if let idx = models.firstIndex(where: { $0.caseInsensitiveCompare(current) == .orderedSame || current.contains($0) }) {
-            let next = models[(idx + 1) % models.count]
-            selectModel(next)
-            return next
-        } else {
-            selectModel(models[0])
-            return models[0]
-        }
+        // Single-model build: nothing to cycle to.
+        LocalModelManager.primaryModelID
     }
 
     // MARK: - Terminal & Developer Tool Execution Engine
     public func executeTerminalCommand(_ command: String) async -> (output: String, exitCode: Int32) {
         guard terminalAccessEnabled else {
             return ("Terminal access is disabled in settings.", -1)
+        }
+        guard GenieCapabilities.canSpawnSubprocesses else {
+            return (GenieCapabilities.unavailableMessage("Terminal access"), -1)
         }
 
         let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2337,13 +2799,13 @@ Format with a ```phone_bridge <status|start|stop>``` block.
     }
 
     public func extractiMessageCommand(from text: String) -> (recipient: String, content: String)? {
-        let patterns = ["```imessage", "```imsg", "```sms", "```text_phone"]
+        let patterns = ["```imessage", "```imsg", "```sms", "```text_phone", "```ichat", "```messages", "```apple_messages"]
         for p in patterns {
             if let start = text.range(of: p, options: .caseInsensitive) {
                 let remainder = text[start.upperBound...]
                 if let end = remainder.range(of: "```") {
                     let full = String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                    var target = GeniePhoneBridgeManager.shared.appleID
+                    var target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? "nicholas.dudek@icloud.com" : GeniePhoneBridgeManager.shared.appleID
                     var body = full
                     if full.hasPrefix("[recipient=") {
                         if let closeBracket = full.range(of: "]") {
@@ -2351,6 +2813,9 @@ Format with a ```phone_bridge <status|start|stop>``` block.
                             target = String(recPart).trimmingCharacters(in: .whitespacesAndNewlines)
                             body = String(full[closeBracket.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                         }
+                    }
+                    if target.lowercased() == "me" || target.lowercased() == "self" || target.lowercased() == "nicholas" {
+                        target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? "nicholas.dudek@icloud.com" : GeniePhoneBridgeManager.shared.appleID
                     }
                     return (recipient: target, content: body)
                 }
@@ -2381,6 +2846,43 @@ Format with a ```phone_bridge <status|start|stop>``` block.
         }
         return nil
     }
+
+    public func extractAirDropCommand(from text: String) -> String? {
+        let patterns = ["```airdrop", "```air_drop", "```send_airdrop"]
+        for p in patterns {
+            if let start = text.range(of: p, options: .caseInsensitive) {
+                let remainder = text[start.upperBound...]
+                if let end = remainder.range(of: "```") {
+                    return String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
+        return nil
+    }
+
+    public func extractAgentNetworkCommand(from text: String) -> String? {
+        let patterns = ["```agent_network", "```share_net", "```local_network"]
+        for p in patterns {
+            if let start = text.range(of: p, options: .caseInsensitive) {
+                let remainder = text[start.upperBound...]
+                if let end = remainder.range(of: "```") {
+                    return String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
+        return nil
+    }
+
+    public func extractAppDocCommand(from text: String) -> String? {
+        let patterns = ["```app_doc", "```app_documentation", "```doc"]
+        for p in patterns {
+            if let start = text.range(of: p, options: .caseInsensitive) {
+                let remainder = text[start.upperBound...]
+                if let end = remainder.range(of: "```") {
+                    return String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
+        return nil
+    }
 }
-
-
