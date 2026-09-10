@@ -31,15 +31,17 @@ public enum FinderWindowSizePreset: String, CaseIterable, Identifiable {
 
 public enum FinderWindowTab: String, CaseIterable {
     case chat = "Chat"
+    case editor = "Editor"
     case files = "Files"
-    // case note = "Note"      // Hidden for initial production release
-    // case editor = "Editor"  // Hidden for initial production release
+    case worldClock = "World Clock"
     case settings = "Settings"
 
     public var icon: String {
         switch self {
         case .chat: return "bubble.left.and.bubble.right.fill"
+        case .editor: return "chevron.left.forwardslash.chevron.right"
         case .files: return "folder.fill"
+        case .worldClock: return "globe"
         case .settings: return "gearshape.fill"
         }
     }

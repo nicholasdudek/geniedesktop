@@ -171,20 +171,24 @@ public struct GenieBubblySmokeBackgroundView: View {
 
 public enum ChatWindowLayoutMode: String, CaseIterable, Identifiable {
     case chatOnly = "Chat"
-    case files = "Files & Chat"
+    /// Editor: the focused chat render over the folder it writes into, beside the chat.
+    case editor = "Editor"
     case filesOnly = "Files"
+    case worldClock = "World Clock"
     case settingsOnly = "Settings"
 
     public var id: String { rawValue }
 
     public static var consolidatedTabs: [ChatWindowLayoutMode] {
-        [.chatOnly, .files, .settingsOnly]
+        [.chatOnly, .editor, .filesOnly, .worldClock, .settingsOnly]
     }
 
     public var tabTitle: String {
         switch self {
         case .chatOnly: return "Chat"
-        case .files, .filesOnly: return "Files"
+        case .editor: return "Editor"
+        case .filesOnly: return "Files"
+        case .worldClock: return "World Clock"
         case .settingsOnly: return "Settings"
         }
     }
@@ -192,8 +196,9 @@ public enum ChatWindowLayoutMode: String, CaseIterable, Identifiable {
     public var icon: String {
         switch self {
         case .chatOnly: return "bubble.left.and.bubble.right.fill"
-        case .files: return "folder.badge.gearshape"
+        case .editor: return "chevron.left.forwardslash.chevron.right"
         case .filesOnly: return "folder.fill"
+        case .worldClock: return "globe"
         case .settingsOnly: return "gearshape.fill"
         }
     }
@@ -222,14 +227,18 @@ public struct FinderStyleChatWindowView: View {
         get {
             switch windowManager.activeTab {
             case .chat: return .chatOnly
-            case .files: return .files
+            case .editor: return .editor
+            case .files: return .filesOnly
+            case .worldClock: return .worldClock
             case .settings: return .settingsOnly
             }
         }
         nonmutating set {
             switch newValue {
             case .chatOnly: windowManager.activeTab = .chat
-            case .files, .filesOnly: windowManager.activeTab = .files
+            case .editor: windowManager.activeTab = .editor
+            case .filesOnly: windowManager.activeTab = .files
+            case .worldClock: windowManager.activeTab = .worldClock
             case .settingsOnly: windowManager.activeTab = .settings
             }
         }
@@ -273,16 +282,16 @@ public struct FinderStyleChatWindowView: View {
                     let totalW = geo.size.width
                     let totalH = geo.size.height
 
-                    if layoutMode == .files {
+                    if layoutMode == .editor {
                         if totalW < 660 {
-                            fileBrowserPane
+                            filesColumn(width: totalW, height: totalH)
                                 .frame(width: totalW, height: totalH)
                         } else {
                             let browserW = FinderWorkspaceLayout.browserWidth(totalWidth: totalW, ratio: splitRatio)
                             let chatW = totalW - browserW - 8
 
                             HStack(spacing: 0) {
-                                fileBrowserPane
+                                filesColumn(width: browserW, height: totalH)
                                     .frame(width: browserW, height: totalH)
                                     .clipped()
 
@@ -297,6 +306,9 @@ public struct FinderStyleChatWindowView: View {
                         }
                     } else if layoutMode == .filesOnly {
                         fileBrowserPane
+                            .frame(width: totalW, height: totalH)
+                    } else if layoutMode == .worldClock {
+                        GenieWorldClockAlarmPane()
                             .frame(width: totalW, height: totalH)
                     } else if layoutMode == .settingsOnly {
                         settingsPane
@@ -367,7 +379,7 @@ public struct FinderStyleChatWindowView: View {
                     if mode == "settings" || mode == "mode-settings" || mode == "settings-only" {
                         layoutMode = .settingsOnly
                     } else if mode == "files" {
-                        layoutMode = .files
+                        layoutMode = .editor
                     } else {
                         layoutMode = .chatOnly
                     }
@@ -402,6 +414,12 @@ public struct FinderStyleChatWindowView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .genieChatRenderFocused)) { notif in
+            guard let artifact = notif.object as? ChatRenderArtifact else { return }
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                self.previewCreation = (title: artifact.title, html: artifact.body, fileURL: nil)
+            }
+        }
         .onKeyPress(.escape) {
             FinderChatWindowManager.shared.hide()
             return .handled
@@ -417,6 +435,51 @@ public struct FinderStyleChatWindowView: View {
     // MARK: - ⚙️ Settings Pane
     private var fileBrowserPane: some View {
         FinderFileBrowserPaneView(initialURL: browserURL, onNavigate: { browserURL = $0 })
+    }
+
+    /// Files column: the focused chat render sits above the folder, so the editor is
+    /// next to the files it writes and scrolling the chat walks the previews.
+    /// The split is proportional and yields entirely to the browser when the pane is
+    /// too short to show both without either becoming useless.
+    @ViewBuilder
+    private func filesColumn(width: CGFloat, height: CGFloat) -> some View {
+        if let creation = previewCreation, height >= 360 {
+            let previewH = max(200, min(height * 0.58, height - 150))
+            VStack(spacing: 0) {
+                creationPreviewPane(creation: creation)
+                    .frame(width: width, height: previewH)
+                    .clipped()
+
+                Divider().opacity(0.35)
+
+                fileBrowserPane
+                    .frame(width: width, height: height - previewH - 1)
+                    .clipped()
+            }
+            .frame(width: width, height: height)
+        } else if let creation = previewCreation {
+            // Too short to split: the render is what the user just scrolled to, so it wins,
+            // and the button below hands the column back to the browser.
+            VStack(spacing: 0) {
+                creationPreviewPane(creation: creation)
+                    .frame(width: width, height: height - 30)
+                    .clipped()
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                        previewCreation = nil
+                    }
+                } label: {
+                    Label("Show files", systemImage: "folder")
+                        .font(.system(size: 11, weight: .medium))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .frame(height: 30)
+            }
+            .frame(width: width, height: height)
+        } else {
+            fileBrowserPane
+        }
     }
 
     private var settingsPane: some View {

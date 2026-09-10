@@ -1627,6 +1627,7 @@ public struct CompactChatStreamView: View {
                             ForEach(localModels.chatHistory) { msg in
                                 compactMessageBubble(for: msg)
                                     .id(msg.id.uuidString)
+                                    .trackChatRenderFocus(message: msg, space: "genieChatScroll")
                             }
 
                             if localModels.isGenerating {
@@ -1644,6 +1645,7 @@ public struct CompactChatStreamView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                 }
+                .publishFocusedChatRender(space: "genieChatScroll") { localModels.chatHistory }
                 .overlay(alignment: .bottomTrailing) {
                     if localModels.chatHistory.count > 4 {
                         Button(action: {
