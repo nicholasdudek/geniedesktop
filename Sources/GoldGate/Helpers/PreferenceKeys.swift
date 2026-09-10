@@ -252,6 +252,10 @@ public enum PrefKey {
     public static let terminalAccessEnabled = "nexus.terminalAccessEnabled"
     public static let terminalAutoExecute = "nexus.terminalAutoExecute"
     public static let textSize = "nexus.textSize"
+    /// Bounded UI text scale (GenieTextScale) and curated accent (GenieAccent).
+    public static let genieTextScale = "nexus.genieTextScale"
+    public static let genieAccent = "nexus.genieAccent"
+    public static let genieChatTheme = "nexus.genieChatTheme"
     public static let thermalAutoStopEnabled = "nexus.thermalAutoStopEnabled"
     public static let thermalCPUAutoStopThreshold = "nexus.thermalCPUAutoStopThreshold"
     public static let tinyFolderHoverExpand = "nexus.tinyFolderHoverExpand"

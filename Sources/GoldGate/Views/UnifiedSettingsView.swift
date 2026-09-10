@@ -149,6 +149,7 @@ public struct UnifiedSettingsView: View {
     @ObservedObject private var loginItemManager = LoginItemManager.shared
     @ObservedObject private var installerManager = UtilityAppInstallerManager.shared
     @ObservedObject private var tricksterEngine = AppScreenSizeTricksterEngine.shared
+    @ObservedObject private var appearance = GenieAppearance.shared
     @AppStorage(PrefKey.agentSandboxEnabled) private var agentSandboxEnabled: Bool = true
     @AppStorage(PrefKey.agentDedicatedUserEnabled) private var agentDedicatedUserEnabled: Bool = false
     @AppStorage(PrefKey.agentMemoryLimitMB) private var agentMemoryLimitMB: Int = 4096
@@ -1501,6 +1502,8 @@ public struct UnifiedSettingsView: View {
     // MARK: - 6. Living Glass & Atmospheres Pane
     private var livingGlassSettingsPane: some View {
         VStack(spacing: 14) {
+            appearanceCard
+
             settingsGlassCard(title: "Living Glass UI & Vibrancy", icon: "sparkles", tint: .cyan) {
                 VStack(spacing: 10) {
                     HStack {
@@ -2569,6 +2572,132 @@ public struct UnifiedSettingsView: View {
         renamingSessionID = nil
         HapticFeedback.selection()
         showBannerFeedback("Renamed conversation ✏️")
+    }
+
+
+    // MARK: - Appearance (chat theme, text scale, accent)
+
+    /// Presets rather than free controls: every option here has to stay legible on both
+    /// grounds and inside a 460pt window, so the choices are ones that were checked.
+    private var appearanceCard: some View {
+        settingsGlassCard(title: "Appearance", icon: "textformat.size", tint: .purple) {
+            VStack(alignment: .leading, spacing: 14) {
+
+                // ---- Chat layout theme ----
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Chat layout")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+
+                    // Wraps instead of scrolling, so every theme is reachable at any pane width.
+                    FlowingChips(items: GenieChatTheme.allCases) { theme in
+                        let on = appearance.chatTheme == theme
+                        Button {
+                            withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
+                                appearance.chatTheme = theme
+                            }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(theme.label)
+                                    .font(.system(size: 11.5, weight: on ? .semibold : .medium,
+                                                  design: theme.usesSerifHeadings ? .serif : .default))
+                                Text(theme.blurb)
+                                    .font(.system(size: 9.5))
+                                    .foregroundColor(.white.opacity(0.55))
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(width: 148, alignment: .leading)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: max(4, theme.cornerRadius * 0.55), style: .continuous)
+                                    .fill(on ? Color.accentColor.opacity(0.22) : Color.white.opacity(0.06))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: max(4, theme.cornerRadius * 0.55), style: .continuous)
+                                    .stroke(on ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.14),
+                                            lineWidth: on ? 1.4 : 0.8)
+                            )
+                            .shadow(color: .black.opacity(theme.shadowRadius > 0 ? 0.35 : 0),
+                                    radius: theme.shadowRadius * 0.4, y: 2)
+                            .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Divider().opacity(0.18)
+
+                // ---- Text size ----
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Text size")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+
+                    HStack(spacing: 6) {
+                        ForEach(GenieTextScale.allCases) { scale in
+                            let on = appearance.textScale == scale
+                            Button {
+                                appearance.textScale = scale
+                            } label: {
+                                VStack(spacing: 2) {
+                                    // Sample renders at the real size, so the choice is visible first.
+                                    Text("Aa").font(.system(size: scale.previewPointSize, weight: .semibold))
+                                    Text(scale.label).font(.system(size: 9))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .background(RoundedRectangle(cornerRadius: 7)
+                                    .fill(on ? Color.accentColor.opacity(0.22) : Color.white.opacity(0.06)))
+                                .overlay(RoundedRectangle(cornerRadius: 7)
+                                    .stroke(on ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.14),
+                                            lineWidth: on ? 1.4 : 0.8))
+                                .foregroundColor(.white)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Text("Larger sizes step back automatically in narrow panes so the tab row keeps fitting.")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(.white.opacity(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider().opacity(0.18)
+
+                // ---- Accent ----
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Accent")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+
+                    HStack(spacing: 8) {
+                        ForEach(GenieAccent.allCases) { acc in
+                            let on = appearance.accent == acc
+                            Button {
+                                appearance.accent = acc
+                            } label: {
+                                Circle()
+                                    .fill(acc.swatch)
+                                    .frame(width: 22, height: 22)
+                                    .overlay(Circle().stroke(Color.white.opacity(on ? 0.95 : 0.20),
+                                                             lineWidth: on ? 2 : 1))
+                                    .overlay(
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundColor(.black.opacity(0.75))
+                                            .opacity(on ? 1 : 0)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .help(acc.label)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+        }
     }
 
     private func settingsGlassCard<Content: View>(title: String, icon: String, tint: Color, @ViewBuilder content: () -> Content) -> some View {
