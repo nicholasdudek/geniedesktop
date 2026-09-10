@@ -657,8 +657,8 @@ public final class LocalModelManager: ObservableObject {
                     if !discovered.contains(where: { $0.name == "gemma-2" }) {
                         discovered.insert(LocalModelInfo(name: "gemma-2", parameterSize: "Offline", sizeBytes: nil, source: "Google"), at: 1)
                     }
-                    if !discovered.contains(where: { $0.name == "gemma4:4b" }) {
-                        discovered.insert(LocalModelInfo(name: "gemma4:4b", parameterSize: "4B", sizeBytes: nil, source: "Google Gemma 4 profile"), at: 1)
+                    if !discovered.contains(where: { $0.name == "gemma4:e2b" }) {
+                        discovered.insert(LocalModelInfo(name: "gemma4:e2b", parameterSize: "2.3B eff.", sizeBytes: nil, source: "Google Gemma 4 profile"), at: 1)
                     }
                     if !foundEngine {
                         foundEngine = true

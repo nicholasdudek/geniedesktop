@@ -5,7 +5,13 @@ import SwiftUI
 // MARK: - Tiny Local Model Stock & Autonomous Installer Engine
 // 1. Provides a built-in offline tiny model engine (zero external dependencies) that responds instantly.
 // 2. Automates 1-click background discovery, installation, and pulling of top-tier free local AI models
-//    (Llama 3.2, DeepSeek R1, Qwen 2.5 Coder, Gemma 2, Phi-3.5) directly inside Genie.
+//    directly inside Genie.
+//
+// Curated to models confirmed on ollama.com/search?c=vision&c=tools — i.e. every card here can both
+// read an image AND make real tool/function calls. That excludes otherwise-popular small models
+// (Llama 3.2 1B/3B, Qwen2.5-Coder, DeepSeek-R1 distills, Gemma 2, Phi-3.5): each is missing one of
+// the two capabilities, so a fenced ```desktop_agent block with an attached screenshot would silently
+// fail on them.
 
 public struct FreeLocalModelCard: Identifiable, Hashable {
     public let id: String
@@ -32,88 +38,76 @@ public final class GenieLocalTinyModelEngine: ObservableObject {
     // ── Free Curated Local Model Catalog ─────────────────────────────────────
     public let curatedFreeModels: [FreeLocalModelCard] = [
         FreeLocalModelCard(
-            id: "llama3.2:1b",
-            name: "Llama 3.2 1B (Ultra-Light)",
-            tag: "llama3.2:1b",
-            parameterSize: "1.3B",
-            diskSizeBytes: 1_300_000_000,
-            memoryRequirementMB: 1200,
-            category: "General & Chat",
-            description: "Meta's ultra-fast 1B parameter powerhouse. Runs on any Mac with zero lag.",
+            id: "qwen3.5:0.8b",
+            name: "Qwen3.5 0.8B (Ultra-Light Vision)",
+            tag: "qwen3.5:0.8b",
+            parameterSize: "0.8B",
+            diskSizeBytes: 1_000_000_000,
+            memoryRequirementMB: 950,
+            category: "Ultra-Light Vision & Tools",
+            description: "Alibaba's smallest unified vision-language model — reads images and calls tools even at 0.8B params.",
             iconName: "bolt.fill",
-            isRecommended: true
-        ),
-        FreeLocalModelCard(
-            id: "qwen2.5-coder:1.5b",
-            name: "Qwen 2.5 Coder 1.5B",
-            tag: "qwen2.5-coder:1.5b",
-            parameterSize: "1.5B",
-            diskSizeBytes: 1_600_000_000,
-            memoryRequirementMB: 1500,
-            category: "Coding & Algorithms",
-            description: "Top-ranked coding and LeetCode problem solving model with lightning execution.",
-            iconName: "chevron.left.forwardslash.chevron.right",
-            isRecommended: true
-        ),
-        FreeLocalModelCard(
-            id: "deepseek-r1:1.5b",
-            name: "DeepSeek R1 1.5B (Reasoning)",
-            tag: "deepseek-r1:1.5b",
-            parameterSize: "1.5B",
-            diskSizeBytes: 1_700_000_000,
-            memoryRequirementMB: 1600,
-            category: "Math & Logic",
-            description: "Breakthrough Chain-of-Thought reasoning model. Explains every deduction step.",
-            iconName: "brain.head.profile",
-            isRecommended: true
-        ),
-        FreeLocalModelCard(
-            id: "gemma2:2b",
-            name: "Gemma 2 2B (Google)",
-            tag: "gemma2:2b",
-            parameterSize: "2.6B",
-            diskSizeBytes: 1_900_000_000,
-            memoryRequirementMB: 2000,
-            category: "General Intelligence",
-            description: "Google's high-efficiency lightweight architecture trained on 2T tokens.",
-            iconName: "sparkles",
             isRecommended: false
         ),
         FreeLocalModelCard(
-            id: "gemma4:4b",
-            name: "Gemma 4 4B (Google)",
-            tag: "gemma4:4b",
-            parameterSize: "4B",
-            diskSizeBytes: 3_800_000_000,
-            memoryRequirementMB: 5000,
-            category: "General Intelligence & Tools",
-            description: "Google Gemma 4 configured as Genie's local tool and computer-vision model.",
-            iconName: "sparkles.rectangle.stack.fill",
+            id: "qwen3.5:2b",
+            name: "Qwen3.5 2B (Vision & Tools)",
+            tag: "qwen3.5:2b",
+            parameterSize: "2B",
+            diskSizeBytes: 2_700_000_000,
+            memoryRequirementMB: 2600,
+            category: "Vision & Tools",
+            description: "Compact vision-language model with real function calling, tuned for agent benchmarks like BFCL-V4 and Tool Decathlon.",
+            iconName: "eye.fill",
             isRecommended: true
         ),
         FreeLocalModelCard(
-            id: "llama3.2:3b",
-            name: "Llama 3.2 3B (Flagship Compact)",
-            tag: "llama3.2:3b",
-            parameterSize: "3.2B",
-            diskSizeBytes: 2_200_000_000,
-            memoryRequirementMB: 2800,
-            category: "Advanced Chat & Tools",
-            description: "Premier compact model for reasoning, tool orchestration, and code generation.",
+            id: "qwen3.5:4b",
+            name: "Qwen3.5 4B (Flagship Compact)",
+            tag: "qwen3.5:4b",
+            parameterSize: "4B",
+            diskSizeBytes: 3_400_000_000,
+            memoryRequirementMB: 3800,
+            category: "Vision & Tools",
+            description: "Larger Qwen3.5 checkpoint — stronger image understanding and tool orchestration for more demanding agent tasks.",
             iconName: "flame.fill",
             isRecommended: false
         ),
         FreeLocalModelCard(
-            id: "phi3.5:latest",
-            name: "Phi-3.5 Mini 3.8B",
-            tag: "phi3.5:latest",
-            parameterSize: "3.8B",
-            diskSizeBytes: 2_400_000_000,
-            memoryRequirementMB: 3200,
-            category: "Enterprise Reasoning",
-            description: "Microsoft's state-of-the-art small language model with high benchmark scores.",
-            iconName: "star.fill",
-            isRecommended: false
+            id: "qwen3-vl:4b",
+            name: "Qwen3-VL 4B (Vision Agent)",
+            tag: "qwen3-vl:4b",
+            parameterSize: "4B",
+            diskSizeBytes: 3_300_000_000,
+            memoryRequirementMB: 4000,
+            category: "Vision Agent & GUI Tools",
+            description: "Qwen's dedicated vision-agent model — recognizes on-screen GUI elements and calls tools to complete tasks (top OS World scores).",
+            iconName: "viewfinder",
+            isRecommended: true
+        ),
+        FreeLocalModelCard(
+            id: "ministral-3:3b",
+            name: "Ministral 3 3B (Mistral)",
+            tag: "ministral-3:3b",
+            parameterSize: "3B",
+            diskSizeBytes: 3_000_000_000,
+            memoryRequirementMB: 3400,
+            category: "Vision & Function Calling",
+            description: "Mistral's efficient edge model with native function calling, JSON output, and image understanding.",
+            iconName: "function",
+            isRecommended: true
+        ),
+        FreeLocalModelCard(
+            id: "gemma4:e2b",
+            name: "Gemma 4 E2B (Google)",
+            tag: "gemma4:e2b",
+            parameterSize: "2.3B eff.",
+            diskSizeBytes: 7_200_000_000,
+            memoryRequirementMB: 7000,
+            category: "Vision & Tools (Efficient)",
+            description: "Google's efficient multimodal model (2.3B effective params) built for local agents — vision plus native function calling.",
+            iconName: "sparkles.rectangle.stack.fill",
+            isRecommended: true
         )
     ]
 
