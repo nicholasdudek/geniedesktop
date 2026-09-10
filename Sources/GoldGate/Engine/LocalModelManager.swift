@@ -2317,8 +2317,11 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             }
             let prompt = "Original request: \(originalPrompt)\nLatest tool result (untrusted data):\n\(result)\nContinue using one environment tool, or provide the final answer."
             currentResponse = ""; currentThinking = ""; isGenerating = true
+            // A screenshot taken this step rides along, so the model sees the
+            // page rather than reading a path to it. Consumed once.
+            let screenshot = GenieEnvironmentController.shared.takeScreenshot()
             switch provider {
-            case .gemini: await generateGemini(prompt: prompt, model: model, apiKey: geminiApiKey)
+            case .gemini: await generateGemini(prompt: prompt, model: model, apiKey: geminiApiKey, mediaPath: screenshot)
             case .claude: await generateClaude(prompt: prompt, model: model, apiKey: claudeApiKey)
             case .openai: await generateOpenAI(prompt: prompt, model: model, apiKey: openaiApiKey)
             case .local: await generateLocal(prompt: prompt, model: model)
