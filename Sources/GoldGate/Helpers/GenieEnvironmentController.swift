@@ -14,6 +14,7 @@ final class GenieEnvironmentController: ObservableObject {
     @Published var activeJobID: String?
     private var activeEnvironmentID: UUID?
     private var managerInstance: EnvironmentManager?
+    private var pendingScreenshot: String?
 
     var enabled: Bool { UserDefaults.standard.bool(forKey: PrefKey.utmEnvironmentEnabled) && GenieCapabilities.canSpawnSubprocesses }
     var environmentID: UUID? { UserDefaults.standard.string(forKey: PrefKey.utmEnvironmentID).flatMap(UUID.init(uuidString:)) }
@@ -60,6 +61,35 @@ final class GenieEnvironmentController: ObservableObject {
             await refresh()
         } catch { status = error.localizedDescription }
     }
+    /// Screenshots arrive inline so the model can actually see them. The bytes
+    /// are written out for the vision request and stripped from the text result,
+    /// which would otherwise spend the whole context window on base64.
+    private func detachImage(_ value: JSONValue) -> JSONValue {
+        guard case .object(var top) = value,
+              case .object(var observation)? = top["result"],
+              case .object(var detail)? = observation["detail"],
+              let encoded = detail["image"]?.string,
+              let bytes = Data(base64Encoded: encoded) else { return value }
+        detail["image"] = nil
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("genie-screenshot-\(UUID().uuidString).jpg")
+        do {
+            try bytes.write(to: file, options: .atomic)
+            pendingScreenshot = file.path
+            detail["image"] = .string("attached to this message")
+        } catch {
+            detail["image"] = .string("could not be attached: \(error.localizedDescription)")
+        }
+        observation["detail"] = .object(detail)
+        top["result"] = .object(observation)
+        return .object(top)
+    }
+    /// Consumed once, so one screenshot is attached to exactly one request.
+    func takeScreenshot() -> String? {
+        defer { pendingScreenshot = nil }
+        return pendingScreenshot
+    }
+
     /// Stable across launches so a workspace reattaches to its guest state.
     private func guestIdentifier() -> UUID {
         if let existing = UserDefaults.standard.string(forKey: PrefKey.utmVMID).flatMap(UUID.init(uuidString:)) { return existing }
@@ -135,7 +165,7 @@ final class GenieEnvironmentController: ObservableObject {
             defer { activeJobID = nil; activeEnvironmentID = nil }
             status = "Running \(tool) in Linux"
             await refresh()
-            let result = try await manager.result(environment: environment, jobID: jobID)
+            let result = detachImage(try await manager.result(environment: environment, jobID: jobID))
             status = "\(tool): \(result["state"]?.string ?? "finished")"
             await refresh()
             return result.formatted

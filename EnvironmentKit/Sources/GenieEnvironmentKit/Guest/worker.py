@@ -17,6 +17,7 @@ TOOLS = {
     'shell.run', 'python.run', 'filesystem.read', 'filesystem.write', 'filesystem.list',
     'browser.navigate', 'browser.inspect', 'browser.click', 'browser.fill', 'browser.select',
     'browser.press', 'browser.scroll', 'browser.screenshot', 'browser.tabs', 'browser.new_tab',
+    'browser.viewport',
     'browser.switch_tab', 'browser.close_tab', 'browser.back', 'browser.forward', 'browser.reload',
     'browser.evaluate', 'browser.upload', 'browser.wait', 'browser.dialog',
 }
@@ -272,6 +273,10 @@ class Browser:
         self.dialogs = {}
         self.download_tasks = set()
         self.artifacts = []
+        # Defaults match a Mac's CSS pixel size at 2x, so pages render the way
+        # they do on this machine rather than at some arbitrary desktop size.
+        self.viewport = {'width': 1512, 'height': 982}
+        self.scale = 2.0
 
     def track(self, page):
         self.pages[str(uuid.uuid4())] = page
@@ -301,7 +306,8 @@ class Browser:
             self.context = await self.playwright.chromium.launch_persistent_context(
                 str(self.workspace.parent / 'browser-profile'),
                 headless=os.environ.get('GENIE_BROWSER_HEADLESS', '1') == '1',
-                accept_downloads=True, viewport={'width': 1280, 'height': 900})
+                accept_downloads=True, viewport=dict(self.viewport),
+                device_scale_factor=self.scale)
         except BaseException:
             await self.playwright.stop()
             self.playwright = None
@@ -355,9 +361,38 @@ class Browser:
         elif action == 'screenshot':
             folder = self.workspace / 'screenshots'
             folder.mkdir(exist_ok=True)
-            path = folder / (str(uuid.uuid4()) + '.png')
-            await page.screenshot(path=str(path), full_page=bool(data.get('fullPage', False)))
+            # Returned inline by default: a path alone is not something the model
+            # can see. JPEG keeps the reply inside the bridge's line limit.
+            inline = bool(data.get('inline', True))
+            path = folder / (str(uuid.uuid4()) + ('.jpg' if inline else '.png'))
+            full = bool(data.get('fullPage', False))
+            if inline:
+                await page.screenshot(path=str(path), full_page=full, type='jpeg',
+                                      quality=max(20, min(90, int(data.get('quality', 70)))))
+            else:
+                await page.screenshot(path=str(path), full_page=full)
             detail = {'path': str(path.relative_to(self.workspace))}
+            if inline:
+                raw = path.read_bytes()
+                if len(raw) <= 900_000:
+                    detail['image'] = base64.b64encode(raw).decode()
+                    detail['mime'] = 'image/jpeg'
+                else:
+                    detail['imageOmitted'] = 'Screenshot exceeds the inline limit; lower quality or use fullPage false.'
+        elif action == 'viewport':
+            width = max(200, min(5120, int(data.get('width', self.viewport['width']))))
+            height = max(200, min(5120, int(data.get('height', self.viewport['height']))))
+            scale = max(1.0, min(3.0, float(data.get('deviceScaleFactor', self.scale))))
+            self.viewport = {'width': width, 'height': height}
+            if scale != self.scale:
+                # Device scale is fixed when the context is created, so changing
+                # it means rebuilding the context. Cookies and profile survive.
+                self.scale = scale
+                await self.close()
+                await self.ensure()
+                page = self.page
+            await page.set_viewport_size(dict(self.viewport))
+            detail = {'viewport': dict(self.viewport), 'deviceScaleFactor': self.scale}
         elif action in {'back', 'forward', 'reload'}:
             method = {'back': page.go_back, 'forward': page.go_forward, 'reload': page.reload}[action]
             await method(wait_until='domcontentloaded')
