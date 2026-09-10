@@ -8,7 +8,6 @@ import SwiftUI
 public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
     case chat = "Genie Chat 💬"
     case miniDock = "Mini Dock & Bar"
-    case virtualScreen = "Screen Size & Matrix 📱"
     case applications = "Applications"
     case desktop = "Desktop & Files"
     case soundAndSmoke = "Sound & Effects"
@@ -21,11 +20,17 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
 
     public var id: String { rawValue }
 
+    /// Emoji-free label for the UI. `rawValue` stays as-is because it is the
+    /// stable identifier: notifications route by it (UnifiedSettingsTab(rawValue:))
+    /// and it is persisted in AppStorage, so renaming it would break both.
+    public var displayName: String {
+        rawValue.emojiFree
+    }
+
     public var icon: String {
         switch self {
         case .chat: return "bubble.left.and.bubble.right.fill"
         case .miniDock: return "menubar.rectangle"
-        case .virtualScreen: return "iphone.and.arrow.forward"
         case .applications: return "square.grid.2x2.fill"
         case .desktop: return "desktopcomputer"
         case .soundAndSmoke: return "speaker.wave.2.fill"
@@ -42,7 +47,6 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: return .cyan
         case .miniDock: return .blue
-        case .virtualScreen: return .green
         case .applications: return .indigo
         case .desktop: return .teal
         case .soundAndSmoke: return .orange
@@ -59,7 +63,6 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: return ["chat", "dialogue", "ai", "models", "gemini", "claude", "gpt", "ollama", "prompts", "stream", "history"]
         case .miniDock: return ["dock", "bar", "menu bar", "status icon", "battery", "percentage", "genie", "lamp", "person", "style"]
-        case .virtualScreen: return ["screen", "display", "size", "iphone", "matrix", "trickster", "virtual", "compact", "720p", "ipad", "half", "split", "scale", "pioneer"]
         case .applications: return ["applications", "apps", "grid", "slide", "direction", "launcher", "overlay", "size", "spacing"]
         case .desktop: return ["desktop", "files", "hide", "clean", "matrix", "wallpaper"]
         case .soundAndSmoke: return ["sound", "effects", "audio", "haptics", "smoke", "plumes", "animation"]
@@ -225,8 +228,6 @@ public struct UnifiedSettingsView: View {
                             chatSettingsPane
                         case .miniDock:
                             miniDockSettingsPane
-                        case .virtualScreen:
-                            virtualScreenSettingsPane
                         case .applications:
                             applicationsSettingsPane
                         case .desktop:
@@ -330,7 +331,7 @@ public struct UnifiedSettingsView: View {
                                     .font(.system(size: 9.5, weight: .semibold))
                                     .foregroundColor(isActive ? tab.tintColor : .secondary)
 
-                                Text(tab.rawValue)
+                                Text(tab.displayName)
                                     .font(.system(size: 10.5, weight: isActive ? .semibold : .regular, design: .default))
                                     .foregroundColor(isActive ? .white : .white.opacity(0.70))
                             }
@@ -413,7 +414,7 @@ public struct UnifiedSettingsView: View {
                                         .foregroundColor(.white)
                                 }
 
-                                Text(tab.rawValue)
+                                Text(tab.displayName)
                                     .font(.system(size: 13, weight: .regular, design: .default))
                                     .foregroundColor(isSelected ? .white : .primary)
                                     .lineLimit(1)
@@ -1046,172 +1047,6 @@ public struct UnifiedSettingsView: View {
             }
         }
     }
-
-    // MARK: - 📱 Pioneered Virtual Screen Display & Matrix Pane
-    private var virtualScreenSettingsPane: some View {
-        VStack(spacing: 14) {
-            // Hero Pioneer Card
-            settingsGlassCard(title: "Pioneered Screen Size Trickster", icon: "sparkles.rectangle.stack", tint: .green) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "lightbulb.max.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.green)
-
-                        Text("Pioneered Virtual Resolution Architecture")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                    }
-
-                    Text("Instead of shrinking your entire desktop, Genie tricks programs on launch into compact mobile & matrix resolutions (e.g. iPhone size, iPad size, 3×3 slot matrix, or 720p). Up to 9 full applications run side-by-side natively on your high-resolution desktop without scaling distortion.")
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundColor(.white.opacity(0.75))
-                        .lineSpacing(2.5)
-
-                    Divider().opacity(0.15)
-
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Auto-Trick Apps On Launch")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white)
-                            Text("Intercept new application launches and clamp them to compact size.")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white.opacity(0.55))
-                        }
-                        Spacer()
-                        Toggle("", isOn: $tricksterEngine.isTricksterEnabled)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                    }
-                }
-            }
-
-            // Live Resizer & Active Window Clamper
-            settingsGlassCard(title: "Live Active Window Resizer", icon: "arrow.down.right.and.arrow.up.left", tint: .cyan) {
-                VStack(spacing: 10) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Current Default Preset: \(tricksterEngine.defaultProfile.rawValue)")
-                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                                .foregroundColor(.cyan)
-                            Text("Applies immediate window clamping to whichever app is frontmost.")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white.opacity(0.55))
-                        }
-                        Spacer()
-
-                        Button(action: {
-                            let didClamp = tricksterEngine.clampFrontmostApplication(to: tricksterEngine.defaultProfile)
-                            if didClamp {
-                                statusFeedback = "⚡ Resized \(tricksterEngine.lastTrickedApp ?? "App") to \(tricksterEngine.defaultProfile.rawValue)"
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { statusFeedback = nil }
-                            }
-                        }) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "bolt.fill")
-                                Text("Resize Front App Now")
-                            }
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.cyan)
-                            .clipShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            // Virtual Screen Profiles Selector Grid
-            settingsGlassCard(title: "Choose Virtual Screen Profile", icon: "display.2", tint: .green) {
-                VStack(alignment: .leading, spacing: 10) {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                        ForEach(VirtualScreenProfile.allCases) { profile in
-                            let isSelected = (tricksterEngine.defaultProfile == profile)
-                            Button(action: {
-                                HapticFeedback.selection()
-                                tricksterEngine.defaultProfile = profile
-                                tricksterEngine.clampFrontmostApplication(to: profile)
-                            }) {
-                                VStack(alignment: .leading, spacing: 5) {
-                                    HStack {
-                                        Image(systemName: profile.icon)
-                                            .font(.system(size: 13, weight: .bold))
-                                            .foregroundColor(isSelected ? .green : .white.opacity(0.70))
-                                        Spacer()
-                                        if isSelected {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.system(size: 12))
-                                                .foregroundColor(.green)
-                                        }
-                                    }
-
-                                    Text(profile.rawValue)
-                                        .font(.system(size: 10.5, weight: isSelected ? .bold : .medium, design: .rounded))
-                                        .foregroundColor(.white)
-                                        .lineLimit(1)
-
-                                    Text(profile.category)
-                                        .font(.system(size: 9, weight: .regular))
-                                        .foregroundColor(isSelected ? .green.opacity(0.85) : .white.opacity(0.40))
-                                }
-                                .padding(10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(isSelected ? Color.green.opacity(0.20) : Color.white.opacity(0.06))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .stroke(isSelected ? Color.green.opacity(0.70) : Color.white.opacity(0.10), lineWidth: 0.8)
-                                        )
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-
-            // 1-Click Test Launch Bar
-            settingsGlassCard(title: "1-Click Launch At Selected Size", icon: "play.circle.fill", tint: .orange) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Launch common apps with instant compact geometry clamping:")
-                        .font(.system(size: 10.5))
-                        .foregroundColor(.white.opacity(0.60))
-
-                    HStack(spacing: 8) {
-                        ForEach(["Safari", "Notes", "Xcode", "Simulator", "Terminal"], id: \.self) { appName in
-                            Button(action: {
-                                HapticFeedback.selection()
-                                Task {
-                                    await tricksterEngine.launchWithSpoofedScreenSize(
-                                        appName: appName,
-                                        profile: tricksterEngine.defaultProfile,
-                                        slotIndex: tricksterEngine.findNextAvailableSlot()
-                                    )
-                                }
-                            }) {
-                                Text("🚀 \(appName)")
-                                    .font(.system(size: 10.5, weight: .medium, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.orange.opacity(0.25))
-                                            .overlay(Capsule().stroke(Color.orange.opacity(0.50), lineWidth: 0.7))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - 2. Applications Launcher Pane
     private var applicationsSettingsPane: some View {
         VStack(spacing: 14) {
             settingsGlassCard(title: "Applications Canvas & Visibility", icon: "macwindow.on.rectangle", tint: .indigo) {
@@ -1317,38 +1152,6 @@ public struct UnifiedSettingsView: View {
                                 HapticFeedback.selection()
                                 showBannerFeedback(newVal ? "Scroll wheel direction reversed 🔄" : "Standard wheel direction ↕️")
                             }
-                    }
-                }
-            }
-
-            settingsGlassCard(title: "Clear HTML Overlay & Solutions", icon: "safari.fill", tint: .purple) {
-                VStack(spacing: 10) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Floating Transparent HTML Overlay")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white)
-                            Text("Loads transparent WebKit canvas connected to Swift with clickable solutions and image actions.")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white.opacity(0.55))
-                        }
-                        Spacer()
-                        Button(action: {
-                            HapticFeedback.selection()
-                            GenieClearHTMLOverlayManager.shared.toggle()
-                        }) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "sparkles")
-                                Text(GenieClearHTMLOverlayManager.shared.isVisible ? "Hide Overlay" : "Launch Overlay")
-                            }
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(Color.purple.opacity(0.40)))
-                            .overlay(Capsule().stroke(Color.purple.opacity(0.60), lineWidth: 0.8))
-                        }
-                        .buttonStyle(.plain)
                     }
                 }
             }

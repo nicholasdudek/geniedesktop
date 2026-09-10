@@ -7,16 +7,19 @@ import SwiftUI
 public enum UnifiedDockTab: String, CaseIterable, Identifiable {
     case chat = "Chat 💬"
     case apps = "Apps 🪟"
-    case screenMatrix = "Screen Size 📱"
     case settings = "Settings ⚙️"
 
     public var id: String { rawValue }
+
+    /// Emoji-free label. `rawValue` is matched against by name elsewhere, so it stays.
+    public var displayName: String {
+        rawValue.emojiFree
+    }
 
     public var icon: String {
         switch self {
         case .chat: return "bubble.left.and.bubble.right.fill"
         case .apps: return "square.grid.2x2.fill"
-        case .screenMatrix: return "iphone.and.arrow.forward"
         case .settings: return "gearshape.fill"
         }
     }
@@ -25,7 +28,6 @@ public enum UnifiedDockTab: String, CaseIterable, Identifiable {
         switch self {
         case .chat: return .cyan
         case .apps: return .orange
-        case .screenMatrix: return .green
         case .settings: return .purple
         }
     }
@@ -110,8 +112,6 @@ public struct RightSideUnifiedDockView: View {
                     chatTabContent
                 case .apps:
                     appsTabContent
-                case .screenMatrix:
-                    screenMatrixTabContent
                 case .settings:
                     settingsTabContent
                 }
@@ -224,7 +224,7 @@ public struct RightSideUnifiedDockView: View {
                             Image(systemName: tab.icon)
                                 .font(.system(size: 10, weight: .bold))
 
-                            Text(tab.rawValue.components(separatedBy: " ").first ?? "")
+                            Text(tab.displayName.components(separatedBy: " ").first ?? "")
                                 .font(.system(size: 10.5, weight: isSelected ? .bold : .medium, design: .rounded))
                         }
                         .foregroundColor(isSelected ? .white : .white.opacity(0.60))
@@ -478,111 +478,6 @@ public struct RightSideUnifiedDockView: View {
             hoveredAppId = h ? app.id : nil
         }
     }
-
-    // MARK: - 3. 📱 Pioneered Screen Size & Matrix Tab Content
-    private var screenMatrixTabContent: some View {
-        ScrollView(.vertical, showsIndicators: true) {
-            VStack(alignment: .leading, spacing: 14) {
-                // Hero Pioneer Header Card
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Circle().fill(Color.green).frame(width: 7, height: 7)
-                        Text("PIONEERED SCREEN SIZE TRICKSTER")
-                            .font(.system(size: 10.5, weight: .heavy, design: .rounded))
-                            .foregroundColor(.green)
-                    }
-
-                    Text("Trick apps on launch into compact mobile & matrix resolutions so up to 9 apps load natively on your desktop.")
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundColor(.white.opacity(0.75))
-                }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.green.opacity(0.12))
-                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.green.opacity(0.35), lineWidth: 0.8))
-                )
-
-                // Live Action: Resize Active Window Now
-                Button(action: {
-                    tricksterEngine.clampFrontmostApplication(to: tricksterEngine.defaultProfile)
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.down.right.and.arrow.up.left")
-                            .font(.system(size: 12, weight: .bold))
-                        Text("⚡ Apply Selected Size to Frontmost Window")
-                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                    }
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(Color.green)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .shadow(color: Color.green.opacity(0.40), radius: 6, y: 2)
-
-                // Category Profiles Grid with Stage Manager Magnification Wave
-                Text("VIRTUAL DISPLAY PROFILES")
-                    .font(.system(size: 9.5, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white.opacity(0.50))
-                    .padding(.top, 4)
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(VirtualScreenProfile.allCases) { profile in
-                        virtualProfileCard(profile: profile)
-                    }
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-        }
-    }
-
-    @ViewBuilder
-    private func virtualProfileCard(profile: VirtualScreenProfile) -> some View {
-        let isSelected = (tricksterEngine.defaultProfile == profile)
-        let isHovered = (hoveredProfileId == profile.id)
-
-        Button(action: {
-            HapticFeedback.selection()
-            tricksterEngine.defaultProfile = profile
-            tricksterEngine.clampFrontmostApplication(to: profile)
-        }) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Image(systemName: profile.icon)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(isSelected ? .green : .white.opacity(0.75))
-                    Spacer()
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.green)
-                    }
-                }
-
-                Text(profile.rawValue)
-                    .font(.system(size: 10.5, weight: isSelected ? .bold : .medium, design: .rounded))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-
-                Text(profile.category)
-                    .font(.system(size: 9, weight: .regular))
-                    .foregroundColor(isSelected ? .green.opacity(0.9) : .white.opacity(0.45))
-            }
-            .padding(10)
-            .background(isSelected ? Color.green.opacity(0.25) : (isHovered ? Color.white.opacity(0.12) : Color.white.opacity(0.06)))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .scaleEffect(isHovered ? 1.05 : 1.0)
-        }
-        .buttonStyle(.plain)
-        .onHover { h in
-            hoveredProfileId = h ? profile.id : nil
-        }
-    }
-
-    // MARK: - 4. ⚙️ Embedded Settings Tab Content
     private var settingsTabContent: some View {
         UnifiedSettingsView(isEmbedded: true)
             .frame(maxWidth: .infinity, maxHeight: .infinity)

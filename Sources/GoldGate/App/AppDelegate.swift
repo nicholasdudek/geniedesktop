@@ -403,7 +403,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let dropdownTab: DropdownSidebarTab
         switch tab {
         case .chat: dropdownTab = .chat
-        case .applications, .virtualScreen: dropdownTab = .applications
+        case .applications: dropdownTab = .applications
         case .miniDock: dropdownTab = .battery
         case .desktop: dropdownTab = .workspace
         case .soundAndSmoke: dropdownTab = .soundHaptics
@@ -417,7 +417,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let dropdownTab: DropdownSidebarTab
         switch tab {
         case .chat: dropdownTab = .chat
-        case .applications, .virtualScreen: dropdownTab = .applications
+        case .applications: dropdownTab = .applications
         case .miniDock: dropdownTab = .battery
         case .desktop: dropdownTab = .workspace
         case .soundAndSmoke: dropdownTab = .soundHaptics
