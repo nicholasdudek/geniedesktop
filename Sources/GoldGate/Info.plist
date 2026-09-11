@@ -14,19 +14,16 @@
 	<string>com.nicholasdudek.genie</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- English only. This list is what the App Store advertises as the app's
+	     supported languages, so it must match what actually ships: there are no
+	     .lproj bundles, no .xcstrings catalog and no NSLocalizedString call
+	     sites in the target. Re-add a language here only once its strings exist. -->
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
-		<string>es</string>
-		<string>fr</string>
-		<string>de</string>
-		<string>ja</string>
-		<string>zh-Hans</string>
-		<string>it</string>
-		<string>ko</string>
-		<string>pt-BR</string>
-		<string>ar</string>
 	</array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
 	<key>CFBundleName</key>
 	<string>Genie</string>
 	<key>CFBundlePackageType</key>
@@ -34,7 +31,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>4.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>400</string>
+	<string>401</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationCategoryType</key>
@@ -63,6 +60,10 @@
 	<string>Genie shows files on connected drives inside its file workspace.</string>
 	<key>NSNetworkVolumesUsageDescription</key>
 	<string>Genie shows files on network volumes and shared folders inside its file workspace.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Genie uses speech recognition to decode your spoken words directly into chat messages and trigger voice commands.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Genie accesses the microphone to listen for Hey Genie, voice typing, and hands-free desktop actions.</string>
 
 	<key>CFBundleURLTypes</key>
 	<array>

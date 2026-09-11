@@ -269,7 +269,15 @@ public final class MacDesktopsManager: ObservableObject {
     private typealias SLSCopyManagedDisplaysFunc = @convention(c) (Int32) -> CFArray?
     private typealias CGSGetActiveSpaceFunc = @convention(c) (Int32) -> UInt64
 
+    // Spaces are a private window-server concept: there is no public API to
+    // read, switch, create or destroy one. Genie Lite compiles these out
+    // entirely — see GenieCapabilities.canManageSpaces — because the SkyLight
+    // path and the SLS*/CGS* symbol names would otherwise ship as strings in
+    // the binary and trip App Store Connect's 2.5.1 static analysis.
     public func getLiveActiveSpaceID() -> UInt64? {
+        #if GENIE_MAS
+        return nil
+        #else
         guard let handle = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY) ?? dlopen(nil, RTLD_LAZY),
               let cidSym = dlsym(handle, "SLSMainConnectionID"),
               let getActiveSpaceSym = dlsym(handle, "CGSGetActiveSpace") else {
@@ -280,9 +288,13 @@ public final class MacDesktopsManager: ObservableObject {
         let cid = getCID()
         let activeID = getActiveSpace(cid)
         return activeID > 0 ? activeID : nil
+        #endif
     }
 
     public func switchSpaceViaSkyLight(targetSpaceID: UInt64, displayID: String? = nil) -> Bool {
+        #if GENIE_MAS
+        return false
+        #else
         guard let handle = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY) ?? dlopen(nil, RTLD_LAZY),
               let cidSym = dlsym(handle, "SLSMainConnectionID"),
               let setSpaceSym = dlsym(handle, "SLSManagedDisplaySetCurrentSpace") else {
@@ -316,6 +328,7 @@ public final class MacDesktopsManager: ObservableObject {
 
         // 3. Last fallback to "Main"
         return setSpace(cid, "Main" as CFString, targetSpaceID) == 0
+        #endif
     }
 
     public func switchToDesktop(index: Int) {
@@ -380,7 +393,7 @@ public final class MacDesktopsManager: ObservableObject {
 
     private func verifySpaceSwitch(targetIndex: Int, attempts: Int) {
         Task { @MainActor in
-            for i in 0..<attempts {
+            for _ in 0..<attempts {
                 refreshSpaces()
                 if self.currentSpaceIndex == targetIndex {
                     break
@@ -446,6 +459,10 @@ public final class MacDesktopsManager: ObservableObject {
         // 3. Hardware destruction attempt via SkyLight
         if let targetSpace = spaces.first(where: { $0.index == index }),
            let id64 = targetSpace.id64 {
+            // Genie Lite cannot destroy a real Space (private window server,
+            // Guideline 2.5.1), and cannot create one either, so it only drops
+            // the entry from its own list below.
+            #if !GENIE_MAS
             typealias SLSMainConnectionIDFunc = @convention(c) () -> Int32
             typealias SLSSpaceDestroyFunc = @convention(c) (Int32, UInt64) -> Int32
 
@@ -457,6 +474,7 @@ public final class MacDesktopsManager: ObservableObject {
                 _ = destroy(getCID(), id64)
                 dlclose(handle)
             }
+            #endif
         }
 
         // 4. Remove space locally with animation
@@ -554,6 +572,10 @@ public final class MacDesktopsManager: ObservableObject {
         // 1. Hardware destruction via SkyLight
         if let targetSpace = spaces.first(where: { $0.index == index }),
            let id64 = targetSpace.id64 {
+            // Genie Lite cannot destroy a real Space (private window server,
+            // Guideline 2.5.1), and cannot create one either, so it only drops
+            // the entry from its own list below.
+            #if !GENIE_MAS
             typealias SLSMainConnectionIDFunc = @convention(c) () -> Int32
             typealias SLSSpaceDestroyFunc = @convention(c) (Int32, UInt64) -> Int32
 
@@ -565,6 +587,7 @@ public final class MacDesktopsManager: ObservableObject {
                 _ = destroy(getCID(), id64)
                 dlclose(handle)
             }
+            #endif
         }
 
         // 2. Remove space from state with animation
@@ -699,6 +722,11 @@ public final class MacDesktopsManager: ObservableObject {
 
     // MARK: - Hardware-Level WindowServer & Mission Control Space Creation
     public func executeHardwareSpaceCreation() -> UInt64? {
+        #if GENIE_MAS
+        // No public API allocates a Space. Genie Lite reports failure and the
+        // caller falls back to a list-only desktop entry.
+        return nil
+        #else
         typealias SLSMainConnectionIDFunc = @convention(c) () -> Int32
         typealias SLSSpaceCreateFunc = @convention(c) (Int32, UInt32, CFDictionary?) -> UInt64
         typealias SLSManagedDisplaySetCurrentSpaceFunc = @convention(c) (Int32, CFString, UInt64) -> Int32
@@ -729,6 +757,7 @@ public final class MacDesktopsManager: ObservableObject {
         }
 
         return newSpaceID
+        #endif
     }
 
     // MARK: - Create Desktop Feature

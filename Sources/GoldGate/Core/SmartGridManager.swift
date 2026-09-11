@@ -283,6 +283,13 @@ public final class SmartGridManager: ObservableObject {
             snapFrontmostWindow(direction: .center)
             return true
 
+        case 6: // ⌘ + ⌥ + Z = Toggle SkyLight Zen Mode Full-Screen Overlay!
+            HapticFeedback.selection()
+            DispatchQueue.main.async {
+                SkyLightZenOverlayManager.shared.toggle()
+            }
+            return true
+
         case 49: // ⌘ + ⌥ + Space = Bring All to Screen!
             HapticFeedback.heavy()
             bringAllToScreen()
@@ -906,6 +913,10 @@ public final class SmartGridManager: ObservableObject {
         var cid: Int32 = 0
         var slHandle: UnsafeMutableRawPointer? = nil
 
+        // Genie Lite leaves moveFunc nil: moving a window to another Space is
+        // private window server only (Guideline 2.5.1). The distribution loop
+        // below already falls back to plain AX placement when it is nil.
+        #if !GENIE_MAS
         if let handle = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/Versions/A/SkyLight", RTLD_LAZY),
            let cidSym = dlsym(handle, "SLSMainConnectionID"),
            let moveSym = dlsym(handle, "SLSMoveWindowsToManagedSpace") {
@@ -914,6 +925,7 @@ public final class SmartGridManager: ObservableObject {
             moveFunc = unsafeBitCast(moveSym, to: SLSMoveWindowsToManagedSpaceFunc.self)
             cid = getCID()
         }
+        #endif
 
         // 3. Distribute apps evenly across spaces 1...min(4, availableSpaces.count)
         let spaceCount = min(4, availableSpaces.count)
@@ -1008,6 +1020,10 @@ public final class SmartGridManager: ObservableObject {
         let visibleWindows = getVisibleWindows(primaryHeight: primaryHeight)
         let appWindows = visibleWindows.filter { $0.pid == pid }
 
+        // Private window server only — compiled out of Genie Lite. The spatial
+        // registry update below still runs, so Genie's own model of where the
+        // app lives stays correct even when the real window cannot be moved.
+        #if !GENIE_MAS
         typealias SLSMainConnectionIDFunc = @convention(c) () -> Int32
         typealias SLSMoveWindowsToManagedSpaceFunc = @convention(c) (Int32, CFArray, UInt64) -> Int32
 
@@ -1024,6 +1040,7 @@ public final class SmartGridManager: ObservableObject {
             }
             dlclose(handle)
         }
+        #endif
 
         SpatialPlaneManager.shared.moveAppInSpatialRegistry(pid: pid, targetDesktopIndex: targetDesktopIndex)
         lastStatusMessage = "Moved to Desktop \(targetDesktopIndex)"

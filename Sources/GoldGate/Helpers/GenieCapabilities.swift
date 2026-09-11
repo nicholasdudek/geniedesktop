@@ -97,6 +97,42 @@ public enum GenieCapabilities {
     /// to move itself.
     public static let canRelocateOwnBundle = !isAppStoreBuild
 
+    /// Calling into the private window server — SkyLight/CoreGraphics `SLS*`
+    /// and `CGS*` symbols, plus `DisplayServices` and `CoreBrightness`.
+    ///
+    /// Guideline 2.5.1: App Store apps may use public APIs only. These are
+    /// resolved with `dlopen`/`dlsym` rather than linked, so the framework
+    /// paths and every symbol name land in the binary as plain strings —
+    /// exactly what App Store Connect's static analysis greps for. Gating the
+    /// *calls* is therefore not enough: the `dlopen` block itself has to be
+    /// compiled out, or the strings still ship. Verify with
+    /// `strings Genie | grep PrivateFrameworks`.
+    ///
+    /// What this costs Genie Lite: Spaces create/destroy/switch, moving a
+    /// window to another Space, transforming another app's window, and display
+    /// brightness. None has a public equivalent. Tiling, moving and resizing
+    /// windows do — the Accessibility API — so those keep working; see
+    /// `GenieSmartTilingEngine`.
+    public static let canUsePrivateWindowServer = !isAppStoreBuild
+
+    /// Spaces (virtual desktop) management. Private window server only.
+    public static let canManageSpaces = !isAppStoreBuild
+
+    /// Scaling or transforming another application's window. Private window
+    /// server only — the Accessibility API can move and resize, not transform.
+    public static let canTransformForeignWindows = !isAppStoreBuild
+
+    /// Display brightness control (DisplayServices / CoreBrightness).
+    public static let canControlDisplayBrightness = !isAppStoreBuild
+
+    /// Spawning Linux guests with `Virtualization.framework` (the Hypervisor
+    /// edition's Golden Image clones). Two independent blockers, not one:
+    /// `com.apple.security.virtualization` is not in the App Store profile, and
+    /// a guest that boots a downloaded disk image and runs arbitrary binaries
+    /// inside it is Guideline 2.5.2 either way. Genie Lite compiles the engine
+    /// out entirely — see `Engine/Hypervisor/GenieHypervisorEngine.swift`.
+    public static let canRunVirtualMachines = !isAppStoreBuild
+
     // MARK: - Container-safe paths
 
     /// Genie's shared working directory.
@@ -105,13 +141,13 @@ public enum GenieCapabilities {
     /// sandbox that path is unwritable, so Genie Lite redirects into the
     /// App Group container, which is the sanctioned equivalent.
     public static var sharedSupportDirectory: URL {
-        if canWriteOutsideContainer {
-            return URL(fileURLWithPath: "/Users/Shared/Genie", isDirectory: true)
-        }
         let group = "group.com.nicholasdudek.genie"
         if let container = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: group) {
             return container.appendingPathComponent("Genie", isDirectory: true)
+        }
+        if canWriteOutsideContainer {
+            return URL(fileURLWithPath: "/Users/Shared/Genie", isDirectory: true)
         }
         return FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

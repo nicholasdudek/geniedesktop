@@ -45,6 +45,16 @@ public final class SkyLightWindowServerTransformBridge: @unchecked Sendable {
     }
 
     private func bindSymbols() {
+        #if GENIE_MAS
+        // Genie Lite: bind nothing. Guideline 2.5.1 — these are private
+        // window-server symbols. They are resolved by name at runtime, so the
+        // framework path and every symbol string below would ship inside the
+        // binary and be flagged by App Store Connect's static analysis even
+        // though the calls are unreachable. Leaving the function pointers nil
+        // makes `isAvailable` false, and every wrapper below already guards on
+        // it, so callers degrade instead of crashing.
+        return
+        #else
         guard let handle = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/Versions/A/SkyLight", RTLD_LAZY)
                 ?? dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY)
                 ?? dlopen(nil, RTLD_LAZY) else {
@@ -96,6 +106,7 @@ public final class SkyLightWindowServerTransformBridge: @unchecked Sendable {
         if let sym = dlsym(handle, "SLSSetWindowSubLevel") ?? dlsym(handle, "CGSSetWindowSubLevel") {
             self.setSubLevel = unsafeBitCast(sym, to: CGSSetWindowSubLevelFunc.self)
         }
+        #endif
     }
 
     public func connectionID() -> Int32 {

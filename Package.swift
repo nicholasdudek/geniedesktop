@@ -62,9 +62,10 @@ let package = Package(
             ],
             path: "Sources/GoldGate",
             exclude: [
-                "Info.plist", 
-                "Genie.entitlements", 
-                "Genie.AppStore.entitlements", 
+                "Info.plist",
+                "PrivacyInfo.xcprivacy",
+                "Genie.entitlements",
+                "Genie.AppStore.entitlements",
                 "AppIcon.icns", 
                 "HeaderBadge.jpg", 
                 "HeaderBadge.png", 

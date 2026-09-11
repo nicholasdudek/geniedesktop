@@ -49,7 +49,27 @@ public final class GenieCodebaseEvolutionEngine: ObservableObject {
     @Published public var recommendations: [CodeEvolutionRecommendation] = []
     @Published public var activeEvolvingFile: String? = nil
 
-    private let projectRoot = "/Users/nicholasdudek/Developer/GoldGate"
+    /// Root of the source tree this engine indexes.
+    ///
+    /// This used to be the absolute path of one developer's checkout, which
+    /// meant every shipped copy enumerated a directory that does not exist on
+    /// the user's Mac — and put that developer's home directory in the binary.
+    /// Resolved at runtime instead: an explicit override first, then a checkout
+    /// if one happens to be present, then the app's own container.
+    private let projectRoot: String = {
+        let fm = FileManager.default
+        if let override = ProcessInfo.processInfo.environment["GENIE_PROJECT_ROOT"],
+           !override.isEmpty, fm.fileExists(atPath: override) {
+            return override
+        }
+        if GenieCapabilities.canWriteOutsideContainer {
+            let checkout = fm.homeDirectoryForCurrentUser
+                .appendingPathComponent("Desktop/Genie/GoldGate", isDirectory: true)
+            if fm.fileExists(atPath: checkout.path) { return checkout.path }
+        }
+        return GenieCapabilities.sharedSupportDirectory
+            .appendingPathComponent("Codebase", isDirectory: true).path
+    }()
 
     private init() {
         scanAndIndexCodebase()
@@ -194,7 +214,7 @@ PARAMETER top_p 0.95
 PARAMETER stop "<|im_end|>"
 PARAMETER stop "<|im_start|>"
 
-SYSTEM \"\"\"You are Genie-Codebase-Evolver, a specialized autonomous AI model specifically fine-tuned on Nicholas Dudek's Genie Desktop codebase (/Users/nicholasdudek/Developer/GoldGate).
+SYSTEM \"\"\"You are Genie-Codebase-Evolver, a specialized autonomous AI model specifically fine-tuned on the Genie Desktop codebase.
 You understand every Swift struct, Metal shader, Inverse Probability engine, Spatial Dome math, and CompactParticleBuffer.
 Your goal is to inspect, analyze, debug, benchmark, and evolve the codebase toward extreme low RAM (<35 MB), zero heap fragmentation, and 120 FPS liquid performance.\"\"\"
 """

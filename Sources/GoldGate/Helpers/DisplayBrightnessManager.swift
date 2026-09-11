@@ -25,7 +25,15 @@ public final class DisplayBrightnessManager: ObservableObject {
         refreshBrightness()
     }
 
+    // DisplayServices and CoreBrightness are private frameworks, and
+    // KeyboardBrightnessClient is a private class reached through
+    // NSClassFromString — all three are Guideline 2.5.1. macOS exposes no
+    // public API for setting display or keyboard brightness, so Genie Lite
+    // drops the feature: the function pointers stay nil,
+    // isKeyboardBacklightAvailable stays false, and the brightness controls
+    // hide themselves rather than presenting sliders that do nothing.
     private func loadDisplayServices() {
+        #if !GENIE_MAS
         if let handle = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_LAZY) {
             if let getSym = dlsym(handle, "DisplayServicesGetBrightness") {
                 getBrightnessFn = unsafeBitCast(getSym, to: DisplayServicesGetBrightnessFunc.self)
@@ -34,9 +42,11 @@ public final class DisplayBrightnessManager: ObservableObject {
                 setBrightnessFn = unsafeBitCast(setSym, to: DisplayServicesSetBrightnessFunc.self)
             }
         }
+        #endif
     }
 
     private func loadKeyboardBrightnessClient() {
+        #if !GENIE_MAS
         _ = dlopen("/System/Library/PrivateFrameworks/CoreBrightness.framework/CoreBrightness", RTLD_LAZY)
         if let cls = NSClassFromString("KeyboardBrightnessClient") as? NSObject.Type {
             let client = cls.init()
@@ -46,6 +56,7 @@ public final class DisplayBrightnessManager: ObservableObject {
                 self.isKeyboardBacklightAvailable = true
             }
         }
+        #endif
     }
 
     public func refreshBrightness() {

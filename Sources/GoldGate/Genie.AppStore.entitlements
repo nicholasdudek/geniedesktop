@@ -24,6 +24,26 @@
 	<key>com.apple.security.device.camera</key>
 	<true/>
 
+	<!-- Microphone. Same bug as the camera had: Info.plist declares
+	     NSMicrophoneUsageDescription and NSSpeechRecognitionUsageDescription,
+	     and GenieSpeechRecognitionEngine (AVAudioEngine.inputNode +
+	     SFSpeechRecognizer) ships in the Lite build, but without this
+	     entitlement the sandbox denies the input node and "Hey Genie",
+	     voice typing and dictation fail silently. -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+
+	<!-- App Group. GenieCapabilities.sharedSupportDirectory,
+	     FinderSyncIPC and AgentSystemTools all resolve
+	     group.com.nicholasdudek.genie, and both extension entitlement files
+	     declare it. Without it on the host app,
+	     containerURL(forSecurityApplicationGroupIdentifier:) returns nil and
+	     the Finder Sync / Widget IPC silently has nowhere to meet. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.nicholasdudek.genie</string>
+	</array>
+
 	<!-- File access. Full Disk Access is not available to sandboxed apps;
 	     Genie Lite uses user-selected scope + security-scoped bookmarks. -->
 	<key>com.apple.security.files.user-selected.read-write</key>
@@ -31,12 +51,6 @@
 	<key>com.apple.security.files.bookmarks.app-scope</key>
 	<true/>
 	<key>com.apple.security.files.downloads.read-write</key>
-	<true/>
-	<key>com.apple.security.files.pictures.read-write</key>
-	<true/>
-	<key>com.apple.security.assets.movies.read-write</key>
-	<true/>
-	<key>com.apple.security.assets.music.read-write</key>
 	<true/>
 
 	<!-- Apple Events, scoped to the specific apps Genie automates.
@@ -50,6 +64,11 @@
 		<string>com.apple.Notes</string>
 		<string>com.apple.Stickies</string>
 		<string>com.spotify.client</string>
+		<string>com.apple.MobileSMS</string>
+		<!-- AgentMailTools.sendMail composes and sends a message the user asked
+		     the agent to send. Was scripted without being listed here, so the
+		     sandbox refused it. -->
+		<string>com.apple.mail</string>
 	</array>
 	<key>com.apple.security.scripting-targets</key>
 	<dict>
@@ -64,11 +83,6 @@
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>
-	</array>
-
-	<key>com.apple.security.application-groups</key>
-	<array>
-		<string>group.com.nicholasdudek.genie</string>
 	</array>
 </dict>
 </plist>

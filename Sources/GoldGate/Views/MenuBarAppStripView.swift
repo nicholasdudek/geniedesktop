@@ -28,14 +28,15 @@ public struct MenuBarAppStripView: View {
     @AppStorage(PrefKey.isVelcroDetached) var isVelcroDetached: Bool = false
     @AppStorage(PrefKey.smokeEffectsEnabled) var smokeEffectsEnabled: Bool = false
     @AppStorage(PrefKey.smokeStyle) var smokeStyle: String = "Mystical Cyan 🧞‍♂️"
-    @AppStorage(PrefKey.statusIconGlyph) var statusIconGlyph: String = "Genie Lamp 🪔"
-    @AppStorage(PrefKey.statusIconStyle) var statusIconStyle: String = "Genie Lamp 🪔"
+    @AppStorage(PrefKey.statusIconGlyph) var statusIconGlyph: String = "Genie Person 🧞‍♂️"
+    @AppStorage(PrefKey.statusIconStyle) var statusIconStyle: String = "Genie Person 🧞‍♂️"
     @AppStorage(PrefKey.menuBarAppSwitcherEnabled) var menuBarAppSwitcherEnabled: Bool = true
     @AppStorage(PrefKey.miniDockDisplayMode) var miniDockDisplayMode: String = "Always Hidden" // "Always Shown", "Always Hidden", "Auto-Hide"
     private var isHiddenMode: Bool {
         miniDockDisplayMode == "Always Hidden" || miniDockDisplayMode == "Auto-Hide"
     }
     @AppStorage(PrefKey.dockActiveAppsOnly) var dockActiveAppsOnly: Bool = false
+    @AppStorage(PrefKey.menuBarDockInactiveAppsOnly) var menuBarDockInactiveAppsOnly: Bool = true
     @AppStorage(PrefKey.miniDockBackgroundStyle) var miniDockBackgroundStyle: String = "Clear (Transparent)"
     @AppStorage(PrefKey.menuBarAppleColor) var appleColor: String = "Retro Rainbow 🌈"
     @AppStorage(PrefKey.showAppleLogoOnStrip) var showAppleLogoOnStrip: Bool = true
@@ -84,6 +85,7 @@ public struct MenuBarAppStripView: View {
     @State private var isTrashHovered: Bool = false
     @State private var isLeoHovered: Bool = false
     @State private var isChatHovered: Bool = false
+    @State private var isEditorHovered: Bool = false
     @State private var isSettingsHovered: Bool = false
     @State private var isChevronHovered: Bool = false
     @State private var isBatteryHovered: Bool = false
@@ -95,6 +97,9 @@ public struct MenuBarAppStripView: View {
     @AppStorage(PrefKey.danceToMusicEnabled) var danceToMusicEnabled: Bool = false
     @ObservedObject private var musicMonitor: MusicPlaybackMonitor = .shared
     @ObservedObject private var dispatcher = MenuBarActionDispatcher.shared
+    @AppStorage("genieZenModeEnabled") private var isZenModeEnabled: Bool = false
+    @State private var showPutBackPopover: Bool = false
+    @State private var showMoreAppsPopover: Bool = false
     @State private var draggingItemId: String? = nil
     @State private var dragOffset: CGFloat = 0.0
     @State private var dragYOffset: CGFloat = 0.0
@@ -110,8 +115,22 @@ public struct MenuBarAppStripView: View {
         var seenPids = Set<pid_t>()
         var seenBundleIds = Set<String>()
         var result: [DockAppItem] = []
+        let currentActivePid = dockManager.activePid > 0 ? dockManager.activePid : (NSWorkspace.shared.frontmostApplication?.processIdentifier ?? 0)
+
         for item in dockItems {
-            if dockActiveAppsOnly && !item.isRunning {
+            if menuBarDockInactiveAppsOnly {
+                // Inactive applications only: must be running, but NOT the active (frontmost) app!
+                guard item.isRunning, let app = item.runningApp, !app.isTerminated else { continue }
+                let isFrontmost = (item.processIdentifier == currentActivePid || app.processIdentifier == currentActivePid || app.isActive)
+                if isFrontmost { continue }
+
+                // Exclude Genie itself from the inactive app switcher (Genie is anchored via genieLauncherButton)
+                let lowerBid = (item.bundleIdentifier ?? "").lowercased()
+                let lowerName = item.name.lowercased()
+                if lowerBid.contains("com.nicholasdudek.genie") || lowerName == "genie" {
+                    continue
+                }
+            } else if dockActiveAppsOnly && !item.isRunning {
                 continue
             }
             let lowerName = item.name.lowercased()
@@ -120,6 +139,11 @@ public struct MenuBarAppStripView: View {
 
             // Strict duplicate Trash filter (dedicated trashItemView is rendered separately)
             if lowerName == "trash" || lowerName == "bin" || lowerName == "corbeille" || lowerBid.contains("trash") || lowerId == "trash" || lowerId.contains("trash") {
+                continue
+            }
+
+            // Filter out items user closed or hid from the pill dock
+            if dockManager.isItemHidden(id: item.id) || dockManager.isItemHidden(id: item.bundleIdentifier ?? "") {
                 continue
             }
             if let pid = item.runningApp?.processIdentifier, pid > 0 {
@@ -138,6 +162,20 @@ public struct MenuBarAppStripView: View {
         return Array(result.prefix(maxAllowedApps))
     }
 
+    private var visibleDockItems: [DockAppItem] {
+        if isZenModeEnabled || activeDockItems.count > 6 {
+            return Array(activeDockItems.prefix(5))
+        }
+        return activeDockItems
+    }
+
+    private var overflowDockItems: [DockAppItem] {
+        if isZenModeEnabled || activeDockItems.count > 6 {
+            return Array(activeDockItems.dropFirst(5))
+        }
+        return []
+    }
+
     private var isSystemMagnificationEnabled: Bool {
         if let val = UserDefaults(suiteName: "com.apple.dock")?.object(forKey: "magnification") as? Bool {
             return val
@@ -154,12 +192,14 @@ public struct MenuBarAppStripView: View {
 
     private var allDockIds: [String] {
         var ids = activeDockItems.map { $0.id }
-        if dockShowFolderStacks {
-            ids.append(contentsOf: dockManager.dockFolders.map { "folder_\($0.id)" })
+        if !menuBarDockInactiveAppsOnly {
+            if dockShowFolderStacks {
+                ids.append(contentsOf: dockManager.dockFolders.map { "folder_\($0.id)" })
+            }
+            if dockAlwaysShowTrash { ids.append("trash") }
+            ids.append("pill_chat")
+            ids.append("pill_settings")
         }
-        if dockAlwaysShowTrash { ids.append("trash") }
-        ids.append("pill_chat")
-        ids.append("pill_settings")
         return ids
     }
 
@@ -766,21 +806,23 @@ public struct MenuBarAppStripView: View {
         let isHovered = (hoveredItemId == "leoLauncher" || isLeoHovered)
         Button(action: {
             HapticFeedback.selection()
-            FinderChatWindowManager.shared.toggle()
+            FinderChatWindowManager.shared.toggle(tab: .chat)
         }) {
             ZStack {
                 if statusIconStyle.contains("") || statusIconStyle.lowercased().contains("apple") {
                     AppleLogoView(style: appleColor, size: 16)
                 } else {
-                    Image(nsImage: glyphImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 20, height: 20)
-                        .scaleEffect(isHovered ? 1.08 : 1.0)
-                        .shadow(color: Color.black.opacity(isHovered ? 0.35 : 0.15), radius: 1.0, y: 1.0)
+                    GenieMysticalIconView(
+                        glyphImage: glyphImage,
+                        isHovered: isHovered,
+                        size: 20
+                    ) {
+                        HapticFeedback.selection()
+                        FinderChatWindowManager.shared.toggle(tab: .chat)
+                    }
                 }
             }
-            .frame(width: 30, height: 26)
+            .frame(width: 32, height: 26)
             .background(
                 Capsule()
                     .fill(isHovered ? Color.white.opacity(0.18) : Color.white.opacity(0.07))
@@ -809,10 +851,16 @@ public struct MenuBarAppStripView: View {
             }
             handleItemHover(id: "leoLauncher", hovering: h)
         }
-        .help("Genie Chat & Settings — Click to open (⌘⌥Space)")
+        .help("Genie Studio & Chat (⌘⌥Space) • Rub the Lamp for Wishes 🪔")
         .contextMenu {
-            Button("Genie Chat & Settings (⌘⌥Space)") {
-                FinderChatWindowManager.shared.toggle()
+            Button("Genie Chat & Studio (⌘⌥Space)") {
+                FinderChatWindowManager.shared.toggle(tab: .chat)
+            }
+            Button("✨ Whisper a Wish (Sporadic Whim)") {
+                GenieSporadicWishEngine.shared.triggerSporadicWhim()
+            }
+            Button("🪔 Rub the Magic Lamp") {
+                GenieSporadicWishEngine.shared.rubLamp()
             }
             Button("Toggle Architectural Canvas (⌘⇧D)") {
                 NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDesktopGrid"), object: nil)
@@ -877,6 +925,177 @@ public struct MenuBarAppStripView: View {
 
 
     @ViewBuilder
+    private var putBackPillButton: some View {
+        if !dockManager.hiddenBundleIDs.isEmpty {
+            Button(action: {
+                showPutBackPopover.toggle()
+                HapticFeedback.selection()
+            }) {
+                HStack(spacing: 3) {
+                    Image(systemName: "arrow.uturn.backward.circle.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.cyan)
+                    Text("Put Back (\(dockManager.hiddenBundleIDs.count))")
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2.5)
+                .background(Capsule().fill(Color.cyan.opacity(0.18)))
+                .overlay(Capsule().strokeBorder(Color.cyan.opacity(0.40), lineWidth: 0.6))
+            }
+            .buttonStyle(.plain)
+            .help("Restore closed or hidden apps to pill bar")
+            .popover(isPresented: $showPutBackPopover, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("Put Back Apps (\(dockManager.hiddenBundleIDs.count))", systemImage: "arrow.uturn.backward")
+                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Button("Put Back All") {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                dockManager.restoreAllHiddenDockApps()
+                                showPutBackPopover = false
+                            }
+                            HapticFeedback.success()
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .buttonStyle(.borderedProminent)
+                        .tint(.cyan)
+                    }
+
+                    Divider().background(Color.white.opacity(0.12))
+
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(spacing: 4) {
+                            ForEach(dockManager.getHiddenDockItems()) { hiddenItem in
+                                HStack(spacing: 8) {
+                                    if let icon = hiddenItem.icon {
+                                        Image(nsImage: icon)
+                                            .resizable()
+                                            .frame(width: 18, height: 18)
+                                    } else {
+                                        Image(systemName: "app.fill")
+                                            .font(.system(size: 14))
+                                    }
+                                    Text(hiddenItem.name)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.white)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Button("Put Back") {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                                            dockManager.unhideDockItem(id: hiddenItem.id)
+                                            if let bid = hiddenItem.bundleIdentifier {
+                                                dockManager.unhideDockItem(id: bid)
+                                            }
+                                        }
+                                        HapticFeedback.selection()
+                                    }
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .buttonStyle(.bordered)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.06)))
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 180)
+                }
+                .padding(12)
+                .frame(width: 250)
+                .background(Color.black.opacity(0.94))
+            }
+        }
+    }
+
+    // Split into label / popover-body helpers: as one expression this exceeded
+    // the type checker's budget in release builds.
+    @ViewBuilder
+    private var moreAppsPillLabel: some View {
+        let count: Int = overflowDockItems.count
+        Text("+\(count)")
+            .font(.system(size: 9.5, weight: .bold, design: .rounded))
+            .foregroundColor(.white.opacity(0.85))
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Color.white.opacity(0.14)))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.24), lineWidth: 0.5))
+    }
+
+    @ViewBuilder
+    private var moreAppsPopoverBody: some View {
+        let items: [DockAppItem] = overflowDockItems
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Additional Running Apps")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+
+            Divider().background(Color.white.opacity(0.12))
+
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(spacing: 4) {
+                    ForEach(items) { app in
+                        overflowAppRow(app)
+                    }
+                }
+            }
+            .frame(maxHeight: 200)
+        }
+        .padding(12)
+        .frame(width: 220)
+        .background(Color.black.opacity(0.94))
+    }
+
+    @ViewBuilder
+    private var moreAppsPillButton: some View {
+        if !overflowDockItems.isEmpty {
+            Button(action: {
+                showMoreAppsPopover.toggle()
+                HapticFeedback.selection()
+            }) {
+                moreAppsPillLabel
+            }
+            .buttonStyle(.plain)
+            .help("+\(overflowDockItems.count) more apps running in background")
+            .popover(isPresented: $showMoreAppsPopover, arrowEdge: .bottom) {
+                moreAppsPopoverBody
+            }
+        }
+    }
+
+    private func overflowAppRow(_ app: DockAppItem) -> some View {
+        Button(action: {
+            showMoreAppsPopover = false
+            app.activate()
+            HapticFeedback.selection()
+        }) {
+            HStack(spacing: 8) {
+                if let icon = app.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 18, height: 18)
+                } else {
+                    Image(systemName: "app.fill")
+                        .font(.system(size: 14))
+                }
+                Text(app.name)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                Spacer()
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.06)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
     private var appsClusterPillView: some View {
         // Smart edge reveal: in hidden/auto-hide mode, the dock has no visible handle to click —
         // it simply appears when the cursor nears the screen edge it lives on (see isNearScreenEdge,
@@ -884,55 +1103,103 @@ public struct MenuBarAppStripView: View {
         // the same way the real macOS Dock auto-reveals.
         let showActiveApps = (!isHiddenMode || isStripHovered || isNearScreenEdge)
         if showActiveApps {
-            HStack(alignment: .center, spacing: 3.5) {
-                // 1. Applications in exact bottom macOS Dock order (Finder, System Settings, Chrome, Stickies, Mail, Genie, etc.)
-                ForEach(activeDockItems) { item in
-                    dockAppItemView(item: item)
-                }
+            if menuBarDockInactiveAppsOnly {
+                // Sleek Inactive Applications Pill: Genie Launcher + Inactive (Background) Running Apps
+                HStack(alignment: .center, spacing: 3.5) {
+                    genieLauncherButton
 
-                // 2. Vertical Divider before Folder Stacks & Trash
-                if (dockShowFolderStacks && !dockManager.dockFolders.isEmpty) || dockAlwaysShowTrash {
+                    if !activeDockItems.isEmpty {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.20))
+                            .frame(width: 1, height: 16)
+                            .padding(.horizontal, 2)
+
+                        ForEach(visibleDockItems) { item in
+                            dockAppItemView(item: item)
+                        }
+
+                        moreAppsPillButton
+                    }
+
+                    putBackPillButton
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3.5)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(isStripHovered ? 0.16 : 0.08))
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(Color.white.opacity(isStripHovered ? 0.28 : 0.14), lineWidth: 0.8)
+                        )
+                        .shadow(color: Color.black.opacity(0.25), radius: 3, y: 1)
+                )
+            } else {
+                HStack(alignment: .center, spacing: 3.5) {
+                    // 0. Primary GENIE menu bar icon (brings to chat!)
+                    genieLauncherButton
+
                     Rectangle()
                         .fill(Color.white.opacity(0.20))
                         .frame(width: 1, height: 16)
                         .padding(.horizontal, 2)
-                }
 
-                // 3. Pinned Folder Stacks (Applications, Downloads)
-                if dockShowFolderStacks && !dockManager.dockFolders.isEmpty {
-                    ForEach(dockManager.dockFolders) { folder in
-                        dockFolderPillItemView(folder: folder)
+                    // 1. Applications in exact bottom macOS Dock order (Finder, System Settings, Chrome, Stickies, Mail, Genie, etc.)
+                    ForEach(visibleDockItems) { item in
+                        dockAppItemView(item: item)
                     }
+
+                    moreAppsPillButton
+
+                    putBackPillButton
+
+                    // 2. Vertical Divider before Folder Stacks & Trash
+                    if (dockShowFolderStacks && !dockManager.dockFolders.isEmpty) || dockAlwaysShowTrash {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.20))
+                            .frame(width: 1, height: 16)
+                            .padding(.horizontal, 2)
+                    }
+
+                    // 3. Pinned Folder Stacks (Applications, Downloads)
+                    if dockShowFolderStacks && !dockManager.dockFolders.isEmpty {
+                        ForEach(dockManager.dockFolders) { folder in
+                            dockFolderPillItemView(folder: folder)
+                        }
+                    }
+
+                    // 4. Native macOS Live Trash Slot
+                    if dockAlwaysShowTrash {
+                        trashItemView
+                    }
+
+                    // 5. Vertical Divider before Chat, Editor & Settings
+                    Rectangle()
+                        .fill(Color.white.opacity(0.20))
+                        .frame(width: 1, height: 16)
+                        .padding(.horizontal, 2)
+
+                    // 6. Genie Chat Inside Pill Dock
+                    chatPillItemView
+
+                    // 7. Genie Studio Inside Pill Dock
+                    editorPillItemView
+
+                    // 8. Genie Settings Inside Pill Dock
+                    settingsPillItemView
                 }
-
-                // 4. Native macOS Live Trash Slot
-                if dockAlwaysShowTrash {
-                    trashItemView
-                }
-
-                // 5. Vertical Divider before Chat & Settings
-                Rectangle()
-                    .fill(Color.white.opacity(0.20))
-                    .frame(width: 1, height: 16)
-                    .padding(.horizontal, 2)
-
-                // 6. Genie Chat Inside Pill Dock
-                chatPillItemView
-
-                // 7. Genie Settings Inside Pill Dock
-                settingsPillItemView
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3.5)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(isStripHovered ? 0.16 : 0.08))
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(Color.white.opacity(isStripHovered ? 0.28 : 0.14), lineWidth: 0.8)
+                        )
+                        .shadow(color: Color.black.opacity(0.25), radius: 3, y: 1)
+                )
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 3.5)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(isStripHovered ? 0.16 : 0.08))
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(Color.white.opacity(isStripHovered ? 0.28 : 0.14), lineWidth: 0.8)
-                    )
-                    .shadow(color: Color.black.opacity(0.25), radius: 3, y: 1)
-            )
         } else {
             EmptyView()
         }
@@ -995,12 +1262,12 @@ public struct MenuBarAppStripView: View {
         .onAppear {
             dockManager.refreshDockApps()
             BatteryMonitor.shared.refresh()
-            if statusIconGlyph.isEmpty || statusIconGlyph == "Golden Gate Arch" || statusIconGlyph == "Leo Maltese 🐶" || statusIconGlyph == "Genie Person 🧞‍♂️" {
-                statusIconGlyph = "Genie Lamp 🪔"
-                UserDefaults.standard.set("Genie Lamp 🪔", forKey: PrefKey.statusIconGlyph)
-                UserDefaults.standard.set("Genie Lamp 🪔", forKey: PrefKey.statusIconStyle)
-                UserDefaults.standard.set("Genie Lamp", forKey: PrefKey.brandIconStyle)
-                BrandLogoManager.shared.brandIconStyle = "Genie Lamp"
+            if statusIconGlyph.isEmpty || statusIconGlyph == "Golden Gate Arch" || statusIconGlyph == "Leo Maltese 🐶" || statusIconGlyph == "Genie Lamp 🪔" {
+                statusIconGlyph = "Genie Person 🧞‍♂️"
+                UserDefaults.standard.set("Genie Person 🧞‍♂️", forKey: PrefKey.statusIconGlyph)
+                UserDefaults.standard.set("Genie Person 🧞‍♂️", forKey: PrefKey.statusIconStyle)
+                UserDefaults.standard.set("Genie Person", forKey: PrefKey.brandIconStyle)
+                BrandLogoManager.shared.brandIconStyle = "Genie Person"
             }
             refreshApps()
             MenuBarActionDispatcher.shared.dockItems = self.activeDockItems
@@ -1064,6 +1331,26 @@ public struct MenuBarAppStripView: View {
             if let val = notif.object as? Bool {
                 dockActiveAppsOnly = val
             }
+            refreshApps()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)) { notif in
+            if let app = notif.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
+                dockManager.activePid = app.processIdentifier
+            } else {
+                dockManager.activePid = NSWorkspace.shared.frontmostApplication?.processIdentifier ?? 0
+            }
+            refreshApps()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didDeactivateApplicationNotification)) { _ in
+            dockManager.activePid = NSWorkspace.shared.frontmostApplication?.processIdentifier ?? 0
+            refreshApps()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)) { _ in
+            dockManager.refreshDockApps()
+            refreshApps()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { _ in
+            dockManager.refreshDockApps()
             refreshApps()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusMiniDockModeChanged"))) { notif in
@@ -1305,23 +1592,24 @@ public struct MenuBarAppStripView: View {
         }
     }
 
-    // MARK: - Inside-the-Pill Chat & Settings Actions
+    // MARK: - Inside-the-Pill Chat, Editor & Settings Actions
     private var chatPillItemView: some View {
         let cWave = magnificationWave(for: "pill_chat")
         let isHovered = (hoveredItemId == "pill_chat" || isChatHovered)
+        let isChatActive = FinderChatWindowManager.shared.isVisible && FinderChatWindowManager.shared.activeTab == .chat
         return Button(action: {
             HapticFeedback.selection()
-            FinderChatWindowManager.shared.toggle()
+            FinderChatWindowManager.shared.toggle(tab: .chat)
         }) {
             ZStack(alignment: .center) {
                 Circle()
-                    .fill(isHovered ? Color.cyan.opacity(0.35) : (FinderChatWindowManager.shared.isVisible ? Color.cyan.opacity(0.25) : Color.white.opacity(0.08)))
+                    .fill(isHovered ? Color.cyan.opacity(0.35) : (isChatActive ? Color.cyan.opacity(0.25) : Color.white.opacity(0.08)))
                     .frame(width: 22, height: 22)
 
-                Image(systemName: FinderChatWindowManager.shared.isVisible ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
+                Image(systemName: isChatActive ? "bubble.left.and.bubble.right.fill" : "bubble.left.and.bubble.right")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(FinderChatWindowManager.shared.isVisible ? .cyan : (isHovered ? .white : .white.opacity(0.80)))
-                    .shadow(color: Color.cyan.opacity(FinderChatWindowManager.shared.isVisible ? 0.60 : 0.0), radius: 2)
+                    .foregroundColor(isChatActive ? .cyan : (isHovered ? .white : .white.opacity(0.80)))
+                    .shadow(color: Color.cyan.opacity(isChatActive ? 0.60 : 0.0), radius: 2)
             }
             .frame(width: 26, height: 26)
             .scaleEffect(cWave.scale, anchor: .center)
@@ -1337,22 +1625,55 @@ public struct MenuBarAppStripView: View {
         .help("Genie Chat 💬 — Click to open Chat Studio")
     }
 
-    private var settingsPillItemView: some View {
-        let sWave = magnificationWave(for: "pill_settings")
-        let isHovered = (hoveredItemId == "pill_settings" || isSettingsHovered)
+    private var editorPillItemView: some View {
+        let eWave = magnificationWave(for: "pill_editor")
+        let isHovered = (hoveredItemId == "pill_editor" || isEditorHovered)
+        let isEditorActive = FinderChatWindowManager.shared.isVisible && FinderChatWindowManager.shared.activeTab == .editor
         return Button(action: {
             HapticFeedback.selection()
-            AppDelegate.shared?.showMenuBarSettingsDropdown(targetTab: .system)
+            FinderChatWindowManager.shared.toggle(tab: .editor)
         }) {
             ZStack(alignment: .center) {
                 Circle()
-                    .fill(isHovered ? Color.purple.opacity(0.35) : Color.white.opacity(0.08))
+                    .fill(isHovered ? Color.green.opacity(0.35) : (isEditorActive ? Color.green.opacity(0.25) : Color.white.opacity(0.08)))
+                    .frame(width: 22, height: 22)
+
+                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(isEditorActive ? .green : (isHovered ? .white : .white.opacity(0.80)))
+                    .shadow(color: Color.green.opacity(isEditorActive ? 0.60 : 0.0), radius: 2)
+            }
+            .frame(width: 26, height: 26)
+            .scaleEffect(eWave.scale, anchor: .center)
+            .offset(x: magnificationDisplacement(for: "pill_editor"), y: eWave.yOffset)
+            .contentShape(Circle())
+        }
+        .buttonStyle(DockIconButtonStyle())
+        .zIndex(eWave.zIndex)
+        .onHover { h in
+            isEditorHovered = h
+            handleItemHover(id: "pill_editor", hovering: h)
+        }
+        .help("Genie Editor 💻 — Click to open Code Editor & Files")
+    }
+
+    private var settingsPillItemView: some View {
+        let sWave = magnificationWave(for: "pill_settings")
+        let isHovered = (hoveredItemId == "pill_settings" || isSettingsHovered)
+        let isSettingsActive = FinderChatWindowManager.shared.isVisible && FinderChatWindowManager.shared.activeTab == .settings
+        return Button(action: {
+            HapticFeedback.selection()
+            FinderChatWindowManager.shared.toggle(tab: .settings)
+        }) {
+            ZStack(alignment: .center) {
+                Circle()
+                    .fill(isHovered ? Color.purple.opacity(0.35) : (isSettingsActive ? Color.purple.opacity(0.25) : Color.white.opacity(0.08)))
                     .frame(width: 22, height: 22)
 
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(isHovered ? .white : Color.white.opacity(0.80))
-                    .shadow(color: Color.purple.opacity(isHovered ? 0.60 : 0.0), radius: 2)
+                    .foregroundColor(isSettingsActive ? .purple : (isHovered ? .white : Color.white.opacity(0.80)))
+                    .shadow(color: Color.purple.opacity(isSettingsActive ? 0.60 : 0.0), radius: 2)
             }
             .frame(width: 26, height: 26)
             .scaleEffect(sWave.scale, anchor: .center)
@@ -2277,7 +2598,7 @@ public struct MenuBarAppStripView: View {
         .onHover { hovering in
             handleItemHover(id: item.id, hovering: hovering)
         }
-        .help(item.isRunning ? "\(item.name) — Click to bring to front, drag to reorder or drag off to remove" : "\(item.name) — Click to launch, drag to reorder or drag off to remove")
+        .help(menuBarDockInactiveAppsOnly ? "\(item.name) (Background) — Click to switch to application" : (item.isRunning ? "\(item.name) — Click to bring to front, drag to reorder or drag off to remove" : "\(item.name) — Click to launch, drag to reorder or drag off to remove"))
         .contextMenu {
             dockAppContextMenu(item: item)
         }
@@ -2348,11 +2669,42 @@ public struct MenuBarAppStripView: View {
                 let (prim, _, _) = GenieSmokeEngine.colors(for: smokeStyle)
                 MiniDockSmokePuffView(color: prim)
             }
+
+            // Instant hover close badge to remove/hide app from menu bar pill
+            if isHovered {
+                Button(action: {
+                    dockManager.hideDockItem(id: item.id)
+                    if let bid = item.bundleIdentifier {
+                        dockManager.hideDockItem(id: bid)
+                    }
+                    HapticFeedback.selection()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white.opacity(0.95))
+                        .background(Circle().fill(Color.black.opacity(0.85)))
+                }
+                .buttonStyle(.plain)
+                .offset(x: 9, y: -9)
+                .help("Remove \(item.name) from bar")
+            }
         }
     }
 
     @ViewBuilder
     private func dockAppContextMenu(item: DockAppItem) -> some View {
+        Button("Remove \(item.name) from Bar") {
+            dockManager.hideDockItem(id: item.id)
+            if let bid = item.bundleIdentifier {
+                dockManager.hideDockItem(id: bid)
+            }
+            HapticFeedback.selection()
+        }
+
+        if menuBarDockInactiveAppsOnly {
+            Text("\(item.name) • Background Application")
+            Divider()
+        }
         if item.bundleIdentifier == "com.nicholasdudek.genie" || item.id == "com.nicholasdudek.genie" || item.name.lowercased() == "genie" {
             Button("Genie Chat & Settings (⌘⌥Space)") {
                 FinderChatWindowManager.shared.toggle()
@@ -2525,7 +2877,7 @@ public struct MenuBarAppStripView: View {
     }
 
     private func openGenieSettings() {
-        FinderChatWindowManager.shared.show()
+        FinderChatWindowManager.shared.show(tab: .settings)
     }
 
     private func openBatterySettings() {

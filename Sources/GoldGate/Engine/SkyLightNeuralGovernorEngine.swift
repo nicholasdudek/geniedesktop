@@ -122,6 +122,13 @@ public final class SkyLightNativeBridge: @unchecked Sendable {
     }
 
     private func bindSymbols() {
+        #if GENIE_MAS
+        // Genie Lite: bind nothing — private window-server symbols, Guideline
+        // 2.5.1. See GenieCapabilities.canUsePrivateWindowServer. Every
+        // wrapper below guards on its function pointer, so leaving them nil
+        // degrades the governor to a no-op rather than crashing.
+        return
+        #else
         guard let handle = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/Versions/A/SkyLight", RTLD_LAZY) else {
             return
         }
@@ -151,6 +158,7 @@ public final class SkyLightNativeBridge: @unchecked Sendable {
         if let sym = dlsym(handle, "SLSOrderWindow") {
             self.orderWindow = unsafeBitCast(sym, to: SLSOrderWindowFunc.self)
         }
+        #endif
     }
 
     public func connectionID() -> Int32 {

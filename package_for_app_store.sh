@@ -60,9 +60,35 @@ if ! strings "$GENIE_BINARY" | grep -q "GENIE-BUILD-FLAVOUR:MAS"; then
     exit 1
 fi
 echo "==> Verified Genie Lite build marker."
+
+# Refuse to package a binary that still references private API. These symbols
+# are resolved with dlopen/dlsym, so they appear in the binary as plain strings
+# and App Store Connect's static analysis finds them — a Guideline 2.5.1
+# rejection that otherwise only surfaces days after upload. Every such call site
+# is compiled out by GENIE_MAS; if this trips, one was added without a gate.
+echo "==> Scanning for private API references..."
+PRIVATE_HITS=$(strings "$GENIE_BINARY" | grep -E "PrivateFrameworks|^(SLS|CGS)[A-Z][A-Za-z]+$|DisplayServices(Get|Set)Brightness|KeyboardBrightnessClient" | sort -u || true)
+if [ -n "$PRIVATE_HITS" ]; then
+    echo "ERROR: Genie Lite binary references private API:" >&2
+    echo "$PRIVATE_HITS" | sed 's/^/       /' >&2
+    echo "       Gate the call site behind #if !GENIE_MAS (see GenieCapabilities)." >&2
+    exit 1
+fi
+echo "==> No private API references. "
 cp "$GENIE_BINARY" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/Genie"
 cp "$PROJECT_DIR/Sources/GoldGate/Info.plist" "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Delete :NSSystemAdministrationUsageDescription" "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist" 2>/dev/null || true
+
+# Privacy manifest. Apple's static analysis reads this out of Resources/; a
+# missing or malformed one comes back as ITMS-91053 after upload, not at build
+# time, so fail here instead.
+if [ ! -f "$PROJECT_DIR/Sources/GoldGate/PrivacyInfo.xcprivacy" ]; then
+    echo "ERROR: Sources/GoldGate/PrivacyInfo.xcprivacy is missing." >&2
+    exit 1
+fi
+plutil -lint "$PROJECT_DIR/Sources/GoldGate/PrivacyInfo.xcprivacy" >/dev/null
+cp "$PROJECT_DIR/Sources/GoldGate/PrivacyInfo.xcprivacy" "$BUILD_DIR/$APP_NAME.app/Contents/Resources/PrivacyInfo.xcprivacy"
+echo "==> Included PrivacyInfo.xcprivacy in Genie.app bundle"
 
 # Copy compiled Assets.car
 if [ -f "$PROJECT_DIR/build/compiled_assets/Assets.car" ]; then

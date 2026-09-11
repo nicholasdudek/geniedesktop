@@ -241,7 +241,9 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
     public func startEdgeProximityMonitoring() {
         if edgeProximityTimer == nil {
             edgeProximityTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
-                self?.checkEdgeProximity()
+                MainActor.assumeIsolated {
+                    self?.checkEdgeProximity()
+                }
             }
         }
         startDockSwipeMonitoring()
@@ -436,7 +438,7 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         }
 
         // Left-click Genie activates the Chat Bubbles & Dialogue Studio!
-        FinderChatWindowManager.shared.toggle()
+        FinderChatWindowManager.shared.toggle(tab: .chat)
     }
 
 
@@ -472,7 +474,18 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         app.unhide()
         _ = app.activate(options: [.activateAllWindows])
 
-        // 2. Guaranteed AppleScript reopen and activate via bundle ID or app name
+        // 2. Guaranteed AppleScript reopen and activate via bundle ID or app name.
+        //
+        // Genie Lite skips this. The target here is whatever app the user
+        // clicked, so it cannot be covered by the enumerated
+        // com.apple.security.temporary-exception.apple-events list — a sandbox
+        // exception has to name its targets up front, and "any application the
+        // user picks" is not something App Review grants. Under the sandbox
+        // every one of these events is refused anyway, so this is dead weight
+        // that also invites a 2.5.1 question. Steps 1 and 3 (NSRunningApplication
+        // .activate and NSWorkspace.openApplication) are public API, are not
+        // sandbox-gated, and already do the job.
+        #if !GENIE_MAS
         if let bundleId = app.bundleIdentifier, !bundleId.isEmpty {
             let script = """
             tell application id "\(bundleId)"
@@ -495,6 +508,7 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
                 NSAppleScript(source: script)?.executeAndReturnError(nil)
             }
         }
+        #endif
 
         // 3. Activate via workspace openApplication
         if let bundleURL = app.bundleURL {
@@ -824,17 +838,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
         soundItem.state = soundOn ? .on : .off
         quickPrefMenu.addItem(soundItem)
 
-        // Clear HTML Solutions Overlay (⌥⌘O)
-        let overlayItem = NSMenuItem(
-            title: "Clear HTML Solutions Overlay",
-            action: #selector(toggleClearHTMLOverlayAction),
-            keyEquivalent: "o"
-        )
-        overlayItem.keyEquivalentModifierMask = [.command, .option]
-        overlayItem.image = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)
-        overlayItem.target = self
-        quickPrefMenu.addItem(overlayItem)
-
         let quickPrefSubItem = NSMenuItem(title: LocalizedStrings.translateText("Preferences & Styles ❯", lang: lang), action: nil, keyEquivalent: "")
         quickPrefSubItem.image = NSImage(systemSymbolName: "slider.horizontal.3", accessibilityDescription: nil)
         quickPrefSubItem.submenu = quickPrefMenu
@@ -874,7 +877,7 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
     }
 
     @objc public func openGenieSettings() {
-        FinderChatWindowManager.shared.show()
+        FinderChatWindowManager.shared.show(tab: .settings)
     }
 
     @objc public func openBatterySettings() {
@@ -1266,11 +1269,6 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
     @objc public func toggleDesktopFilesAction() {
         HapticFeedback.selection()
         DesktopFilesManager.shared.toggleDesktopFiles()
-    }
-
-    @objc public func toggleClearHTMLOverlayAction() {
-        HapticFeedback.selection()
-        GenieClearHTMLOverlayManager.shared.toggle()
     }
 
     @objc public func selectColorModeItem(_ sender: NSMenuItem) {
