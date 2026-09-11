@@ -98,7 +98,10 @@ public final class GenieHDMICaptureEngine: NSObject, @unchecked Sendable {
     public let neuralRingBuffer = GenieNeuralFrameRingBuffer(capacity: 45)
     public private(set) var forkedDisplayFrames: UInt64 = 0
     public private(set) var forkedTrainingFrames: UInt64 = 0
+    // 🔱 Dynamic Inference Frame Rate Governor (e.g. 24 FPS for cinematic vision inference, 60/120 FPS for gaming)
+    public var targetInferenceFPS: Double = 24.0
     public private(set) var droppedTrainingFrames: UInt64 = 0
+    private var lastInferenceTimestamp: CFTimeInterval = 0.0
 
     // State (observed via @Observable macro)
     public private(set) var isCapturing: Bool = false
@@ -357,25 +360,30 @@ extension GenieHDMICaptureEngine: AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
 
-        // 🔱 Channel 2: Neural Training Channel (Zero-Copy Fork)
+        // 🔱 Channel 2: Neural Training & Agent Inference Channel (Zero-Copy Fork with Dynamic FPS Decimation)
         if isPixelForkActive {
-            if GenieMemoryGovernorEngine.isCriticalPressureActive {
-                droppedTrainingFrames += 1
-            } else {
-                let frame = GenieForkedFrame(
-                    pixelBuffer: pixelBuffer,
-                    metalTexture: metalTexture,
-                    timestamp: CACurrentMediaTime(),
-                    frameNumber: forkedDisplayFrames
-                )
-                let admitted = neuralRingBuffer.push(frame)
-                if admitted {
-                    forkedTrainingFrames += 1
-                    Task { @MainActor [weak self] in
-                        self?.onNeuralFrameForked?(frame)
-                    }
-                } else {
+            let now = CACurrentMediaTime()
+            let minInterval = targetInferenceFPS > 0 ? (1.0 / targetInferenceFPS) : 0.0
+            if now - lastInferenceTimestamp >= minInterval {
+                lastInferenceTimestamp = now
+                if GenieMemoryGovernorEngine.isCriticalPressureActive {
                     droppedTrainingFrames += 1
+                } else {
+                    let frame = GenieForkedFrame(
+                        pixelBuffer: pixelBuffer,
+                        metalTexture: metalTexture,
+                        timestamp: now,
+                        frameNumber: forkedDisplayFrames
+                    )
+                    let admitted = neuralRingBuffer.push(frame)
+                    if admitted {
+                        forkedTrainingFrames += 1
+                        Task { @MainActor [weak self] in
+                            self?.onNeuralFrameForked?(frame)
+                        }
+                    } else {
+                        droppedTrainingFrames += 1
+                    }
                 }
             }
         }

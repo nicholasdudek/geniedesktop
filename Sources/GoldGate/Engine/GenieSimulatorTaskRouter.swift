@@ -11,6 +11,7 @@ public struct ChatSimulatorBinding: Identifiable, Hashable, Codable {
     public var deviceName: String
     public var isLiteMode: Bool
     public var isBooted: Bool
+    public var agentInferenceFPS: Int
     public var lastActivity: Date
 
     public init(
@@ -19,7 +20,8 @@ public struct ChatSimulatorBinding: Identifiable, Hashable, Codable {
         deviceUdid: String,
         deviceName: String,
         isLiteMode: Bool = true,
-        isBooted: Bool = false
+        isBooted: Bool = false,
+        agentInferenceFPS: Int = 24
     ) {
         self.chatId = chatId
         self.taskName = taskName
@@ -27,6 +29,7 @@ public struct ChatSimulatorBinding: Identifiable, Hashable, Codable {
         self.deviceName = deviceName
         self.isLiteMode = isLiteMode
         self.isBooted = isBooted
+        self.agentInferenceFPS = agentInferenceFPS
         self.lastActivity = Date()
     }
 }
@@ -42,11 +45,20 @@ public final class GenieSimulatorTaskRouter: ObservableObject {
     // ── Observable Routing State ──────────────────────────────────────────
     @Published public var activeBindings: [String: ChatSimulatorBinding] = [:]
     @Published public var isLiteModeEnabled: Bool = true
+    @Published public var backgroundAgentFPS: Int = 24 // 24 FPS for autonomous background agents, while user gets 120 FPS
     @Published public var statusLog: String = "Simulator Router Ready"
     @Published public var activeSimulatorsCount: Int = 0
 
     private init() {
         self.isLiteModeEnabled = UserDefaults.standard.object(forKey: "genie.simulator.liteMode") as? Bool ?? true
+        self.backgroundAgentFPS = UserDefaults.standard.object(forKey: "genie.simulator.agentFPS") as? Int ?? 24
+    }
+
+    public func setAgentFPS(forChat chatId: String, fps: Int) {
+        if var binding = activeBindings[chatId] {
+            binding.agentInferenceFPS = fps
+            activeBindings[chatId] = binding
+        }
     }
 
     // MARK: - 1. Assign or Route a Chat/Task to an Isolated Simulator
@@ -81,7 +93,8 @@ public final class GenieSimulatorTaskRouter: ObservableObject {
             deviceUdid: targetDevice.id,
             deviceName: targetDevice.name,
             isLiteMode: isLiteModeEnabled,
-            isBooted: isBooted
+            isBooted: isBooted,
+            agentInferenceFPS: backgroundAgentFPS
         )
 
         activeBindings[chatId] = binding
