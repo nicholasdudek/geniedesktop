@@ -293,7 +293,7 @@ public final class AntigravityDesktopAgent: ObservableObject {
     }
 
     // MARK: - Action Dispatchers
-    private func performAction(_ action: DesktopAgentAction) async {
+    public func performAction(_ action: DesktopAgentAction) async {
         switch action {
         case .click(let x, let y, let count, let isRight):
             let pt = CGPoint(x: x, y: y)
