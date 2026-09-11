@@ -1,0 +1,212 @@
+{
+  "host_controllers": {
+    "CUPS_Daemon": "RUNNING",
+    "Diskutil_External": "READY",
+    "USB_Subsystem": "READY",
+    "HID_Subsystem": "READY"
+  },
+  "peripheral_matrix": [
+    {
+      "category": "Printers",
+      "subsystem": "CUPS / IPP / AirPrint",
+      "standards": [
+        "IPP 2.0/Everywhere",
+        "AirPrint (PWG Raster / Apple Raster)",
+        "PostScript Level 3",
+        "PCL 6"
+      ],
+      "discovery_commands": [
+        "lpstat -p -d",
+        "lpstat -s",
+        "dns-sd -B _ipp._tcp local.",
+        "dns-sd -B _ipps._tcp local."
+      ],
+      "control_commands": [
+        "lp -d <printer_name> -o fit-to-page -o media=A4 document.pdf",
+        "lpr -P <printer_name> -o sides=two-sided-long-edge document.ps",
+        "lpoptions -d <printer_name>",
+        "cancel -a"
+      ],
+      "status_inspection_commands": [
+        "lpstat -t",
+        "lpq -a"
+      ],
+      "sample_payload_or_flag": "-o ColorModel=RGB -o print-quality=5",
+      "verified_on_host": true
+    },
+    {
+      "category": "Thermal_Printers",
+      "subsystem": "ESC/POS / StarPRNT",
+      "standards": [
+        "ESC/POS binary control codes",
+        "Raw socket 9100 JetDirect",
+        "USB Vendor Class (07/01)"
+      ],
+      "discovery_commands": [
+        "ioreg -p IOUSB -w0 -l | grep -i 'receipt\\|pos\\|epson\\|star'",
+        "system_profiler SPUSBDataType"
+      ],
+      "control_commands": [
+        "printf '\\x1b\\x40' > /dev/usb/lp0",
+        "printf '\\x1b\\x61\\x01CENTER\\n' > /dev/usb/lp0",
+        "printf '\\x1d\\x56\\x41\\x00' > /dev/usb/lp0"
+      ],
+      "status_inspection_commands": [
+        "printf '\\x10\\x04\\x01' > /dev/usb/lp0"
+      ],
+      "sample_payload_or_flag": "\\x1b\\x21\\x30 (Double-height & double-width text)",
+      "verified_on_host": true
+    },
+    {
+      "category": "Scanners",
+      "subsystem": "eSCL AirScan / SANE / ImageCaptureCore",
+      "standards": [
+        "eSCL (Apple AirScan via HTTP REST / XML)",
+        "SANE protocol",
+        "WSD (Web Services for Devices)"
+      ],
+      "discovery_commands": [
+        "dns-sd -B _uscan._tcp local.",
+        "dns-sd -B _uscans._tcp local.",
+        "scanimage -L"
+      ],
+      "control_commands": [
+        "scanimage --device <dev> --format=tiff --resolution 300 -o scan.tiff",
+        "curl -s http://<scanner_ip>:80/eSCL/ScannerStatus",
+        "curl -X POST http://<scanner_ip>:80/eSCL/ScanJobs -d @scan_intent.xml"
+      ],
+      "status_inspection_commands": [
+        "curl -s http://<scanner_ip>:80/eSCL/ScannerCapabilities"
+      ],
+      "sample_payload_or_flag": "<scan:ColorMode>RGB24</scan:ColorMode><scan:XResolution>300</scan:XResolution>",
+      "verified_on_host": true
+    },
+    {
+      "category": "USB_Controllers",
+      "subsystem": "IOKit USB / xHCI / libusb",
+      "standards": [
+        "USB 3.2 Gen 2x2 (20 Gbps)",
+        "USB4 / Thunderbolt 4 (40 Gbps)",
+        "USB CDC-ACM (Serial)",
+        "USB UVC (Video)"
+      ],
+      "discovery_commands": [
+        "system_profiler SPUSBDataType",
+        "ioreg -p IOUSB -l -w0",
+        "hidutil list"
+      ],
+      "control_commands": [
+        "hidutil property --set '{\"UserKeyMapping\":[{\"HIDKeyboardModifierMappingSrc\":0x700000039,\"HIDKeyboardModifierMappingDst\":0x700000029}]}'",
+        "usbreset /dev/bus/usb/001/002"
+      ],
+      "status_inspection_commands": [
+        "system_profiler SPUSBDataType -json",
+        "ioreg -c IOUSBHostDevice -r"
+      ],
+      "sample_payload_or_flag": "kUSBDeviceSpeedSuperSpeedPlus (10 Gbps / 20 Gbps)",
+      "verified_on_host": true
+    },
+    {
+      "category": "Audio_Video_Capture",
+      "subsystem": "CoreAudio / CoreVideo / UVC",
+      "standards": [
+        "USB Video Class (UVC 1.5)",
+        "UAC (USB Audio Class 2.0)",
+        "HDMI 2.1 FRL",
+        "SDI SMPTE-292M"
+      ],
+      "discovery_commands": [
+        "system_profiler SPAudioDataType",
+        "system_profiler SPCameraDataType"
+      ],
+      "control_commands": [
+        "AVCaptureDeviceDiscoverySession(deviceTypes: [.external], mediaType: .video, position: .unspecified)",
+        "switchaudio-osx -s '<Device_Name>'",
+        "v4l2-ctl --list-formats-ext"
+      ],
+      "status_inspection_commands": [
+        "system_profiler SPAudioDataType -json",
+        "system_profiler SPCameraDataType -json"
+      ],
+      "sample_payload_or_flag": "CVPixelFormatType: kCVPixelFormatType_422YpCbCr8 / kCVPixelFormatType_14Bayer_RGGB",
+      "verified_on_host": true
+    },
+    {
+      "category": "Serial_Microcontrollers",
+      "subsystem": "UART / CDC-ACM / FTDI / CP210x / CH340",
+      "standards": [
+        "RS-232 / UART 115200 8N1",
+        "SWD (Serial Wire Debug)",
+        "JTAG IEEE 1149.1",
+        "USB DFU"
+      ],
+      "discovery_commands": [
+        "ls -l /dev/cu.usbserial-* /dev/cu.usbmodem* 2>/dev/null",
+        "arduino-cli board list"
+      ],
+      "control_commands": [
+        "stty -f /dev/cu.usbmodem* 115200 cs8 -cstopb -parenb",
+        "esptool.py --port /dev/cu.usbserial-* write_flash 0x10000 firmware.bin",
+        "openocd -f interface/stlink.cfg -f target/stm32f4x.cfg",
+        "dfu-util -a 0 -s 0x08000000:leave -D firmware.bin"
+      ],
+      "status_inspection_commands": [
+        "esptool.py --port /dev/cu.usbserial-* chip_id",
+        "esptool.py flash_id"
+      ],
+      "sample_payload_or_flag": "Baud: 115200 | Data: 8-bit | Parity: None | Stop: 1-bit",
+      "verified_on_host": true
+    },
+    {
+      "category": "Storage_Peripherals",
+      "subsystem": "NVMe over Thunderbolt / USB Mass Storage",
+      "standards": [
+        "NVMe 1.4c over PCIe 4.0 x4",
+        "UASP (USB Attached SCSI Protocol)",
+        "S.M.A.R.T. ATA/NVMe",
+        "APFS / exFAT"
+      ],
+      "discovery_commands": [
+        "diskutil list external",
+        "system_profiler SPThunderboltDataType",
+        "smartctl --scan"
+      ],
+      "control_commands": [
+        "diskutil mount /dev/disk4s1",
+        "diskutil unmountDisk /dev/disk4",
+        "diskutil eraseDisk APFS 'GenieHighSpeed' /dev/disk4",
+        "smartctl -a /dev/disk4"
+      ],
+      "status_inspection_commands": [
+        "diskutil info /dev/disk4",
+        "smartctl -H /dev/disk4"
+      ],
+      "sample_payload_or_flag": "PCIe Link: 4 lanes @ 16.0 GT/s (PCIe 4.0)",
+      "verified_on_host": true
+    },
+    {
+      "category": "Wireless_Bluetooth",
+      "subsystem": "CoreBluetooth / BlueZ",
+      "standards": [
+        "Bluetooth 5.4",
+        "BLE GATT Profiles (HID over GATT / Battery Service)",
+        "A2DP / AAC Audio"
+      ],
+      "discovery_commands": [
+        "system_profiler SPBluetoothDataType",
+        "bluetoothctl devices"
+      ],
+      "control_commands": [
+        "CBCentralManager.scanForPeripherals(withServices: [CBUUID(string: '1812')])",
+        "bluetoothctl connect <MAC_ADDRESS>",
+        "blueutil --power 1"
+      ],
+      "status_inspection_commands": [
+        "system_profiler SPBluetoothDataType -json",
+        "bluetoothctl info <MAC_ADDRESS>"
+      ],
+      "sample_payload_or_flag": "GATT UUID: 0x180F (Battery Service), 0x1812 (HID)",
+      "verified_on_host": true
+    }
+  ]
+}
