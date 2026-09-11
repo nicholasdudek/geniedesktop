@@ -28,7 +28,7 @@ sleep 0.5
 cd "$PROJECT_DIR"
 MAS_BUILD_DIR="$PROJECT_DIR/.build-mas"
 echo "==> Building Release executable with SwiftPM (Genie Lite / GENIE_MAS)..."
-GENIE_MAS=1 swift build -c release -j 4 --scratch-path "$MAS_BUILD_DIR"
+GENIE_MAS=1 swift build -c release -Xswiftc -num-threads -Xswiftc 2 -j 2 --scratch-path "$MAS_BUILD_DIR"
 
 # 3. Generate and compile Assets.xcassets (Asset Catalog)
 echo "==> Compiling Asset Catalog..."
