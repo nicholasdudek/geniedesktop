@@ -1,0 +1,49 @@
+{
+  "telemetry": {
+    "hw.model": "Mac16,8",
+    "hw.machine": "arm64",
+    "machdep.cpu.brand_string": "Apple M4 Pro",
+    "hw.ncpu": "14",
+    "hw.physicalcpu": "14",
+    "hw.logicalcpu": "14",
+    "hw.perflevel0.logicalcpu": "10",
+    "hw.perflevel1.logicalcpu": "4",
+    "hw.memsize": "51539607552",
+    "hw.pagesize": "16384",
+    "hw.cachelinesize": "128",
+    "hw.l1icachesize": "131072",
+    "hw.l1dcachesize": "65536",
+    "hw.l2cachesize": "4194304",
+    "machdep.virtual_address_size": "47",
+    "vm.pagesize": "16384",
+    "dart_iommu_instances": 30,
+    "metal_gpu_accelerator": "Default"
+  },
+  "blueprints": [
+    {
+      "subsystem": "Zero-Copy DART Memory Mapping",
+      "observation": "Hardware page size is strictly 16384 bytes (16 KB) with 30 active DART IOMMU channels.",
+      "reengineering_action": "Allocate camera and audio DMA ring buffers using `posix_memalign(&ptr, 16384, aligned_size)`. This matches the Apple T8110 DART page tables 1:1, preventing virtual-to-physical IOMMU page faults during direct USB/Thunderbolt DMA."
+    },
+    {
+      "subsystem": "SIMD Vector Alignment & L1 Cache Bypass",
+      "observation": "CPU cache line size is 128 bytes with 64 KB L1D cache per core.",
+      "reengineering_action": "Pad all Bayer RAW pixel scanlines to multiples of 128 bytes. Use `MTLCPUCacheMode.writeCombined` on shared buffers so camera DMA and GPU writes stream directly into RAM without thrashing the CPU's 64 KB L1 data cache."
+    },
+    {
+      "subsystem": "Heterogeneous Core Affinity (P-Core vs E-Core Scheduling)",
+      "observation": "Apple Silicon M4 Pro topology has 10 Performance Cores (perflevel0) and 4 Efficiency Cores (perflevel1).",
+      "reengineering_action": "Explicitly assign camera ISP debayering and 120Hz ProMotion render loops to `qos_class_t.QOS_CLASS_USER_INTERACTIVE` (which locks threads to P-cores 0-9 at maximum clock frequencies). Route file indexing, logging, and trash airlock cleanup to `QOS_CLASS_BACKGROUND` (pinned to E-cores 10-13)."
+    },
+    {
+      "subsystem": "Unified Memory Headroom Allocation",
+      "observation": "Total physical RAM is 48.0 GB unified memory shared dynamically across CPU, GPU, and Neural Engine.",
+      "reengineering_action": "Set `recommendedMaxWorkingSetSize` guardrails. On a 48 GB Mac, we can allocate up to 36 GB directly to Metal compute tensors with zero swap thrashing, leaving 12 GB for OS, UI, and live agent sub-processes."
+    },
+    {
+      "subsystem": "SkyLight Direct Surface Presentation",
+      "observation": "macOS WindowServer composites windows via CoreAnimation surfaces.",
+      "reengineering_action": "Bypass WindowServer double-buffering by binding `CAMetalLayer.presentsWithTransaction = false` and submitting frames via `MTLCommandBuffer.present(drawable, afterMinimumDuration: 1.0 / 120.0)`. Ensures exact 8.33 ms frame delivery aligned to the Liquid Retina XDR display."
+    }
+  ]
+}
