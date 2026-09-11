@@ -20,7 +20,9 @@ final class FinderSyncBridge {
             forName: Notification.Name(FinderSyncIPC.notifyOpenRequest),
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.handlePendingRequest()
+            MainActor.assumeIsolated {
+                self?.handlePendingRequest()
+            }
         }
         // Pick up anything Finder queued before Genie finished launching.
         handlePendingRequest()

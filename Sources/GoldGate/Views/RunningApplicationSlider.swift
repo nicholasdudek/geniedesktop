@@ -33,12 +33,13 @@ struct RunningApplicationSlider: View {
             }
             ZStack(alignment: .top) {
                 Capsule().fill(.ultraThinMaterial)
-                Capsule().strokeBorder(.white.opacity(0.3), lineWidth: 1)
-                Capsule().fill(.white.opacity(0.8))
-                    .frame(width: 10, height: 20)
+                Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 1.2)
+                Capsule().fill(Color.white.opacity(0.92))
+                    .frame(width: 18, height: 26)
+                    .shadow(color: Color.cyan.opacity(0.5), radius: 3)
                     .offset(y: thumbOffset)
             }
-            .frame(width: 20, height: trackHeight)
+            .frame(width: 26, height: trackHeight)
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { value in
@@ -49,6 +50,7 @@ struct RunningApplicationSlider: View {
                     select(at: value.location.y)
                     isDragging = false
                     refreshApplications()
+                    activateSelection()
                 })
             .accessibilityElement()
             .accessibilityLabel("Running applications")
@@ -60,12 +62,13 @@ struct RunningApplicationSlider: View {
                 case .decrement: selectedIndex = (selectedIndex + destinationCount - 1) % destinationCount
                 @unknown default: return
                 }
+                activateSelection()
             }
         }
         .onHover { isHovered = $0 }
-        .opacity(isHovered || isDragging ? 1.0 : 0.0)
+        .opacity(isHovered || isDragging ? 1.0 : 0.45)
         .animation(.easeInOut(duration: 0.18), value: isHovered || isDragging)
-        .help("Running Application HUD Scrubber (Display Only)")
+        .help("Running Application Slider — Drag and release to switch between apps and stations")
         .onAppear { refreshApplications() }
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)) { _ in
             if !isDragging { refreshApplications() }
@@ -106,6 +109,33 @@ struct RunningApplicationSlider: View {
             selectedIndex = active + 2
         } else {
             selectedIndex = min(selectedIndex, destinationCount - 1)
+        }
+    }
+
+    private func activateSelection() {
+        HapticFeedback.selection()
+        if selectedIndex == 0 {
+            FinderChatWindowManager.shared.openTab(.chat)
+            DesktopWindowManager.shared.setPage(0)
+        } else if selectedIndex == 1 {
+            DesktopWindowManager.shared.setPage(1)
+        } else if selectedIndex == destinationCount - 3 {
+            if let messagesApp = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == "com.apple.MobileSMS" }) {
+                messagesApp.unhide()
+                _ = messagesApp.activate(options: [.activateAllWindows])
+            } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.MobileSMS") {
+                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+            }
+        } else if selectedIndex == destinationCount - 2 {
+            FinderChatWindowManager.shared.openTab(.files)
+        } else if selectedIndex == destinationCount - 1 {
+            DesktopWindowManager.shared.setPage(2)
+        } else if let app = selectedApp {
+            app.unhide()
+            _ = app.activate(options: [.activateAllWindows])
+            if let bid = app.bundleIdentifier {
+                FinderChatWindowManager.shared.openProgram(bundleId: bid, name: app.localizedName ?? "App")
+            }
         }
     }
 }

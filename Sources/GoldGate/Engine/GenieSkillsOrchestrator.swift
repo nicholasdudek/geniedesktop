@@ -338,6 +338,17 @@ public final class GenieSkillsOrchestrator: ObservableObject {
             return GenieBackgroundDesktopAgentEngine.shared.readUI(param)
         })
 
+        // Skill: Distributed Multi-Machine Compute & Batch Calculations
+        skills.append(GenieSkillDefinition(
+            id: "dist_calc",
+            name: "Distributed Multi-Machine Compute",
+            category: "Compute",
+            description: "Partitions and evaluates batch mathematical and matrix operations concurrently across Apple Silicon performance cores, VM clones, and distributed network nodes.",
+            usagePattern: "<expressions separated by ; or newlines>"
+        ) { param in
+            return await GenieDistributedComputeEngine.shared.executeDistributedCalculations(param)
+        })
+
         self.registeredSkills = skills
     }
 
@@ -705,5 +716,29 @@ When the user asks to launch an app, browse the web, calculate math, take notes,
         }
 
         return await executeShell(command: command)
+    }
+
+    // MARK: - 7. Hypervisor & Hardware Provisioning Intent
+    let capabilityManifest = """
+    SYSTEM_CAPABILITIES:
+    - NATIVE_HYPERVISOR: Can spawn isolated Linux clones.
+    - RESOURCE_CONTROL: Can dynamically allocate CPU/RAM.
+    - VIRTIO_FS_BRIDGE: Shared folder at '/home/ubuntu/genie_shared'.
+    - RUNTIME_LIFECYCLE: Can create, monitor, and terminate runtimes.
+    """
+
+    func handleModelIntent(_ intent: String) async {
+        let isHeavy = intent.contains("analyze") || intent.contains("spark")
+        let config = RuntimeConfig(
+            name: "Task-Runtime",
+            description: intent,
+            vcpu: isHeavy ? 8 : 2,
+            ramMB: isHeavy ? 16384 : 4096
+        )
+        do {
+            try await RuntimeManager.shared.provision(config)
+        } catch {
+            print("Alignment Error: \(error)")
+        }
     }
 }

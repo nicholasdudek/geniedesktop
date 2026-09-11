@@ -36,7 +36,7 @@ public final class GenieAirDropAndLocalNetworkEngine: ObservableObject {
 
     // Local Peer-to-Peer Network state
     @Published public var isNetworkSharingActive: Bool = false
-    @Published public var localServerPort: UInt16 = 8421
+    @Published public var localServerPort: UInt16 = GeniePortGovernor.defaultLocalNetworkPort
     @Published public var discoveredPeers: [GenieLocalPeer] = []
     @Published public var sharedFilesList: [String] = []
     @Published public var networkLog: [String] = []

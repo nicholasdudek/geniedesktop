@@ -14,6 +14,7 @@ enum DropdownSidebarTab: String, CaseIterable, Identifiable {
 
     // Intelligence & Settings
     case aiModels = "AI Models & Keys"
+    case virtualMachines = "AI Stations & Virtual Machines"
     case expansion = "Feature Packs"
     case system = "General Settings"
     case privacy = "Privacy & Permissions"
@@ -31,6 +32,9 @@ enum DropdownSidebarTab: String, CaseIterable, Identifiable {
     case menuBar = "Menu Bar & Docks"
     case battery = "Battery Indicator"
 
+    // Utilities
+    case worldClock = "World Clock"
+
     var id: String { rawValue }
 
     init(caseInsensitive raw: String) {
@@ -40,7 +44,9 @@ enum DropdownSidebarTab: String, CaseIterable, Identifiable {
             self = .chat
         } else if raw.lowercased().contains("ai") || raw.lowercased().contains("model") || raw.lowercased().contains("gpt") || raw.lowercased().contains("gemini") || raw.caseInsensitiveCompare("Executive Intelligence & Models") == .orderedSame {
             self = .aiModels
-        } else if raw.lowercased().contains("store") || raw.lowercased().contains("expan") || raw.caseInsensitiveCompare("Bespoke Commissions") == .orderedSame {
+        } else if raw.lowercased().contains("vm") || raw.lowercased().contains("station") || raw.lowercased().contains("virtual machine") || raw.lowercased().contains("hypervisor") || raw.caseInsensitiveCompare("AI Stations & Virtual Machines") == .orderedSame {
+            self = .virtualMachines
+        } else if raw.lowercased().contains("store") || raw.lowercased().contains("expan") || raw.lowercased().contains("cart") || raw.lowercased().contains("shop") || raw.lowercased().contains("shopping") || raw.lowercased().contains("addon") || raw.lowercased().contains("add-on") || raw.caseInsensitiveCompare("Bespoke Commissions") == .orderedSame {
             self = .expansion
         } else if raw.lowercased().contains("mouse") || raw.lowercased().contains("track") || raw.lowercased().contains("touch") || raw.caseInsensitiveCompare("Kinetic Gestures & Inertia") == .orderedSame {
             self = .trackpad
@@ -74,6 +80,8 @@ enum DropdownSidebarTab: String, CaseIterable, Identifiable {
             self = .trackpad
         } else if raw.lowercased().contains("priv") || raw.lowercased().contains("perm") || raw.lowercased().contains("secur") || raw.caseInsensitiveCompare("Security Governance & Attestation") == .orderedSame {
             self = .privacy
+        } else if raw.lowercased().contains("clock") || raw.lowercased().contains("world") || raw.lowercased().contains("time zone") {
+            self = .worldClock
         } else {
             self = .chat
         }
@@ -86,6 +94,7 @@ enum DropdownSidebarTab: String, CaseIterable, Identifiable {
         case .workspace: return "macwindow.on.rectangle"
         case .formations: return "circle.grid.cross.fill"
         case .aiModels: return "sparkles"
+        case .virtualMachines: return "server.rack"
         case .expansion: return "bag.fill"
         case .system: return "gearshape.fill"
         case .privacy: return "hand.raised.fill"
@@ -98,6 +107,7 @@ enum DropdownSidebarTab: String, CaseIterable, Identifiable {
         case .petsAndPinball: return "pawprint.fill"
         case .menuBar: return "menubar.rectangle"
         case .battery: return "battery.100.bolt"
+        case .worldClock: return "clock.fill"
         }
     }
 
@@ -108,6 +118,7 @@ enum DropdownSidebarTab: String, CaseIterable, Identifiable {
         case .workspace: return .teal
         case .formations: return .pink
         case .aiModels: return .purple
+        case .virtualMachines: return .blue
         case .expansion: return .orange
         case .system: return .blue
         case .privacy: return .red
@@ -120,6 +131,7 @@ enum DropdownSidebarTab: String, CaseIterable, Identifiable {
         case .petsAndPinball: return .pink
         case .menuBar: return .cyan
         case .battery: return .green
+        case .worldClock: return .orange
         }
     }
 }
@@ -262,6 +274,7 @@ struct MenuBarDropdownView: View {
     @State private var chatPromptText: String = ""
     @State private var chatPromptMode: BarMode = .chat
     @State private var chatLayoutMode: WindowLayoutMode = .chatOnly
+    @State private var selectedAppSuggestionIndex: Int = 0
     @AppStorage(PrefKey.aiEmotion) private var selectedEmotionRaw: String = AIEmotionType.mystical.rawValue
 
     private var currentChatEmotion: AIEmotionType {
@@ -375,6 +388,7 @@ struct MenuBarDropdownView: View {
     @AppStorage(PrefKey.sameWallpaperMode) var sameWallpaperMode: Bool = true
     @AppStorage(PrefKey.wallpaperMatchingStyle) var wallpaperMatchingStyle: String = "Exact Mirror (1:1)"
     @AppStorage(PrefKey.wallpaperTreatment) var wallpaperTreatment: String = "Exact Mirror (1:1)"
+    @AppStorage(PrefKey.hideWallpaperBehindApps) var hideWallpaperBehindApps: Bool = false
     @AppStorage(PrefKey.wallpaperFxEnabled) var wallpaperFxEnabled: Bool = false
     @AppStorage(PrefKey.wallpaperFxType) var wallpaperFxType: String = "Cosmic Aurora"
     @AppStorage(PrefKey.wallpaperFxIntensity) var wallpaperFxIntensity: Double = 0.35
@@ -393,6 +407,8 @@ struct MenuBarDropdownView: View {
 
     // Arcade Pinball Mode
     @AppStorage(PrefKey.pinballModeEnabled) var pinballModeEnabled: Bool = false
+    @AppStorage(PrefKey.attachWorldClockWidget) var attachWorldClockWidget: Bool = false
+    @AppStorage(PrefKey.attachAnimatedChatWidget) var attachAnimatedChatWidget: Bool = false
 
     // Genie Summon Animation & Smoke Engine
     @AppStorage(PrefKey.genieAnimEnabled) var genieAnimEnabled: Bool = false
@@ -1209,117 +1225,19 @@ struct MenuBarDropdownView: View {
 
             VStack(spacing: 0) {
                 // Top Minimalist Floating Bubble Overlay Bar (Apple Theme Standards)
-                topGlobalBar
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, isFoldedToBar ? 6 : 8)
-                    .background(WindowDragAreaView())
+                if selectedTab != .chat {
+                    topGlobalBar
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, isFoldedToBar ? 6 : 8)
+                        .background(WindowDragAreaView())
+                }
 
                 if !isFoldedToBar {
                     GeometryReader { geo in
-                        if isSidebarPinned {
-                            // Pinned side-by-side view
-                            let contentWidth = max(200, geo.size.width - sidebarWidth - 8)
-                            HStack(spacing: 0) {
-                                navigationSidebar
-                                    .frame(width: sidebarWidth, height: geo.size.height)
-                                    .background(studioThemePalette.sidebar)
-
-                                // Draggable resize handle
-                                ZStack {
-                                    Rectangle()
-                                        .fill(studioThemePalette.border.opacity(0.5))
-                                        .frame(width: 1)
-                                    Rectangle()
-                                        .fill(Color.clear)
-                                        .frame(width: 8)
-                                        .contentShape(Rectangle())
-                                        .onHover { inside in
-                                            if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                                        }
-                                        .gesture(
-                                            DragGesture(minimumDistance: 1, coordinateSpace: .global)
-                                                .onChanged { value in
-                                                    if sidebarDragStartWidth == nil {
-                                                        sidebarDragStartWidth = sidebarWidth
-                                                    }
-                                                    let base = sidebarDragStartWidth ?? 205
-                                                    sidebarWidth = max(170, min(270, base + value.translation.width))
-                                                }
-                                                .onEnded { _ in
-                                                    sidebarDragStartWidth = nil
-                                                }
-                                        )
-                                }
-                                .frame(width: 8, height: geo.size.height)
-
-                                detailContentPanel
-                                    .frame(width: contentWidth, height: geo.size.height)
-                                    .clipped()
-                                    .background(studioThemePalette.content)
-                            }
-                            .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
-                        } else {
-                            // Seamless Edge-to-Edge Active Chat View with Pop-Out Hover Glass Sidebar
-                            ZStack(alignment: .leading) {
-                                // 1. Active Content (Fills 100% of window width seamlessly)
-                                detailContentPanel
-                                    .frame(width: geo.size.width, height: geo.size.height)
-                                    .clipped()
-                                    .background(studioThemePalette.content)
-
-                                // 2. Invisible Left-Edge Hover Sensor (triggers pop-out drawer)
-                                Color.clear
-                                    .frame(width: 22, height: geo.size.height)
-                                    .contentShape(Rectangle())
-                                    .onHover { hovering in
-                                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                                            isSidebarHovered = hovering
-                                        }
-                                    }
-
-                                // 3. Floating Liquid Glass Pop-Out Sidebar Drawer
-                                if isSidebarHovered || isSidebarHoverTriggered {
-                                    HStack(spacing: 0) {
-                                        navigationSidebar
-                                            .frame(width: sidebarWidth, height: geo.size.height)
-                                            .background(
-                                                VisualEffectBlur(material: .popover, blendingMode: .withinWindow, state: .active)
-                                                    .overlay(studioThemePalette.sidebar.opacity(0.88))
-                                            )
-                                            .clipShape(
-                                                UnevenRoundedRectangle(
-                                                    topLeadingRadius: 0,
-                                                    bottomLeadingRadius: 14,
-                                                    bottomTrailingRadius: 14,
-                                                    topTrailingRadius: 14,
-                                                    style: .continuous
-                                                )
-                                            )
-                                            .overlay(
-                                                UnevenRoundedRectangle(
-                                                    topLeadingRadius: 0,
-                                                    bottomLeadingRadius: 14,
-                                                    bottomTrailingRadius: 14,
-                                                    topTrailingRadius: 14,
-                                                    style: .continuous
-                                                )
-                                                .strokeBorder(Color.white.opacity(0.20), lineWidth: 0.8)
-                                            )
-                                            .shadow(color: Color.black.opacity(0.50), radius: 24, x: 8, y: 0)
-                                            .onHover { inside in
-                                                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                                                    isSidebarHovered = inside
-                                                }
-                                            }
-                                            .transition(.move(edge: .leading).combined(with: .opacity))
-
-                                        Spacer()
-                                    }
-                                    .zIndex(100)
-                                }
-                            }
+                        detailContentPanel
                             .frame(width: geo.size.width, height: geo.size.height)
-                        }
+                            .clipped()
+                            .background(selectedTab == .chat ? Color.clear : studioThemePalette.content)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.opacity.combined(with: .scale(scale: 0.99)))
@@ -1592,24 +1510,6 @@ struct MenuBarDropdownView: View {
                 AppleTrafficLightsControl {
                     NotificationCenter.default.post(name: NSNotification.Name("NexusClose"), object: nil)
                 }
-
-                // Sidebar pop out / toggle button
-                Button(action: {
-                    HapticFeedback.selection()
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                        isSidebarHoverTriggered.toggle()
-                    }
-                }) {
-                    Image(systemName: isSidebarPinned ? "sidebar.leading" : (isSidebarHovered || isSidebarHoverTriggered ? "sidebar.left" : "sidebar.leading"))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(isSidebarPinned || isSidebarHovered || isSidebarHoverTriggered ? .cyan : .secondary)
-                        .frame(width: 22, height: 22)
-                        .background(
-                            Circle().fill(isSidebarPinned || isSidebarHovered || isSidebarHoverTriggered ? Color.cyan.opacity(0.20) : Color.white.opacity(0.06))
-                        )
-                }
-                .buttonStyle(.plain)
-                .help(isSidebarPinned ? "Sidebar is Pinned (⌘S)" : "Hover Left Edge or Click to Pop Out Sidebar (⌘S)")
 
                 BrandLogoHeaderBadgeView()
                     .fixedSize()
@@ -1958,11 +1858,12 @@ struct MenuBarDropdownView: View {
                 .padding(.top, 6)
                 .padding(.bottom, 2)
 
-                sidebarSectionView(title: "Flagship Intelligence", tabs: [.chat])
+                sidebarSectionView(title: "Intelligence & Models", tabs: [.aiModels, .virtualMachines, .chat])
                 sidebarSectionView(title: "Workspace & Applications", tabs: [.applications, .workspace, .formations])
-                sidebarSectionView(title: "Intelligence & System", tabs: [.aiModels, .expansion, .system, .privacy])
-                sidebarSectionView(title: "Appearance & Themes", tabs: [.themes, .snuggies, .typography, .wallpapers])
-                sidebarSectionView(title: "Controls & Hardware", tabs: [.trackpad, .soundHaptics, .petsAndPinball, .menuBar, .battery])
+                sidebarSectionView(title: "Utilities & Time", tabs: [.worldClock, .battery])
+                sidebarSectionView(title: "Controls & Hardware", tabs: [.menuBar, .trackpad, .soundHaptics, .petsAndPinball])
+                sidebarSectionView(title: "Appearance & Finishes", tabs: [.themes, .snuggies, .typography, .wallpapers])
+                sidebarSectionView(title: "System & Governance", tabs: [.system, .privacy, .expansion])
 
                 sidebarFooterControls
                     .padding(.top, 10)
@@ -2026,6 +1927,11 @@ struct MenuBarDropdownView: View {
                     badgeText: tab == .applications ? "\(appModel.visibleApps.count)" : (tab == .chat && localModels.chatHistory.count > 0 ? "\(localModels.chatHistory.count)" : nil),
                     onSelect: {
                         HapticFeedback.selection()
+                        if tab == .chat && UserDefaults.standard.bool(forKey: PrefKey.unifyChatWindow) {
+                            FinderChatWindowManager.shared.show(tab: .chat)
+                            (NSApp.delegate as? AppDelegate)?.dismissMenuBarPopover()
+                            return
+                        }
                         withAnimation(.spring(response: 0.20, dampingFraction: 0.78)) {
                             selectedTab = tab
                         }
@@ -2044,11 +1950,15 @@ struct MenuBarDropdownView: View {
             chatDetailView
         case .applications:
             applicationsDetailView
+        case .worldClock:
+            WorldClockPaneView()
+        case .virtualMachines:
+            VirtualMachinesDashboardView()
         default:
             ScrollView(.vertical, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: 14) {
                     switch selectedTab {
-                    case .chat, .applications:
+                    case .chat, .applications, .worldClock, .virtualMachines:
                         EmptyView()
                     case .workspace:
                         desktopGridDetailView
@@ -2092,39 +2002,189 @@ struct MenuBarDropdownView: View {
 
     private var chatDetailView: some View {
         VStack(spacing: 0) {
-            // ── Main Chat Stream & Content Area ──
-            GeometryReader { geo in
-                if chatLayoutMode == .split {
-                    HStack(spacing: 0) {
-                        AIEmotionPlayerWindowView()
-                            .frame(width: max(280, geo.size.width * 0.46))
-
-                        Rectangle()
-                            .fill(LinearGradient(colors: [Color.white.opacity(0.15), Color.white.opacity(0.04)], startPoint: .top, endPoint: .bottom))
-                            .frame(width: 1)
-
-                        CompactChatStreamView(emotion: currentChatEmotion, showHeader: false)
-                            .frame(maxWidth: .infinity)
-                    }
-                } else if chatLayoutMode == .mediaOnly {
-                    AIEmotionPlayerWindowView()
-                } else {
-                    CompactChatStreamView(emotion: currentChatEmotion, showHeader: false)
+            // Live Mirror & Single Window Unification Header
+            HStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                    Text("Live Mirror • Synced with Program Window")
+                        .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.75))
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // ── Apple Floating Liquid Glass Prompt Input Bar ──
-            chatBottomPromptBar
+                Spacer()
+
+                Button(action: {
+                    HapticFeedback.selection()
+                    FinderChatWindowManager.shared.show(tab: .chat)
+                    (NSApp.delegate as? AppDelegate)?.dismissMenuBarPopover()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.forward.and.arrow.down.backward")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("Merge into Single Window")
+                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.cyan)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3.5)
+                    .background(Capsule().fill(Color.cyan.opacity(0.16)))
+                    .overlay(Capsule().strokeBorder(Color.cyan.opacity(0.35), lineWidth: 0.6))
+                }
+                .buttonStyle(.plain)
+                .help("Focus and merge into the primary program window")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.black.opacity(0.25))
+
+            FinderStyleChatWindowView(isEmbedded: true)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusAIDisplayCreation"))) { _ in
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                self.chatLayoutMode = .split
+    }
+
+    /// Live predictive matches for the "apps" prompt mode — recognizes installed
+    /// applications by name as you type, using the IPE-backed fuzzy search on AppModel.
+    private var appPromptSuggestions: [AppInfo] {
+        guard chatPromptMode == .apps else { return [] }
+        let clean = chatPromptText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return [] }
+        return Array(appModel.filteredApps(search: clean, category: nil).prefix(6))
+    }
+
+    private func abbreviatedPath(_ url: URL) -> String {
+        (url.path as NSString).abbreviatingWithTildeInPath
+    }
+
+    private var appPredictionOverlay: some View {
+        let suggestions = appPromptSuggestions
+        return VStack(spacing: 0) {
+            if !suggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, app in
+                        let isSelected = index == selectedAppSuggestionIndex
+                        Button(action: {
+                            selectedAppSuggestionIndex = index
+                            handleChatPromptSubmit()
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(nsImage: app.icon)
+                                    .resizable()
+                                    .interpolation(.high)
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 22, height: 22)
+
+                                VStack(alignment: .leading, spacing: 1) {
+                                    HStack(spacing: 5) {
+                                        Text(app.name)
+                                            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                            .foregroundColor(.white)
+                                        if index == 0 {
+                                            Text("TOP HIT")
+                                                .font(.system(size: 7.5, weight: .heavy, design: .rounded))
+                                                .foregroundColor(.black)
+                                                .padding(.horizontal, 4)
+                                                .padding(.vertical, 1.5)
+                                                .background(Capsule().fill(Color.orange.opacity(0.85)))
+                                        }
+                                    }
+                                    Text(abbreviatedPath(app.url))
+                                        .font(.system(size: 9.5, design: .monospaced))
+                                        .foregroundColor(.white.opacity(0.55))
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                }
+
+                                Spacer()
+
+                                if isSelected {
+                                    Text("↵")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(.cyan)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(isSelected ? Color.cyan.opacity(0.18) : Color.clear)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { hovering in
+                            if hovering { selectedAppSuggestionIndex = index }
+                        }
+                        .contextMenu {
+                            Button("Launch \(app.name)") {
+                                selectedAppSuggestionIndex = index
+                                handleChatPromptSubmit()
+                            }
+                            Button("Reveal in Finder") {
+                                NSWorkspace.shared.activateFileViewerSelecting([app.url])
+                            }
+                            Button("Copy Path") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(app.url.path, forType: .string)
+                            }
+                        }
+                    }
+
+                    Divider().opacity(0.15)
+
+                    HStack(spacing: 10) {
+                        Text("↑↓ select")
+                        Text("↵ launch")
+                        Text("⇥ reveal in Finder")
+                    }
+                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.40))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                }
+                .padding(.vertical, 4)
+                .background(
+                    ZStack {
+                        VisualEffectBlur(material: .hudWindow, blendingMode: .withinWindow, state: .active)
+                        Color.black.opacity(0.55)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.75)
+                )
+                .shadow(color: Color.black.opacity(0.35), radius: 12, y: 4)
+                .padding(.horizontal, 14)
+                .padding(.bottom, 4)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
     }
 
+    private func moveAppSuggestionSelection(by delta: Int) {
+        let count = appPromptSuggestions.count
+        guard count > 0 else { return }
+        selectedAppSuggestionIndex = (selectedAppSuggestionIndex + delta + count) % count
+        HapticFeedback.selection()
+    }
+
+    private func revealSelectedAppSuggestion() {
+        let suggestions = appPromptSuggestions
+        guard !suggestions.isEmpty else { return }
+        let idx = min(selectedAppSuggestionIndex, suggestions.count - 1)
+        NSWorkspace.shared.activateFileViewerSelecting([suggestions[idx].url])
+        HapticFeedback.selection()
+    }
+
     private var chatBottomPromptBar: some View {
+        VStack(spacing: 0) {
+            appPredictionOverlay
+            chatBottomPromptBarField
+        }
+        .animation(.spring(response: 0.24, dampingFraction: 0.85), value: appPromptSuggestions.map(\.id))
+    }
+
+    private var chatBottomPromptBarField: some View {
         HStack(spacing: 8) {
             // Mode Switcher Pill
             Button(action: {
@@ -2172,7 +2232,7 @@ struct MenuBarDropdownView: View {
 
             // Prompt Text Field
             TextField(
-                chatPromptMode == .chat ? "Ask \(localModels.selectedModelDisplayName)..." : "Search the web or execute command...",
+                chatPromptMode == .chat ? "Ask \(localModels.selectedModelDisplayName)..." : chatPromptMode.placeholder,
                 text: $chatPromptText
             )
             .textFieldStyle(.plain)
@@ -2180,6 +2240,24 @@ struct MenuBarDropdownView: View {
             .foregroundColor(.primary)
             .onSubmit {
                 handleChatPromptSubmit()
+            }
+            .onChange(of: chatPromptText) { _, _ in
+                selectedAppSuggestionIndex = 0
+            }
+            .onKeyPress(.upArrow) {
+                guard chatPromptMode == .apps, !appPromptSuggestions.isEmpty else { return .ignored }
+                moveAppSuggestionSelection(by: -1)
+                return .handled
+            }
+            .onKeyPress(.downArrow) {
+                guard chatPromptMode == .apps, !appPromptSuggestions.isEmpty else { return .ignored }
+                moveAppSuggestionSelection(by: 1)
+                return .handled
+            }
+            .onKeyPress(.tab) {
+                guard chatPromptMode == .apps, !appPromptSuggestions.isEmpty else { return .ignored }
+                revealSelectedAppSuggestion()
+                return .handled
             }
 
             // Clear Prompt Button
@@ -2225,11 +2303,14 @@ struct MenuBarDropdownView: View {
         case .chat, .file, .polaroid, .screenMirror, .settings:
             localModels.generate(prompt: clean)
         case .apps:
-            if let app = AppModel.shared?.filteredApps(search: clean, category: nil).first {
-                NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+            let matches = appModel.filteredApps(search: clean, category: nil)
+            let pickIndex = min(selectedAppSuggestionIndex, max(0, matches.count - 1))
+            if let app = matches.isEmpty ? nil : matches[pickIndex] {
+                appModel.launch(app)
             } else {
                 Process.launchedProcess(launchPath: "/usr/bin/open", arguments: ["-a", clean])
             }
+            selectedAppSuggestionIndex = 0
         case .vision:
             GenieVisionEngine.shared.askAIWithVision(query: clean)
         case .search:
@@ -4222,6 +4303,25 @@ struct MenuBarDropdownView: View {
                     .buttonStyle(.plain)
                 }
 
+                // Hide Wallpaper Behind Applications Toggle
+                Toggle(isOn: $hideWallpaperBehindApps) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "eye.slash.fill")
+                            .foregroundColor(.teal)
+                            .font(.system(size: 11))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(LocalizedStrings.translateText("Hide Wallpaper Behind Applications", lang: appLanguage))
+                                .font(.system(size: 11, weight: .medium))
+                            Text(LocalizedStrings.translateText("Applications swipe up/down cleanly over your authentic desktop with no wallpaper", lang: appLanguage))
+                                .font(.system(size: 8.5))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .padding(.vertical, 3)
+
                 // Wallpaper Treatment & Glass Style for Genie or Selected Wallpaper
                 VStack(alignment: .leading, spacing: 6) {
                     Text(sameWallpaperMode ? "GENIE & DESKTOP TREATMENT / GLASS STYLE" : "WALLPAPER TREATMENT & GLASS STYLE")
@@ -4373,19 +4473,16 @@ struct MenuBarDropdownView: View {
                         openPanel.allowsMultipleSelection = false
                         openPanel.canChooseDirectories = false
                         openPanel.canCreateDirectories = false
-                        openPanel.allowedContentTypes = [.image, .jpeg, .png, .heic]
+                        openPanel.allowedContentTypes = [.image, .jpeg, .png, .heic, .html]
                         openPanel.title = "Upload / Select Custom Desktop Wallpaper"
                         openPanel.level = NSWindow.Level(rawValue: max(NSWindow.Level.statusBar.rawValue, NSApp.keyWindow?.level.rawValue ?? 0) + 10)
                         NSApp.activate(ignoringOtherApps: true)
                         openPanel.center()
                         openPanel.orderFrontRegardless()
                         if openPanel.runModal() == .OK, let url = openPanel.url {
-                            if let img = NSImage(contentsOf: url) {
-                                WallpaperManager.shared.activeWallpaperImage = img
-                                UserDefaults.standard.set(url.path, forKey: PrefKey.customWallpaperPath)
-                                sameWallpaperMode = false
-                                wallpaperMatchingStyle = url.deletingPathExtension().lastPathComponent
-                            }
+                            sameWallpaperMode = false
+                            wallpaperMatchingStyle = url.deletingPathExtension().lastPathComponent
+                            _ = WallpaperManager.shared.setSystemWallpaper(path: url.path)
                         }
                     }) {
                         HStack {
@@ -4419,10 +4516,7 @@ struct MenuBarDropdownView: View {
                                 withAnimation(.spring(response: 0.25, dampingFraction: 0.70)) {
                                     sameWallpaperMode = false
                                     wallpaperMatchingStyle = wpItem.name
-                                    UserDefaults.standard.set(wpItem.path, forKey: PrefKey.customWallpaperPath)
-                                    if let img = NSImage(contentsOfFile: wpItem.path) {
-                                        WallpaperManager.shared.activeWallpaperImage = img
-                                    }
+                                    _ = WallpaperManager.shared.setSystemWallpaper(path: wpItem.path)
                                 }
                             }) {
                                 VStack(spacing: 3) {
@@ -4725,6 +4819,7 @@ struct MenuBarDropdownView: View {
                         HapticFeedback.selection()
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.70)) {
                             cursorFxType = cfx
+                            GenieGlobalCursorFXOverlayManager.shared.setCursorFxType(cfx)
                         }
                     }) {
                         HStack {
@@ -4804,6 +4899,7 @@ struct MenuBarDropdownView: View {
                         HapticFeedback.selection()
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.70)) {
                             cursorFxType = cfx
+                            GenieGlobalCursorFXOverlayManager.shared.setCursorFxType(cfx)
                         }
                     }) {
                         HStack {
@@ -4971,6 +5067,14 @@ struct MenuBarDropdownView: View {
 
     private var livingPetsAndPinballDetailView: some View {
         VStack(alignment: .leading, spacing: 14) {
+            attachableAnimatedChatWidgetSection
+
+            Divider().opacity(0.3)
+
+            attachableWorldClockWidgetSection
+
+            Divider().opacity(0.3)
+
             entitiesDetailView
 
             Divider().opacity(0.3)
@@ -4988,6 +5092,150 @@ struct MenuBarDropdownView: View {
                 .font(.system(size: 10.5))
                 .foregroundColor(.secondary)
                 .padding(.top, 2)
+        }
+    }
+
+    private var attachableAnimatedChatWidgetSection: some View {
+        AppleSettingsSection("Animated Living AI Chat Widget") {
+            AppleSettingsRow(
+                title: "Pin Animated Chat Widget to Desktop",
+                subtitle: "Floating living AI complication with pulsing neural aura and dynamic equalizer",
+                icon: "bubble.left.and.bubble.right.fill",
+                iconColor: .cyan
+            ) {
+                Toggle("", isOn: $attachAnimatedChatWidget)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
+
+            if attachAnimatedChatWidget {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(RadialGradient(colors: [Color.cyan.opacity(0.8), Color.purple.opacity(0.3), Color.clear], center: .center, startRadius: 2, endRadius: 14))
+                                .frame(width: 28, height: 28)
+                            Circle()
+                                .fill(Color.cyan)
+                                .frame(width: 8, height: 8)
+                        }
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Genie Copilot Complication")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("Live floating complication • Drag anywhere on desktop")
+                                .font(.system(size: 9.5))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button(action: {
+                            HapticFeedback.selection()
+                            selectedTab = .chat
+                        }) {
+                            HStack(spacing: 4) {
+                                Text("Open Chat")
+                                    .font(.system(size: 10, weight: .semibold))
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 8, weight: .bold))
+                            }
+                            .foregroundColor(.cyan)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Color.cyan.opacity(0.15)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+
+    private var attachableWorldClockWidgetSection: some View {
+        AppleSettingsSection("Attachable World Clock Widget") {
+            AppleSettingsRow(
+                title: "Pin World Clock to Desktop",
+                subtitle: "Attach floating OLED blackout world clock widget to your workspace",
+                icon: "clock.badge.checkmark.fill",
+                iconColor: .orange
+            ) {
+                Toggle("", isOn: $attachWorldClockWidget)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
+
+            if attachWorldClockWidget {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Widget Card Layout Tier")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { GenieWorldClockStore.shared.settings.size },
+                            set: { GenieWorldClockStore.shared.resizeAll(to: $0) }
+                        )) {
+                            ForEach(GeniePillowSize.allCases) { size in
+                                Label(size.label, systemImage: size.icon).tag(size)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 240)
+                        .controlSize(.small)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+
+                    // Live preview of the clock widget in mini form
+                    HStack(spacing: 12) {
+                        TimelineView(.periodic(from: .now, by: 1)) { timelineContext in
+                            HStack(spacing: 8) {
+                                ForEach(Array(GenieWorldClockStore.shared.settings.cities.prefix(3))) { city in
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(city.accent.color)
+                                            .frame(width: 6, height: 6)
+                                        Text(city.name)
+                                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                                            .foregroundColor(.white)
+                                        Text(city.offsetDescription(from: .current, at: timelineContext.date))
+                                            .font(.system(size: 8.5, design: .monospaced))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Capsule().fill(Color.white.opacity(0.07)))
+                                }
+                            }
+                        }
+                        Spacer()
+                        Button(action: {
+                            HapticFeedback.selection()
+                            selectedTab = .worldClock
+                        }) {
+                            HStack(spacing: 4) {
+                                Text("Manage Cities & Alarms")
+                                    .font(.system(size: 10, weight: .semibold))
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 8, weight: .bold))
+                            }
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Color.orange.opacity(0.15)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 6)
+                }
+            }
         }
     }
 
@@ -5811,6 +6059,90 @@ struct MenuBarDropdownView: View {
 
                 Divider().opacity(0.35)
 
+                // xAI Grok
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Image(systemName: "bolt.shield.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.purple)
+                        Text("xAI Grok API Key")
+                            .font(.system(size: 11.5, weight: .semibold))
+                        Spacer()
+                        if !LocalModelManager.shared.grokApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Active ✓")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.green)
+                        } else {
+                            Text("Optional")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        TextField("xai-... (Grok 2 / Grok 2 Vision)", text: Binding(
+                            get: { LocalModelManager.shared.grokApiKey },
+                            set: { LocalModelManager.shared.grokApiKey = $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11, design: .monospaced))
+
+                        Button(action: {
+                            if let clip = NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
+                                LocalModelManager.shared.grokApiKey = clip
+                                HapticFeedback.selection()
+                            }
+                        }) {
+                            Text("Paste")
+                                .font(.system(size: 10.5, weight: .medium))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+
+                Divider().opacity(0.35)
+
+                // DeepSeek
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Image(systemName: "atom")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.cyan)
+                        Text("DeepSeek API Key")
+                            .font(.system(size: 11.5, weight: .semibold))
+                        Spacer()
+                        if !LocalModelManager.shared.deepseekApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Active ✓")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.green)
+                        } else {
+                            Text("Optional")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        TextField("sk-... (DeepSeek-V3 / DeepSeek-R1)", text: Binding(
+                            get: { LocalModelManager.shared.deepseekApiKey },
+                            set: { LocalModelManager.shared.deepseekApiKey = $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11, design: .monospaced))
+
+                        Button(action: {
+                            if let clip = NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
+                                LocalModelManager.shared.deepseekApiKey = clip
+                                HapticFeedback.selection()
+                            }
+                        }) {
+                            Text("Paste")
+                                .font(.system(size: 10.5, weight: .medium))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+
+                Divider().opacity(0.35)
+
                 // Local Models Engine & Shutoff Control
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
@@ -6506,6 +6838,10 @@ struct MenuBarDropdownView: View {
 
     private var expansionPacksDetailView: some View {
         VStack(alignment: .leading, spacing: 14) {
+            subscriptionPlansHeaderSection
+
+            Divider().opacity(0.3)
+
             // Header Banner
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
@@ -6527,6 +6863,94 @@ struct MenuBarDropdownView: View {
             VStack(spacing: 12) {
                 ForEach(storeManager.availablePacks) { pack in
                     expansionPackCard(pack: pack)
+                }
+            }
+        }
+    }
+
+    private var subscriptionPlansHeaderSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.orange)
+                Text(LocalizedStrings.translateText("GENIE MEMBERSHIP & FOUNDER PASSES", lang: appLanguage))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.orange)
+                Spacer()
+                Text("First Month Free on All Plans")
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.green.opacity(0.15)))
+            }
+
+            VStack(spacing: 8) {
+                ForEach(storeManager.subscriptionPlans) { plan in
+                    let isSelected = storeManager.activePlanName == plan.name
+                    Button(action: {
+                        HapticFeedback.selection()
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                            storeManager.selectPlan(plan)
+                        }
+                    }) {
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(plan.name)
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.white)
+                                    if let badge = plan.badge {
+                                        Text(badge)
+                                            .font(.system(size: 8, weight: .heavy))
+                                            .foregroundColor(plan.isPopular ? .orange : .cyan)
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1.5)
+                                            .background(Capsule().fill((plan.isPopular ? Color.orange : Color.cyan).opacity(0.2)))
+                                    }
+                                }
+
+                                Text("\(plan.billingCadence) • \(plan.effectiveMonthlyRate)")
+                                    .font(.system(size: 9.5))
+                                    .foregroundColor(.white.opacity(0.65))
+
+                                if let trial = plan.trialText {
+                                    Text("🎁 \(trial)")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.green)
+                                }
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(plan.priceDisplay)
+                                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                    .foregroundColor(isSelected ? .orange : .white)
+
+                                if isSelected {
+                                    Text("ACTIVE PLAN")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(.green)
+                                } else {
+                                    Text("Select")
+                                        .font(.system(size: 9.5, weight: .semibold))
+                                        .foregroundColor(.cyan)
+                                }
+                            }
+                        }
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(isSelected ? Color.orange.opacity(0.12) : Color.white.opacity(0.04))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(isSelected ? Color.orange.opacity(0.7) : Color.white.opacity(0.1), lineWidth: isSelected ? 1.2 : 0.8)
+                                )
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
@@ -6729,7 +7153,7 @@ struct MenuBarDropdownView: View {
         VStack(alignment: .leading, spacing: 14) {
             // 1. Language & Region (people can select language first)
             AppleSettingsSection("Language & Region") {
-                AppleSettingsRow(title: "Language", subtitle: "Select your preferred language", icon: "globe", iconColor: .blue) {
+                AppleSettingsRow(title: "Language", subtitle: "Select your preferred display language", icon: "globe", iconColor: .blue) {
                     Picker("", selection: $appLanguage) {
                         ForEach(AppLanguage.allCases) { lang in
                             Text("\(lang.flag)  \(lang.rawValue)").tag(lang.rawValue)
@@ -6741,6 +7165,34 @@ struct MenuBarDropdownView: View {
                         HapticFeedback.selection()
                         UserDefaults.standard.set(newLang, forKey: PrefKey.appLanguage)
                     }
+                }
+
+                AppleSettingsRow(
+                    title: "Keyboard Layout Detection",
+                    subtitle: "Active: \(GenieLanguageInputDetector.shared.activeKeyboardLayoutName)",
+                    icon: "keyboard",
+                    iconColor: .purple
+                ) {
+                    Toggle("", isOn: Binding(
+                        get: { GenieLanguageInputDetector.shared.autoDetectFromKeyboard },
+                        set: { GenieLanguageInputDetector.shared.autoDetectFromKeyboard = $0 }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                }
+
+                AppleSettingsRow(
+                    title: "Input Language Detection",
+                    subtitle: "Auto-detect Korean, Japanese & other languages as you type",
+                    icon: "text.magnifyingglass",
+                    iconColor: .green
+                ) {
+                    Toggle("", isOn: Binding(
+                        get: { GenieLanguageInputDetector.shared.autoDetectFromInput },
+                        set: { GenieLanguageInputDetector.shared.autoDetectFromInput = $0 }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
                 }
             }
 
@@ -6861,6 +7313,90 @@ struct MenuBarDropdownView: View {
                         Button(action: {
                             if let clip = NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
                                 LocalModelManager.shared.openaiApiKey = clip
+                                HapticFeedback.selection()
+                            }
+                        }) {
+                            Text("Paste")
+                                .font(.system(size: 10.5, weight: .medium))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+
+                Divider().opacity(0.35)
+
+                // xAI Grok
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Image(systemName: "bolt.shield.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.purple)
+                        Text("xAI Grok API Key")
+                            .font(.system(size: 11.5, weight: .semibold))
+                        Spacer()
+                        if !LocalModelManager.shared.grokApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Active ✓")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.green)
+                        } else {
+                            Text("Optional")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        TextField("xai-... (Grok 2 / Grok 2 Vision)", text: Binding(
+                            get: { LocalModelManager.shared.grokApiKey },
+                            set: { LocalModelManager.shared.grokApiKey = $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11, design: .monospaced))
+
+                        Button(action: {
+                            if let clip = NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
+                                LocalModelManager.shared.grokApiKey = clip
+                                HapticFeedback.selection()
+                            }
+                        }) {
+                            Text("Paste")
+                                .font(.system(size: 10.5, weight: .medium))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+
+                Divider().opacity(0.35)
+
+                // DeepSeek
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Image(systemName: "atom")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.cyan)
+                        Text("DeepSeek API Key")
+                            .font(.system(size: 11.5, weight: .semibold))
+                        Spacer()
+                        if !LocalModelManager.shared.deepseekApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Active ✓")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.green)
+                        } else {
+                            Text("Optional")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        TextField("sk-... (DeepSeek-V3 / DeepSeek-R1)", text: Binding(
+                            get: { LocalModelManager.shared.deepseekApiKey },
+                            set: { LocalModelManager.shared.deepseekApiKey = $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11, design: .monospaced))
+
+                        Button(action: {
+                            if let clip = NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines), !clip.isEmpty {
+                                LocalModelManager.shared.deepseekApiKey = clip
                                 HapticFeedback.selection()
                             }
                         }) {

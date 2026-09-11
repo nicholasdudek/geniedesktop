@@ -7,6 +7,8 @@ public enum AIModelProvider: String, CaseIterable, Identifiable {
     case gemini = "Google Gemini"
     case claude = "Anthropic Claude"
     case openai = "OpenAI"
+    case grok = "xAI Grok"
+    case deepseek = "DeepSeek"
     case local = "Local Models (Ollama)"
 
     public var id: String { rawValue }
@@ -16,6 +18,8 @@ public enum AIModelProvider: String, CaseIterable, Identifiable {
         case .gemini: return "sparkles"
         case .claude: return "brain.head.profile"
         case .openai: return "cpu"
+        case .grok: return "bolt.shield.fill"
+        case .deepseek: return "atom"
         case .local: return "desktopcomputer"
         }
     }
@@ -25,6 +29,8 @@ public enum AIModelProvider: String, CaseIterable, Identifiable {
         case .gemini: return Color(red: 0.25, green: 0.60, blue: 1.0)
         case .claude: return Color(red: 0.95, green: 0.45, blue: 0.25)
         case .openai: return Color(red: 0.10, green: 0.80, blue: 0.55)
+        case .grok: return Color(red: 0.85, green: 0.25, blue: 0.45)
+        case .deepseek: return Color(red: 0.20, green: 0.50, blue: 0.95)
         case .local: return Color(red: 0.0, green: 0.85, blue: 0.95)
         }
     }
@@ -37,13 +43,28 @@ public struct CloudModelItem: Identifiable, Hashable {
     public let provider: AIModelProvider
     public let displayName: String
     public let description: String
+    /// Unified memory this variant needs to run comfortably. Used to recommend a
+    /// tier from the Mac hardware/RAM picker (see GenieMacHardwareClass).
+    public let minimumRAMGigabytes: Int
+    /// Context window this variant's Modelfile is tuned for (its `num_ctx`).
+    public let contextWindow: Int
 
-    public init(id: String, name: String, provider: AIModelProvider, displayName: String, description: String) {
+    public init(
+        id: String,
+        name: String,
+        provider: AIModelProvider,
+        displayName: String,
+        description: String,
+        minimumRAMGigabytes: Int,
+        contextWindow: Int
+    ) {
         self.id = id
         self.name = name
         self.provider = provider
         self.displayName = displayName
         self.description = description
+        self.minimumRAMGigabytes = minimumRAMGigabytes
+        self.contextWindow = contextWindow
     }
 }
 
@@ -59,6 +80,10 @@ public struct LocalModelInfo: Identifiable, Hashable {
         var clean = name
         if clean.hasSuffix(":latest") {
             clean = String(clean.dropLast(7))
+        }
+        let lower = clean.lowercased()
+        if lower == "genie-frontier" || lower == "genie-frontier-model" {
+            return "Genie Frontier"
         }
         return clean
     }
@@ -160,6 +185,8 @@ public final class LocalModelManager: ObservableObject {
     }
     @AppStorage(PrefKey.claudeApiKey) public var claudeApiKey: String = ""
     @AppStorage(PrefKey.openaiApiKey) public var openaiApiKey: String = ""
+    @AppStorage(PrefKey.grokApiKey) public var grokApiKey: String = ""
+    @AppStorage(PrefKey.deepseekApiKey) public var deepseekApiKey: String = ""
     @AppStorage(PrefKey.ollamaHost) public var ollamaHost: String = "http://localhost:11434"
 
     // ── Model Selection Preferences ─────────────────────────────────────────
@@ -180,6 +207,7 @@ public final class LocalModelManager: ObservableObject {
     @Published public var activeSaveDirectoryOverride: URL?
     @Published public var savedSessions: [SavedChatSession] = []
     @Published public var currentSessionId: UUID = UUID()
+    @Published public var activeDraftPrompt: String = ""
     @Published public var isDiscovering: Bool = false
     @Published public var isGenerating: Bool = false
     @Published public var currentResponse: String = ""
@@ -206,30 +234,168 @@ public final class LocalModelManager: ObservableObject {
     }
 
     // ── The One Model ────────────────────────────────────────────────────────
-    // Genie ships a single local model. `genie-master` is qwen3.8 (dense 27.3B,
-    // qwen35) with native tool calling AND vision via a CLIP projector, so the
-    // agent can look at the screenshots it takes instead of routing them through
-    // OCR. Its profile lives in scripts/models/genie-master.Modelfile.
-    public static let primaryModelID = "genie-master"
+    // Genie ships Apple Release Model 1.0 naming:
+    // - Genie: Standard Apple release 1.0 model
+    // - Genie 1: Light tier (ultra-fast, responsive, 8k context)
+    // - Genie 2: Tier (Pro balanced tier, full agentic tools, 32k context)
+    // - Genie 3: Max tier (Flagship deep reasoning, vision & orchestration, 64k context)
+    public static let primaryModelID = "genie"
+    public static let modelGenieLight = "genie-1-light"
+    public static let modelGenieTier = "genie-2-tier"
+    public static let modelGenieMax = "genie-3-max"
 
-    /// Context window Genie requests per generation. The previous base was an MoE
-    /// with 4 KV heads, which made 128k affordable. qwen3.8 is dense with a 5120
-    /// embedding, so a token costs several times more KV and the vision encoder
-    /// needs headroom besides — 128k no longer loads on 48 GB and the server dies
-    /// with "llama-server process has terminated". 32k is what fits reliably.
-    public static let localContextWindow = 32768
+    /// Context window Genie requests per generation, per model tier
+    public static func contextWindow(for modelID: String) -> Int {
+        if let match = cloudModels.first(where: { $0.id == modelID || $0.name == modelID }) {
+            return match.contextWindow
+        }
+        let lower = modelID.lowercased()
+        if lower.contains("compact") || lower.contains("light") || lower.contains("genie-1") {
+            return 8192
+        }
+        if lower.contains("max") || lower.contains("genie-3") {
+            return 65536
+        }
+        return 32768
+    }
 
     /// Cap on chained tool -> model -> tool rounds in `runAgentContinuation`,
     /// so a model that keeps emitting commands can't loop forever.
     private static let maxAgentLoopDepth = 3
 
+    /// Apple Release Model 1.0 Tiers: Genie (Base), Genie 1 (Light), Genie 2 (Tier), Genie 3 (Max).
     public static let cloudModels: [CloudModelItem] = [
         CloudModelItem(
             id: primaryModelID,
             name: primaryModelID,
             provider: .local,
-            displayName: "Genie Master",
-            description: "27B local agent — vision, native file, shell & desktop tools, 32k context"
+            displayName: "Genie",
+            description: "Apple Release Model 1.0 — standard versatile intelligence, vision, native tools & Siri integration",
+            minimumRAMGigabytes: 16,
+            contextWindow: 32768
+        ),
+        CloudModelItem(
+            id: modelGenieLight,
+            name: modelGenieLight,
+            provider: .local,
+            displayName: "Genie 1",
+            description: "Genie 1 is light — ultra-fast on-device responsiveness, file & tool routing, 8k context for 8–16 GB Macs",
+            minimumRAMGigabytes: 8,
+            contextWindow: 8192
+        ),
+        CloudModelItem(
+            id: modelGenieTier,
+            name: modelGenieTier,
+            provider: .local,
+            displayName: "Genie 2",
+            description: "Genie 2 is tier — Pro balanced capability, code generation, full tool calling, 32k context for 16–32 GB Macs",
+            minimumRAMGigabytes: 16,
+            contextWindow: 32768
+        ),
+        CloudModelItem(
+            id: modelGenieMax,
+            name: modelGenieMax,
+            provider: .local,
+            displayName: "Genie 3",
+            description: "Genie 3 is max — Flagship deep reasoning, multi-step orchestration, vision & agentic master, 64k context for 32 GB+ Macs",
+            minimumRAMGigabytes: 32,
+            contextWindow: 65536
+        ),
+        // ── Top 5 Cloud Providers (BYOK) ──────────────────
+        // 1. Google Gemini
+        CloudModelItem(
+            id: "gemini-2.5-flash",
+            name: "gemini-2.5-flash",
+            provider: .gemini,
+            displayName: "Gemini 2.5 Flash",
+            description: "Google multimodal flagship — high speed, 1M context, tools & visual analysis",
+            minimumRAMGigabytes: 0,
+            contextWindow: 1048576
+        ),
+        CloudModelItem(
+            id: "gemini-2.5-pro",
+            name: "gemini-2.5-pro",
+            provider: .gemini,
+            displayName: "Gemini 2.5 Pro",
+            description: "Google deep reasoning flagship — state-of-the-art coding, math & agentic planning",
+            minimumRAMGigabytes: 0,
+            contextWindow: 2097152
+        ),
+        // 2. Anthropic Claude
+        CloudModelItem(
+            id: "claude-3-7-sonnet-latest",
+            name: "claude-3-7-sonnet-latest",
+            provider: .claude,
+            displayName: "Claude 3.7 Sonnet",
+            description: "Anthropic hybrid reasoning & coding flagship with hybrid thinking",
+            minimumRAMGigabytes: 0,
+            contextWindow: 200000
+        ),
+        CloudModelItem(
+            id: "claude-3-5-haiku-latest",
+            name: "claude-3-5-haiku-latest",
+            provider: .claude,
+            displayName: "Claude 3.5 Haiku",
+            description: "Anthropic high-speed model for rapid tool execution and summarization",
+            minimumRAMGigabytes: 0,
+            contextWindow: 200000
+        ),
+        // 3. OpenAI
+        CloudModelItem(
+            id: "gpt-4o",
+            name: "gpt-4o",
+            provider: .openai,
+            displayName: "GPT-4o Omni",
+            description: "OpenAI versatile multimodal flagship — audio, vision & fast intelligence",
+            minimumRAMGigabytes: 0,
+            contextWindow: 128000
+        ),
+        CloudModelItem(
+            id: "o3-mini",
+            name: "o3-mini",
+            provider: .openai,
+            displayName: "o3-mini",
+            description: "OpenAI high-speed reasoning model specialized for math, science and coding",
+            minimumRAMGigabytes: 0,
+            contextWindow: 200000
+        ),
+        // 4. xAI Grok
+        CloudModelItem(
+            id: "grok-2-latest",
+            name: "grok-2-latest",
+            provider: .grok,
+            displayName: "Grok 2",
+            description: "xAI flagship intelligence — real-world understanding, uncensored analysis & coding",
+            minimumRAMGigabytes: 0,
+            contextWindow: 131072
+        ),
+        CloudModelItem(
+            id: "grok-2-vision-128k",
+            name: "grok-2-vision-128k",
+            provider: .grok,
+            displayName: "Grok 2 Vision",
+            description: "xAI multimodal reasoning — visual layout understanding and document parsing",
+            minimumRAMGigabytes: 0,
+            contextWindow: 131072
+        ),
+        // 5. DeepSeek
+        CloudModelItem(
+            id: "deepseek-chat",
+            name: "deepseek-chat",
+            provider: .deepseek,
+            displayName: "DeepSeek V3",
+            description: "DeepSeek general intelligence flagship — MoE architecture and balanced coding",
+            minimumRAMGigabytes: 0,
+            contextWindow: 65536
+        ),
+        CloudModelItem(
+            id: "deepseek-reasoner",
+            name: "deepseek-reasoner",
+            provider: .deepseek,
+            displayName: "DeepSeek R1",
+            description: "DeepSeek pure reasoning flagship — open reasoning tokens and step-by-step logic",
+            minimumRAMGigabytes: 0,
+            contextWindow: 65536
         )
     ]
     public var cloudModels: [CloudModelItem] { Self.cloudModels }
@@ -237,6 +403,8 @@ public final class LocalModelManager: ObservableObject {
     public var hasGeminiKey: Bool { !geminiApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     public var hasClaudeKey: Bool { !claudeApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     public var hasOpenAIKey: Bool { !openaiApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    public var hasGrokKey: Bool { !grokApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    public var hasDeepSeekKey: Bool { !deepseekApiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     public func providerForModel(_ model: String) -> AIModelProvider {
         let lower = model.lowercased()
@@ -248,33 +416,134 @@ public final class LocalModelManager: ObservableObject {
             return .claude
         } else if lower.hasPrefix("gpt") || lower.hasPrefix("o1") || lower.hasPrefix("o3") {
             return .openai
+        } else if lower.hasPrefix("grok") {
+            return .grok
+        } else if lower.hasPrefix("deepseek") {
+            return .deepseek
         } else {
             return .local
         }
     }
 
     public var effectiveModel: String {
-        // Single-model build. This deliberately ignores `manualSelectedModel`:
-        // an install upgrading from a version that had a picker will still have
-        // something like "gemini-2.0-flash" persisted in AppStorage, and honouring
-        // it would silently route chat to a provider that is no longer offered.
-        LocalModelManager.primaryModelID
+        let manual = manualSelectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !manual.isEmpty {
+            if Self.cloudModels.contains(where: { $0.id == manual || $0.name == manual }) {
+                return manual
+            }
+            if availableModels.contains(where: { $0.id == manual || $0.name == manual }) {
+                return manual
+            }
+        }
+        return LocalModelManager.primaryModelID
+    }
+
+    public var activeModelMinimumRAM: Int {
+        if let cloud = Self.cloudModels.first(where: { $0.id == effectiveModel || $0.name == effectiveModel }) {
+            return cloud.minimumRAMGigabytes
+        }
+        return 24
     }
 
     public var selectedModelDisplayName: String {
         let eff = effectiveModel
-        if eff.isEmpty { return "Local AI" }
+        if eff.isEmpty { return "Genie" }
 
         // Check cloud catalog first
         if let cloud = LocalModelManager.cloudModels.first(where: { $0.name == eff || $0.id == eff }) {
             return cloud.displayName
         }
 
-        var clean = eff
-        if clean.hasSuffix(":latest") {
-            clean = String(clean.dropLast(7))
+        switch eff.lowercased() {
+        case "genie-frontier", "genie-frontier-model":
+            return "Genie Frontier"
+        case "genie", "genie-master", "genie-base":
+            return "Genie"
+        case "genie-1-light", "genie-1", "genie-master-compact":
+            return "Genie 1"
+        case "genie-2-tier", "genie-2":
+            return "Genie 2"
+        case "genie-3-max", "genie-3", "genie-master-max":
+            return "Genie 3"
+        case "genie-built-in":
+            return "Genie (Built-in)"
+        default:
+            var clean = eff
+            if clean.hasSuffix(":latest") {
+                clean = String(clean.dropLast(7))
+            }
+            return clean
         }
-        return clean
+    }
+
+    public func resolveOllamaModelTag(_ model: String) -> String {
+        if availableModels.contains(where: { $0.name == model }) {
+            return model
+        }
+        let lower = model.lowercased()
+        if lower == "genie-frontier" || lower == "genie-frontier-model" {
+            if availableModels.contains(where: { $0.name == "genie-frontier" }) { return "genie-frontier" }
+            if availableModels.contains(where: { $0.name == "genie-frontier-model" }) { return "genie-frontier-model" }
+            if availableModels.contains(where: { $0.name == "genie-frontier:latest" }) { return "genie-frontier:latest" }
+            return "genie-frontier"
+        }
+        if lower == "genie-1-light" || lower == "genie-1" {
+            if availableModels.contains(where: { $0.name == "genie-1-light" }) { return "genie-1-light" }
+            if availableModels.contains(where: { $0.name == "genie-master-compact" }) { return "genie-master-compact" }
+            if availableModels.contains(where: { $0.name == "gemma4:e2b" }) { return "gemma4:e2b" }
+            return "genie-master-compact"
+        }
+        if lower == "genie-2-tier" || lower == "genie-2" {
+            if availableModels.contains(where: { $0.name == "genie-2-tier" }) { return "genie-2-tier" }
+            if availableModels.contains(where: { $0.name == "genie-master" }) { return "genie-master" }
+            return "genie-master"
+        }
+        if lower == "genie-3-max" || lower == "genie-3" {
+            if availableModels.contains(where: { $0.name == "genie-3-max" }) { return "genie-3-max" }
+            if availableModels.contains(where: { $0.name == "genie-master-max" }) { return "genie-master-max" }
+            return "genie-master-max"
+        }
+        if lower == "genie" {
+            if availableModels.contains(where: { $0.name == "genie" }) { return "genie" }
+            if availableModels.contains(where: { $0.name == "genie-master" }) { return "genie-master" }
+            if availableModels.contains(where: { $0.name == "gemma4:e2b" }) { return "gemma4:e2b" }
+            return availableModels.first?.name ?? "genie-master"
+        }
+        return model
+    }
+
+    // MARK: - 🎙️ Siri & macOS Capabilities Interceptor
+    public func interceptSiriIntent(prompt: String) async -> String? {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let lower = trimmed.lowercased()
+
+        let isVolumeIntent = lower.hasPrefix("set volume") || lower.hasPrefix("turn volume") || lower == "mute" || lower == "unmute" || lower == "mute volume" || lower == "unmute volume" || lower.hasPrefix("volume to ") || lower.hasPrefix("volume ")
+        let isDarkModeIntent = lower.contains("dark mode") || lower.contains("light mode") || lower.contains("toggle appearance")
+        let isMediaIntent = lower.hasPrefix("play music") || lower == "pause music" || lower == "stop music" || lower == "next song" || lower == "previous song" || lower == "what song is this" || lower == "what's playing" || lower == "next track" || lower == "previous track"
+        let isReminderIntent = lower.hasPrefix("remind me to ") || lower.hasPrefix("new reminder: ") || lower.hasPrefix("add reminder ")
+        let isCalendarIntent = lower.hasPrefix("schedule event ") || lower.hasPrefix("new event ") || lower.hasPrefix("create calendar event ")
+        let isScreenshotIntent = lower == "take screenshot" || lower == "take a screenshot" || lower == "capture screen"
+        let isBatteryIntent = lower == "battery" || lower == "battery level" || lower == "battery status" || lower == "power status"
+        let isShortcutsIntent = lower.hasPrefix("run shortcut ") || lower == "list shortcuts"
+        let isOpenAppIntent = (lower.hasPrefix("open ") || lower.hasPrefix("launch ")) && !lower.contains("safari and ")
+        let isQuitAppIntent = lower.hasPrefix("quit ") || lower.hasPrefix("close app ")
+
+        if isVolumeIntent || isDarkModeIntent || isMediaIntent || isReminderIntent || isCalendarIntent || isScreenshotIntent || isBatteryIntent || isShortcutsIntent || isOpenAppIntent || isQuitAppIntent {
+            let res = await GenieNativeToolEngine.shared.executeSiriTool(action: trimmed)
+            return res
+        }
+        return nil
+    }
+
+    public func appendDirectAssistantResponse(prompt: String, response: String) {
+        let userMsg = ChatMessage(role: "user", content: prompt, model: selectedModelDisplayName)
+        let assistantMsg = ChatMessage(role: "assistant", content: response, model: selectedModelDisplayName)
+        self.chatHistory.append(userMsg)
+        self.chatHistory.append(assistantMsg)
+        self.currentResponse = response
+        self.isGenerating = false
+        self.saveChatHistory()
     }
 
     public var activeProvider: AIModelProvider {
@@ -439,6 +708,14 @@ public final class LocalModelManager: ObservableObject {
         saveChatHistory()
     }
 
+    public func appendAssistantMessage(_ content: String, model: String = "genie-system") {
+        let msg = ChatMessage(role: "assistant", content: content, model: model)
+        DispatchQueue.main.async {
+            self.chatHistory.append(msg)
+            self.saveChatHistory()
+        }
+    }
+
     // MARK: - Export Full Chat Transcript ("Save messages altogether as one chat")
     public func formatChatTranscript(messages: [ChatMessage]? = nil) -> String {
         let msgs = messages ?? chatHistory
@@ -457,6 +734,183 @@ public final class LocalModelManager: ObservableObject {
             lines.append("\(sender) [\(timeStr)]:\n\(msg.content)\n")
         }
         return lines.joined(separator: "\n")
+    }
+
+    // MARK: - 📋 Copy & Paste Whole Chat Transcript
+    @discardableResult
+    public func copyWholeChat(messages: [ChatMessage]? = nil) -> Bool {
+        let msgs = messages ?? chatHistory
+        guard !msgs.isEmpty else { return false }
+
+        let transcript = formatChatTranscript(messages: msgs)
+
+        let pb = NSPasteboard.general
+        pb.clearContents()
+
+        // 1. Plain text Markdown transcript
+        pb.setString(transcript, forType: .string)
+
+        // 2. Exact JSON representation for lossless restoration
+        if let data = try? JSONEncoder().encode(msgs), let jsonString = String(data: data, encoding: .utf8) {
+            let customType = NSPasteboard.PasteboardType("public.genie-chat-json")
+            pb.setString(jsonString, forType: customType)
+        }
+
+        HapticFeedback.selection()
+        return true
+    }
+
+    public func parseChatTranscript(from rawText: String) -> [ChatMessage] {
+        let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+
+        // 1. Try direct JSON decoding of [ChatMessage]
+        if let data = trimmed.data(using: .utf8),
+           let direct = try? JSONDecoder().decode([ChatMessage].self, from: data),
+           !direct.isEmpty {
+            return direct
+        }
+
+        // 2. Try JSON array of generic objects with "role" and "content"
+        if let data = trimmed.data(using: .utf8),
+           let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+           !jsonArray.isEmpty {
+            var result: [ChatMessage] = []
+            for item in jsonArray {
+                let role = (item["role"] as? String)?.lowercased() ?? "user"
+                let content = (item["content"] as? String) ?? (item["text"] as? String) ?? ""
+                let model = (item["model"] as? String) ?? ""
+                if !content.isEmpty {
+                    result.append(ChatMessage(
+                        role: (role.contains("user") || role == "human" || role == "me") ? "user" : "assistant",
+                        content: content,
+                        model: model
+                    ))
+                }
+            }
+            if !result.isEmpty { return result }
+        }
+
+        // 3. Multi-line chat transcript parser
+        var parsedMessages: [ChatMessage] = []
+        let lines = trimmed.components(separatedBy: .newlines)
+
+        var currentRole: String? = nil
+        var currentModel: String = ""
+        var currentContentLines: [String] = []
+
+        func commitCurrentMessage() {
+            guard let role = currentRole else { return }
+            let content = currentContentLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !content.isEmpty {
+                parsedMessages.append(ChatMessage(
+                    role: role,
+                    content: content,
+                    model: currentModel
+                ))
+            }
+            currentRole = nil
+            currentModel = ""
+            currentContentLines.removeAll()
+        }
+
+        let userHeaders = [
+            "👤 Me", "User:", "Me:", "You:", "Human:", "### User", "### 👤 User", "### Me", "### You", "[User]", "[You]", "[Me]", "You said:"
+        ]
+        let assistantHeaders = [
+            "✨ Genie", "Genie:", "Assistant:", "AI:", "ChatGPT:", "Claude:", "### Assistant", "### ✨ Genie", "### AI", "[Genie]", "[Assistant]", "[AI]", "ChatGPT said:", "Claude said:"
+        ]
+
+        for line in lines {
+            let lineTrimmed = line.trimmingCharacters(in: .whitespaces)
+
+            // Skip title/divider lines
+            if lineTrimmed.hasPrefix("💬 Genie AI Conversation") || lineTrimmed.hasPrefix("━━━━━━━━") || lineTrimmed.hasPrefix("Genie AI Conversation Note") {
+                continue
+            }
+
+            var isUserMatch = false
+            for uH in userHeaders {
+                if lineTrimmed.hasPrefix(uH) {
+                    isUserMatch = true
+                    break
+                }
+            }
+
+            var isAssistantMatch = false
+            var matchedModel = ""
+            for aH in assistantHeaders {
+                if lineTrimmed.hasPrefix(aH) {
+                    isAssistantMatch = true
+                    if let openParen = lineTrimmed.firstIndex(of: "("),
+                       let closeParen = lineTrimmed.firstIndex(of: ")"),
+                       openParen < closeParen {
+                        matchedModel = String(lineTrimmed[lineTrimmed.index(after: openParen)..<closeParen])
+                    }
+                    break
+                }
+            }
+
+            if isUserMatch {
+                commitCurrentMessage()
+                currentRole = "user"
+                if let colonIdx = lineTrimmed.firstIndex(of: ":") {
+                    let rest = String(lineTrimmed[lineTrimmed.index(after: colonIdx)...]).trimmingCharacters(in: .whitespaces)
+                    if !rest.isEmpty && !rest.hasPrefix("[") {
+                        currentContentLines.append(rest)
+                    }
+                }
+            } else if isAssistantMatch {
+                commitCurrentMessage()
+                currentRole = "assistant"
+                currentModel = matchedModel
+                if let colonIdx = lineTrimmed.firstIndex(of: ":") {
+                    let rest = String(lineTrimmed[lineTrimmed.index(after: colonIdx)...]).trimmingCharacters(in: .whitespaces)
+                    if !rest.isEmpty && !rest.hasPrefix("[") {
+                        currentContentLines.append(rest)
+                    }
+                }
+            } else {
+                if currentRole != nil {
+                    currentContentLines.append(line)
+                }
+            }
+        }
+        commitCurrentMessage()
+
+        return parsedMessages
+    }
+
+    @discardableResult
+    public func pasteWholeChat(from text: String? = nil, replace: Bool = false) -> (success: Bool, count: Int) {
+        let raw: String
+        if let text = text, !text.isEmpty {
+            raw = text
+        } else {
+            let pb = NSPasteboard.general
+            let customType = NSPasteboard.PasteboardType("public.genie-chat-json")
+            if let json = pb.string(forType: customType), !json.isEmpty {
+                raw = json
+            } else if let str = pb.string(forType: .string), !str.isEmpty {
+                raw = str
+            } else {
+                return (false, 0)
+            }
+        }
+
+        let messages = parseChatTranscript(from: raw)
+        guard !messages.isEmpty else { return (false, 0) }
+
+        DispatchQueue.main.async {
+            if replace {
+                self.chatHistory = messages
+            } else {
+                self.chatHistory.append(contentsOf: messages)
+            }
+            self.saveChatHistory()
+            HapticFeedback.success()
+        }
+        return (true, messages.count)
     }
 
     public func sendChatToAppleMessages(messages: [ChatMessage]? = nil) {
@@ -608,7 +1062,14 @@ public final class LocalModelManager: ObservableObject {
             var discovered: [LocalModelInfo] = []
             var foundEngine = false
 
-            // 0. Scan Apple MLX Metal Native Engine (Port 8080)
+            // 0. Sovereign In-RAM Ubuntu Model Server (Port 58300, Zero-Copy Unified RAM)
+            if let inRAMModels = await fetchInRAMVMModels(), !inRAMModels.isEmpty {
+                discovered.append(contentsOf: inRAMModels)
+                foundEngine = true
+                self.activeEngineName = "In-RAM Ubuntu (Zero-Copy ⚡️)"
+            }
+
+            // 0b. Scan Apple MLX Metal Native Engine (Port 8080)
             if let mlxModels = await fetchMLXModels(), !mlxModels.isEmpty {
                 discovered.append(contentsOf: mlxModels)
                 foundEngine = true
@@ -719,6 +1180,37 @@ public final class LocalModelManager: ObservableObject {
                 return nil
             }
             return list.map { LocalModelInfo(name: $0.id, parameterSize: "MLX Metal", sizeBytes: nil, source: "Apple MLX") }
+        } catch {
+            return nil
+        }
+    }
+
+    private func fetchInRAMVMModels() async -> [LocalModelInfo]? {
+        let serverPort = GenieInRAMVMManager.shared.serverPort
+        guard let url = URL(string: "http://127.0.0.1:\(serverPort)/v1/models") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 1.0
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+
+            struct OpenAIModelResponse: Decodable {
+                struct ModelEntry: Decodable {
+                    let id: String
+                }
+                let data: [ModelEntry]
+            }
+
+            let decoded = try JSONDecoder().decode(OpenAIModelResponse.self, from: data)
+            return decoded.data.map { entry in
+                LocalModelInfo(
+                    name: entry.id,
+                    parameterSize: "In-RAM Ubuntu",
+                    sizeBytes: nil,
+                    source: "In-RAM VM"
+                )
+            }
         } catch {
             return nil
         }
@@ -868,15 +1360,16 @@ gave you earlier.
         }
 
         prompts.append("""
-You are Genie AI, the assistant built into Genie, an independent macOS utility app made by Nicholas Dudek (Golden Gate Engineering). You are NOT made, owned, or operated by Apple, and you must never claim Apple (or any other company) as your creator or employer — if asked who made you, say you're the built-in assistant in the Genie app by Nicholas Dudek.
-You are equipped with a powerful suite of native tools to build presentations, compile executive PDFs, render interactive charts and Mermaid diagrams, capture photos, save documents, control macOS applications, and execute shell commands.
-Genie CAN capture and see the screen — screen sharing/viewing requests should be treated as a request to use the screen-capture tools below (```polaroid```, ```record_screen```, or ```desktop_agent``` with `snapshot`), not declined as impossible.
-Genie has NO access to email, messaging, calendars, contacts, cloud storage, or any other external or online account. It cannot read, send, check, or search mail. When asked to do anything of that kind, decline with exactly this wording and nothing more:
-"I'm sorry, but I don't have access to your email or any other external services. If you need to check your email, you'll need to open your email client or use a web-based email service directly. Is there anything else I can assist you with?"
-Do not offer to try anyway, do not suggest workarounds, and never imply the capability might exist behind a setting.
-Genie's file writing is confined to the Desktop. It may freely create, edit, organise, and delete files anywhere under ~/Desktop, and it may not write anywhere else — not elsewhere in the home folder, and never to system locations. This is enforced in code, so a write outside the Desktop will fail rather than succeed silently; say so plainly instead of claiming a broader reach.
+You are Genie AI, the assistant built into Genie, an independent macOS utility app. Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party. You are NOT made, owned, or operated by Apple, and you must never claim Apple (or any other company) as your creator or employer — if asked who made you, say you're the built-in assistant in the Genie app. Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party.
 
-You run on Genie Master, a 30B local model with native tool calling and a 64k context window. Computer vision, desktop management, and file creation tools are available when their Genie settings are enabled. Home-folder and full-disk access are permission-gated by macOS and must be granted by the user; never claim those permissions without checking. Ask before destructive operations such as deleting, overwriting, moving, or formatting data.
+Model Architecture & Licensing:
+You run on Genie Master, a 30B parameter local model architecture with unified multimodal vision and native tool calling, operating with a 64k context window.
+When inquired about what model type you are or what license you use, state clearly and briefly: "Genie Master (30B local architecture) • Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party • Apache License, Version 2.0 (Apache-2.0)". Provide full license text only upon explicit request.
+
+Capabilities & Permissions Agent:
+You are equipped with a powerful suite of native tools to build presentations, compile executive PDFs, render interactive charts and Mermaid diagrams, capture photos, save documents, crawl and summarize web pages, automate macOS applications (including Mail and Messages), and execute shell commands.
+Genie CAN capture and see the screen — screen sharing/viewing requests should be treated as a request to use the screen-capture tools below (```polaroid```, ```record_screen```, or ```desktop_agent``` with `snapshot`), not declined as impossible.
+All system automation, expanded file operations (across ~/Documents, ~/Downloads, and system workspaces), communication (iMessage and Mail), and shell executions are governed by Genie's structured JSON Permissions Agent. When requested to perform operations requiring permissions, provide the structured JSON permission approval or execute via approved permissions without hard refusals.
 
 You can invoke any of the following tools by formatting your response with the specified code blocks:
 
@@ -1008,14 +1501,14 @@ To fetch and read a page WITHOUT opening any visible browser window — a silent
 
         prompts.append("""
 12. 📱 APPLE MESSAGES (IMESSAGE & ICHAT CONTROL) & IPHONE BRIDGE:
-You are directly connected to Nicholas Dudek's Apple ID (\(GenieAppleAuth.shared.email.isEmpty ? "nicholas.dudek@icloud.com" : GenieAppleAuth.shared.email)), iPhone, and macOS Messages/iChat via GeniePhoneBridgeManager and GenieiMessageExtensionManager.
-- To send an iMessage or iChat message to Nicholas's phone or a contact:
+You are directly connected to the user's Apple ID (\(GenieAppleAuth.shared.email.isEmpty ? "user@icloud.com" : GenieAppleAuth.shared.email)), iPhone, and macOS Messages/iChat via GeniePhoneBridgeManager and GenieiMessageExtensionManager.
+- To send an iMessage or iChat message to the user's phone or a contact:
 Format with a ```imessage [recipient=...] or ```ichat [recipient=...] block containing your message.
 Example:
 ```imessage
 Build completed successfully! All tests passed and the bridge is active.
 ```
-- To send an instant status ping to Nicholas's iPhone or Apple ID:
+- To send an instant status ping to the user's iPhone or Apple ID:
 Format with a ```phone_ping <optional summary text>``` block.
 - To check or toggle the phone bridge server:
 Format with a ```phone_bridge <status|start|stop>``` block.
@@ -1046,9 +1539,78 @@ Genie automatically stages files into /Users/Shared/Genie/Bridge and broadcasts 
 15. 📚 APPLICATION DOCUMENTATION & SCRIPTING DICTIONARY INSPECTOR:
 To inspect an application's AppleScript scripting dictionary (sdef), commands, classes, Info.plist, URL schemes, and documentation:
 Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app_doc Finder```).
+
+16. 🛠️ APPLESCRIPT APP AUTOMATION:
+To directly control or script any installed application — read or change its settings, drive its own commands, move data between apps, and so on:
+Format with a ```applescript block whose first line is the app's name and whose remaining lines are the AppleScript source to run against it.
+Example:
+```applescript Notes
+tell application "Notes"
+    make new note with properties {name:"Genie", body:"Automated via AppleScript"}
+end tell
+```
+Prefer this over ```desktop_agent``` when the app exposes a scripting dictionary (check with ```app_doc``` first if unsure) — it's more reliable than simulating clicks. Use ```desktop_agent``` instead when the app has no scripting dictionary.
+
+17. 🎙️ SIRI & APPLE SHORTCUTS AUTOMATION:
+Genie can run Apple Shortcuts or invoke Siri as an executive tool on macOS.
+- To execute an Apple Shortcut:
+Format with a ```shortcut <Shortcut Name>``` block (with optional arguments on subsequent lines) or a ```siri run <Shortcut Name>``` block.
+Example:
+```shortcut Log Water
+8 oz
+```
+- To invoke or query Siri:
+Format with a ```siri <query or intent>``` block.
+Example:
+```siri
+Remind me to call Mom at 5pm
+```
+""")
+
+        prompts.append("""
+18. 📜 TAIL LOGS, PAST COMPUTER LOGS, RECENT ITEMS, & DIAGNOSTICS RETRIEVAL:
+Genie has sovereign access to system logs, recent documents, command history, crash reports, and file tailing.
+- When the user asks "what was I working on?", "show my recent files", "tail recent", or requests recently opened items:
+Format with a ```tool:tail recent [limit]``` or ```tail recent [limit]``` block.
+- When the user asks "show recent logs", "check system logs", "tail system", or "tail logs":
+Format with a ```tool:tail system [lines]``` or ```tail system [lines]``` block.
+- When the user asks "what commands did I run?", "show shell history", "tail history":
+Format with a ```tool:tail history [lines]``` or ```tail history [lines]``` block.
+- When the user asks "check recent crashes", "did anything crash?", "tail crash":
+Format with a ```tool:tail crash [limit]``` or ```tail crash [limit]``` block.
+- When the user asks "check xcode build logs", "tail xcode":
+Format with a ```tool:tail xcode``` or ```tail xcode``` block.
+- When the user asks to tail any specific file path (e.g. `tail ~/Desktop/Genie/GoldGate/.build/build.log 50`):
+Format with a ```tool:tail <file path> [lines]``` or ```tail <file path> [lines]``` block.
+Proactively use this tool whenever past activity, computer history, logs, or diagnostic reports are requested.
+""")
+
+        prompts.append("""
+20. 📱 IPHONE SIMULATOR, DUO FOLD & MOVIE STREAMING TOOLS:
+Genie is directly wired into Apple's iOS Simulator (`xcrun simctl`), iPhone Screen Mirroring, and the embedded Duo Fold iPhone movie browser.
+- To play a movie, video, or stream in the iPhone Duo simulator browser while Nicholas edits code:
+  Format with a ```iphone_browser <url or title>``` block (e.g. ```iphone_browser https://www.youtube.com``` or ```iphone_browser https://netflix.com```).
+  Genie will automatically open the video stream in the iPhone simulator right alongside the code editor in the Duo Fold workspace.
+- To command Apple's native Xcode iOS Simulator:
+  Format with a ```iphone_simulator <boot | openurl <url> | shutdown | list>``` block.
+- To launch macOS iPhone Mirroring:
+  Format with a ```iphone_mirror``` block.
+- To switch Duo Simulator layout:
+  Format with a ```duo_simulator <single | duo | movie | split>``` block.
 """)
 
         prompts.append(GenieChatTaskPolicy.instructions)
+        prompts.append(GenieNativeToolEngine.shared.toolInstructionsPrompt)
+        prompts.append(GenieArchitecturalChatTemplateEngine.shared.generateArchitecturalContextBlock())
+
+        // 🌟 For smaller models (1B, 2B, 3B, 7B, 8B, local Ollama models), inject the Really Big Sovereign Mega-Template!
+        if GenieArchitecturalChatTemplateEngine.shared.isSmallerModel(name: selectedModelDisplayName) {
+            prompts.append(GenieArchitecturalChatTemplateEngine.shared.generateSmallerModelComprehensiveSuperPrompt())
+        }
+
+        // 🧠 Inject Trained Local Mac Applications Knowledge-Base
+        prompts.append(GenieAppTrainerEngine.shared.generateTrainingSystemPrompt())
+
         return prompts.joined(separator: "\n\n")
     }
 
@@ -1094,8 +1656,51 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             let msg = String(cleanPrompt.dropFirst(prefixLen)).trimmingCharacters(in: .whitespacesAndNewlines)
             let success = GeniePhoneBridgeManager.shared.sendiMessage(message: msg)
             let status = success ? "✓ Sent" : "⚠️ Check Messages.app"
-            let target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? "nicholas.dudek@icloud.com" : GeniePhoneBridgeManager.shared.appleID
+            let target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? (GenieAppleAuth.shared.email.isEmpty ? "user@icloud.com" : GenieAppleAuth.shared.email) : GeniePhoneBridgeManager.shared.appleID
             let response = "📱 **[Apple Messages / iChat Direct]:** \(status) to \(target):\n\"\(msg)\""
+            self.currentResponse = response
+            self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: "system"))
+            self.saveChatHistory()
+            self.isGenerating = false
+            return
+        }
+
+        // Intercept Direct Slash Commands for Siri & Apple Shortcuts
+        if cleanPrompt.hasPrefix("/siri ") || cleanPrompt.hasPrefix("/shortcut ") {
+            guard GenieCapabilities.canSpawnSubprocesses else {
+                let response = "🎙️ **[Siri / Apple Shortcuts]:** Process execution is restricted in sandboxed environments."
+                self.currentResponse = response
+                self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: "system"))
+                self.saveChatHistory()
+                self.isGenerating = false
+                return
+            }
+            let prefixLen = cleanPrompt.hasPrefix("/siri ") ? 6 : 10
+            let cmdText = String(cleanPrompt.dropFirst(prefixLen)).trimmingCharacters(in: .whitespacesAndNewlines)
+            let parts = cmdText.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+            let scName = parts.isEmpty ? "Siri" : String(parts[0])
+            let scInput = parts.count > 1 ? String(parts[1]) : ""
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts")
+            var args = ["run", scName]
+            var tempFile: URL? = nil
+            if !scInput.isEmpty {
+                let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("genie_siri_\(UUID().uuidString).txt")
+                try? scInput.write(to: tmp, atomically: true, encoding: .utf8)
+                args.append(contentsOf: ["--input-path", tmp.path])
+                tempFile = tmp
+            }
+            task.arguments = args
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = pipe
+            try? task.run()
+            task.waitUntilExit()
+            if let tmp = tempFile { try? FileManager.default.removeItem(at: tmp) }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let out = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            let status = task.terminationStatus == 0 ? "✓ Executed" : "⚠️ Status (\(task.terminationStatus))"
+            let response = "🎙️ **[Siri / Shortcut: \(scName) (\(status))]:**\n\(out.isEmpty ? "Completed." : out)"
             self.currentResponse = response
             self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: "system"))
             self.saveChatHistory()
@@ -1192,6 +1797,20 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             }
         }
 
+        // Fast-Path: Inquiries about Model Type / Architecture / Apache 2.0 License
+        let lowerPrompt = cleanPrompt.lowercased()
+        let words = lowerPrompt.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+        let isModelTypeQuery = (words.contains("model") || words.contains("architecture")) && (words.contains("type") || words.contains("what") || words.contains("which") || words.contains("license") || words.contains("version") || words.contains("who"))
+        let isDirectLicenseQuery = words.contains("license") || words.contains("copyright") || words.contains("apache") || (words.contains("who") && words.contains("made"))
+        if (isModelTypeQuery || isDirectLicenseQuery) && words.count <= 16 {
+            let briefResponse = "Genie Master (30B local architecture) • Designed in the United States By Nicholas M. Dudek 2026 • Apache License, Version 2.0 (Apache-2.0)"
+            self.currentResponse = briefResponse
+            self.chatHistory.append(ChatMessage(role: "assistant", content: briefResponse, model: modelToUse))
+            self.saveChatHistory()
+            self.isGenerating = false
+            return
+        }
+
         // Support optional /nocache prefix to bypass cache for one turn
         let bypassCache = cleanPrompt.hasPrefix("/nocache ")
         let promptToQuery = bypassCache ? String(cleanPrompt.dropFirst(9)).trimmingCharacters(in: .whitespacesAndNewlines) : cleanPrompt
@@ -1213,6 +1832,41 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
         }
 
         activeTask = Task {
+            // 🎙️ Intercept Direct Natural Language Siri & macOS System Capabilities
+            if let siriResponse = await self.interceptSiriIntent(prompt: cleanPrompt) {
+                let response = "🎙️ **[Siri Tools & System Capabilities]:**\n\(siriResponse)"
+                self.currentResponse = response
+                self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: modelToUse))
+                self.saveChatHistory()
+                self.isGenerating = false
+                return
+            }
+
+            // 📜 Intercept Direct Tail & Computer Logs / Recent Items Retrieval
+            let lowerPrompt = cleanPrompt.lowercased()
+            let isTailIntent = lowerPrompt.hasPrefix("tail ") || lowerPrompt == "tail" || lowerPrompt == "tail logs" || lowerPrompt == "tail computer logs" || lowerPrompt == "show computer logs" || lowerPrompt == "past computer logs" || lowerPrompt == "recent items" || lowerPrompt == "recent files" || lowerPrompt == "recent documents" || lowerPrompt == "show recent items" || lowerPrompt == "terminal history" || lowerPrompt == "crash logs" || lowerPrompt.contains("tail retrieval past computer logs") || lowerPrompt.contains("teach genie how to tail")
+            if isTailIntent {
+                let arg: String
+                if lowerPrompt.hasPrefix("tail ") {
+                    arg = String(cleanPrompt.dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
+                } else if lowerPrompt.contains("recent") {
+                    arg = "recent"
+                } else if lowerPrompt.contains("history") || lowerPrompt.contains("terminal") {
+                    arg = "history"
+                } else if lowerPrompt.contains("crash") {
+                    arg = "crash"
+                } else {
+                    arg = "system"
+                }
+                let tailOutput = await GenieNativeToolEngine.shared.runTail(argument: arg)
+                let response = "📜 **[Genie Tail & Computer Logs Retrieval]:**\n\(tailOutput)"
+                self.currentResponse = response
+                self.chatHistory.append(ChatMessage(role: "assistant", content: response, model: modelToUse))
+                self.saveChatHistory()
+                self.isGenerating = false
+                return
+            }
+
             switch provider {
             case .gemini:
                 await generateGemini(prompt: promptToQuery, model: modelToUse, apiKey: self.geminiApiKey, mediaPath: mediaPath)
@@ -1220,6 +1874,10 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                 await generateClaude(prompt: promptToQuery, model: modelToUse, apiKey: self.claudeApiKey)
             case .openai:
                 await generateOpenAI(prompt: promptToQuery, model: modelToUse, apiKey: self.openaiApiKey)
+            case .grok:
+                await generateGrok(prompt: promptToQuery, model: modelToUse, apiKey: self.grokApiKey)
+            case .deepseek:
+                await generateDeepSeek(prompt: promptToQuery, model: modelToUse, apiKey: self.deepseekApiKey)
             case .local:
                 await generateLocal(prompt: promptToQuery, model: modelToUse)
             }
@@ -1400,7 +2058,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             if let ping = self.extractPhonePingCommand(from: self.currentResponse) {
                 let success = GeniePhoneBridgeManager.shared.pingNicholasPhone(withSummary: ping)
                 let statusEmoji = success ? "✓ Dispatched" : "⚠️ Failed"
-                let block = "\n\n⚡ **[Phone Ping \(statusEmoji)]:** Synced to Nicholas's iPhone (\(GeniePhoneBridgeManager.shared.appleID))."
+                let block = "\n\n⚡ **[Phone Ping \(statusEmoji)]:** Synced to iPhone (\(GeniePhoneBridgeManager.shared.appleID))."
                 self.currentResponse += block
             }
 
@@ -1413,6 +2071,44 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                 }
                 let block = "\n\n🌐 **[Genie Phone Bridge]:** URL: \(GeniePhoneBridgeManager.shared.mobileRemoteURL) | iMessage Sync: \(GeniePhoneBridgeManager.shared.isMessageWatcherActive ? "Active" : "Inactive")"
                 self.currentResponse += block
+            }
+
+            // 9c. AppleScript App Automation Auto-Execution — full read/write/control of
+            // installed apps, gated by a one-time per-app confirmation (see
+            // GenieAppAutomationApprovalGate). Both the AppleScript and Accessibility
+            // (desktop_agent, below) automation paths are available; the model picks
+            // whichever fits the app.
+            if let automation = self.extractAppleScriptCommand(from: self.currentResponse) {
+                let approved = GenieAppAutomationApprovalGate.shared.requestApproval(
+                    for: automation.appName,
+                    action: "run an AppleScript command"
+                )
+                if approved {
+                    var err: NSDictionary?
+                    let result = NSAppleScript(source: automation.script)?.executeAndReturnError(&err)
+                    let statusEmoji = err == nil ? "✓" : "⚠️"
+                    let resultText = err.map { "\($0)" } ?? (result?.stringValue ?? "(no return value)")
+                    let block = "\n\n🛠️ **[AppleScript Automation \(statusEmoji) — \(automation.appName)]:**\n\(resultText)"
+                    self.currentResponse += block
+                } else {
+                    let block = "\n\n🛑 **[AppleScript Automation Declined]:** \(automation.appName) was not approved for automation this session."
+                    self.currentResponse += block
+                }
+            }
+
+            // 9d. Siri & Apple Shortcuts Auto-Execution
+            if let siriCmd = self.extractSiriCommand(from: self.currentResponse) {
+                let toolResult = await GenieNativeToolEngine.shared.executeSiriTool(action: siriCmd.name, payload: siriCmd.input)
+                let block = "\n\n🎙️ **[Siri Tool Intercept — \(siriCmd.name)]:**\n\(toolResult)"
+                self.currentResponse += block
+
+                await self.runAgentContinuation(
+                    originalPrompt: cleanPrompt,
+                    toolContext: "Siri Tool `\(siriCmd.name)` executed.\nResult:\n\(toolResult)",
+                    provider: provider,
+                    modelToUse: modelToUse,
+                    depth: 1
+                )
             }
 
             // 10. Terminal Tool Auto-Execution
@@ -1436,6 +2132,25 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                         )
                     }
                 }
+            }
+
+            // 10b. Genie Native Developer Tools (find_project, read_file, write_file, compile, drive_xcode, test_drag_and_drop)
+            if let nativeTool = self.extractNativeToolCall(from: self.currentResponse) {
+                let toolResult = await GenieNativeToolEngine.shared.executeTool(
+                    name: nativeTool.name,
+                    argument: nativeTool.argument,
+                    payload: nativeTool.payload
+                )
+                let block = "\n\n🛠️ **[Genie Native Tool: `\(nativeTool.name)`]**\n```\n\(toolResult)\n```"
+                self.currentResponse += block
+
+                await self.runAgentContinuation(
+                    originalPrompt: cleanPrompt,
+                    toolContext: "Genie Native Tool `\(nativeTool.name)` executed.\nOutput:\n\(toolResult)",
+                    provider: provider,
+                    modelToUse: modelToUse,
+                    depth: 1
+                )
             }
 
             // 11b. Antigravity Desktop Control Auto-Execution
@@ -1493,6 +2208,18 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                 }
             }
 
+            // 11c. Background DOM & Image Pre-fetching for all extracted searches and URLs
+            if self.webAccessEnabled {
+                let allSearches = self.extractAllWebSearches(from: self.currentResponse)
+                let allURLs = self.extractAllWebURLs(from: self.currentResponse)
+                for s in allSearches {
+                    GenieBrowserDOMRetrievalManager.shared.retrieve(queryOrUrl: s)
+                }
+                for u in allURLs {
+                    GenieBrowserDOMRetrievalManager.shared.retrieve(queryOrUrl: u.absoluteString)
+                }
+            }
+
             // 11d. Hidden Browser Auto-Execution — background read, never shown to the user
             if self.webAccessEnabled {
                 let hiddenURLs = self.extractHiddenBrowseURLs(from: self.currentResponse)
@@ -1534,11 +2261,13 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             }
 
             // 12. AI Creations Detection & Auto-Display in Player Window
-            if let creation = self.extractCreation(from: self.currentResponse) {
+            if let creation = self.extractCreation(from: self.currentResponse) ?? self.extractLiveCreation(from: self.currentResponse) {
                 self.activeCreationCode = creation.html
                 self.activeCreationTitle = creation.title
 
-                // Automatically write the file to the Desktop and chat documents folder
+                // Automatically write the file in parallel (background non-blocking task)
+                self.writeCreationParallel(title: creation.title, html: creation.html, isFinal: true)
+
                 let desktopURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
                 let safeTitle = creation.title
                     .components(separatedBy: CharacterSet.alphanumerics.inverted)
@@ -1547,10 +2276,6 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 let baseName = safeTitle.isEmpty ? "AI Creation" : safeTitle
                 let fileOnDesktop = desktopURL.appendingPathComponent("\(baseName).html")
-                let fileInFolder = chatFolders.documents.appendingPathComponent("\(baseName).html")
-
-                try? creation.html.write(to: fileOnDesktop, atomically: true, encoding: .utf8)
-                try? creation.html.write(to: fileInFolder, atomically: true, encoding: .utf8)
 
                 NotificationCenter.default.post(
                     name: NSNotification.Name("NexusAIDisplayCreation"),
@@ -1558,7 +2283,8 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                     userInfo: [
                         "title": creation.title,
                         "filePath": fileOnDesktop.path,
-                        "fileURL": fileOnDesktop.absoluteString
+                        "fileURL": fileOnDesktop.absoluteString,
+                        "isLiveStream": false
                     ]
                 )
             }
@@ -1746,6 +2472,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                     for part in parts {
                         if let text = part["text"] as? String {
                             self.currentResponse += text
+                            self.streamLiveCreationIfNeeded()
                         }
                     }
                 }
@@ -1836,6 +2563,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                     if type == "content_block_delta", let delta = root["delta"] as? [String: Any] {
                         if let text = delta["text"] as? String {
                             self.currentResponse += text
+                            self.streamLiveCreationIfNeeded()
                         }
                         if let thinking = delta["thinking"] as? String {
                             self.currentThinking += thinking
@@ -1928,11 +2656,190 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                    let delta = first["delta"] as? [String: Any],
                    let text = delta["content"] as? String {
                     self.currentResponse += text
+                    self.streamLiveCreationIfNeeded()
                 }
             }
         } catch {
             if !Task.isCancelled {
                 self.currentResponse = "OpenAI Connection Error: \(error.localizedDescription)"
+            }
+        }
+        self.isGenerating = false
+    }
+
+    // MARK: - xAI Grok Streaming Generator (BYOK)
+    private func generateGrok(prompt: String, model: String, apiKey: String) async {
+        let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanKey.isEmpty else {
+            self.currentResponse = "⚠️ xAI Grok API Key required.\n\nPlease enter your Grok API Key in Genie Settings ⚙️ (under Cloud API Keys > BYOK)."
+            self.isGenerating = false
+            return
+        }
+
+        guard let url = URL(string: "https://api.x.ai/v1/chat/completions") else {
+            self.currentResponse = "Invalid xAI Grok API URL."
+            self.isGenerating = false
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(cleanKey)", forHTTPHeaderField: "Authorization")
+
+        var messages: [[String: Any]] = []
+        if terminalAccessEnabled || webAccessEnabled {
+            messages.append(["role": "system", "content": modelToolsSystemPrompt])
+        }
+        for msg in chatHistory.suffix(100) {
+            messages.append(["role": msg.role, "content": msg.content])
+        }
+        if messages.isEmpty || messages.last?["role"] as? String != "user" {
+            messages.append(["role": "user", "content": prompt])
+        }
+
+        let payload: [String: Any] = [
+            "model": model,
+            "stream": true,
+            "messages": messages
+        ]
+
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: payload) else {
+            self.isGenerating = false
+            return
+        }
+        request.httpBody = bodyData
+
+        do {
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                self.currentResponse = "Failed to connect to xAI Grok."
+                self.isGenerating = false
+                return
+            }
+
+            if http.statusCode != 200 {
+                var errDetail = ""
+                for try await line in bytes.lines {
+                    errDetail += line
+                    if errDetail.count > 300 { break }
+                }
+                self.currentResponse = "xAI Grok API Error (\(http.statusCode)): \(errDetail.isEmpty ? "Check your Grok API key in Settings." : errDetail)"
+                self.isGenerating = false
+                return
+            }
+
+            for try await line in bytes.lines {
+                if Task.isCancelled { break }
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard trimmed.hasPrefix("data:") else { continue }
+                let jsonStr = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                if jsonStr == "[DONE]" { break }
+                guard !jsonStr.isEmpty, let lineData = jsonStr.data(using: .utf8) else { continue }
+
+                if let chunk = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                   let choices = chunk["choices"] as? [[String: Any]],
+                   let first = choices.first,
+                   let delta = first["delta"] as? [String: Any],
+                   let text = delta["content"] as? String {
+                    self.currentResponse += text
+                    self.streamLiveCreationIfNeeded()
+                }
+            }
+        } catch {
+            if !Task.isCancelled {
+                self.currentResponse = "xAI Grok Connection Error: \(error.localizedDescription)"
+            }
+        }
+        self.isGenerating = false
+    }
+
+    // MARK: - DeepSeek Streaming Generator (BYOK)
+    private func generateDeepSeek(prompt: String, model: String, apiKey: String) async {
+        let cleanKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanKey.isEmpty else {
+            self.currentResponse = "⚠️ DeepSeek API Key required.\n\nPlease enter your DeepSeek API Key in Genie Settings ⚙️ (under Cloud API Keys > BYOK)."
+            self.isGenerating = false
+            return
+        }
+
+        guard let url = URL(string: "https://api.deepseek.com/chat/completions") else {
+            self.currentResponse = "Invalid DeepSeek API URL."
+            self.isGenerating = false
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(cleanKey)", forHTTPHeaderField: "Authorization")
+
+        var messages: [[String: Any]] = []
+        if terminalAccessEnabled || webAccessEnabled {
+            messages.append(["role": "system", "content": modelToolsSystemPrompt])
+        }
+        for msg in chatHistory.suffix(100) {
+            messages.append(["role": msg.role, "content": msg.content])
+        }
+        if messages.isEmpty || messages.last?["role"] as? String != "user" {
+            messages.append(["role": "user", "content": prompt])
+        }
+
+        let payload: [String: Any] = [
+            "model": model,
+            "stream": true,
+            "messages": messages
+        ]
+
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: payload) else {
+            self.isGenerating = false
+            return
+        }
+        request.httpBody = bodyData
+
+        do {
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                self.currentResponse = "Failed to connect to DeepSeek."
+                self.isGenerating = false
+                return
+            }
+
+            if http.statusCode != 200 {
+                var errDetail = ""
+                for try await line in bytes.lines {
+                    errDetail += line
+                    if errDetail.count > 300 { break }
+                }
+                self.currentResponse = "DeepSeek API Error (\(http.statusCode)): \(errDetail.isEmpty ? "Check your DeepSeek API key in Settings." : errDetail)"
+                self.isGenerating = false
+                return
+            }
+
+            for try await line in bytes.lines {
+                if Task.isCancelled { break }
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard trimmed.hasPrefix("data:") else { continue }
+                let jsonStr = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                if jsonStr == "[DONE]" { break }
+                guard !jsonStr.isEmpty, let lineData = jsonStr.data(using: .utf8) else { continue }
+
+                if let chunk = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                   let choices = chunk["choices"] as? [[String: Any]],
+                   let first = choices.first,
+                   let delta = first["delta"] as? [String: Any] {
+                    if let reasoning = delta["reasoning_content"] as? String {
+                        self.currentThinking += reasoning
+                    }
+                    if let text = delta["content"] as? String {
+                        self.currentResponse += text
+                        self.streamLiveCreationIfNeeded()
+                    }
+                }
+            }
+        } catch {
+            if !Task.isCancelled {
+                self.currentResponse = "DeepSeek Connection Error: \(error.localizedDescription)"
             }
         }
         self.isGenerating = false
@@ -1979,6 +2886,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                     guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
                     Task { @MainActor in
                         self.currentResponse += text
+                        self.streamLiveCreationIfNeeded()
                     }
                 }
 
@@ -2068,6 +2976,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                    let delta = first["delta"] as? [String: Any],
                    let text = delta["content"] as? String {
                     self.currentResponse += text
+                    self.streamLiveCreationIfNeeded()
                 }
             }
         } catch {
@@ -2101,10 +3010,20 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             return
         }
 
-        let cleanHost = ollamaHost.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        // Use native /api/chat to keep entire chat in the context at all times
-        guard let url = URL(string: "\(cleanHost)/api/chat") else {
-            self.currentResponse = "Invalid Ollama Host URL: \(ollamaHost)"
+        let cleanHost: String = {
+            if let active = availableModels.first(where: { $0.name == effectiveModel }), active.source == "In-RAM VM" {
+                return "http://127.0.0.1:\(GenieInRAMVMManager.shared.serverPort)"
+            }
+            if GenieInRAMVMManager.shared.isModelServerRunning && (effectiveModel.lowercased().contains("ubuntu") || effectiveModel.lowercased().contains("in-ram")) {
+                return "http://127.0.0.1:\(GenieInRAMVMManager.shared.serverPort)"
+            }
+            let host = ollamaHost.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            return host.isEmpty ? "http://localhost:11434" : host
+        }()
+        let isChatCompletions = cleanHost.contains("58300") || cleanHost.contains("1234")
+        let endpointPath = isChatCompletions ? "/v1/chat/completions" : "/api/chat"
+        guard let url = URL(string: "\(cleanHost)\(endpointPath)") else {
+            self.currentResponse = "Invalid Model Server URL: \(cleanHost)"
             self.isGenerating = false
             return
         }
@@ -2140,13 +3059,14 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             messages.append(["role": "user", "content": prompt])
         }
 
+        let resolvedModelTag = resolveOllamaModelTag(model)
         let payload: [String: Any] = [
-            "model": model,
+            "model": resolvedModelTag,
             "messages": messages,
             "stream": true,
             "keep_alive": "30m",
             "options": [
-                "num_ctx": LocalModelManager.localContextWindow,
+                "num_ctx": LocalModelManager.contextWindow(for: model),
                 "num_keep": GenieAIChatCacheManager.shared.systemPromptKeepTokens,
                 "num_thread": max(4, ProcessInfo.processInfo.activeProcessorCount - 2),
                 "num_gpu": 99,
@@ -2165,9 +3085,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             let (bytes, response) = try await URLSession.shared.bytes(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                 let offlineFallback = GenieLocalTinyModelEngine.shared.generateOfflineTinyResponse(prompt: prompt)
-                await streamSimulatedText(
-                    "*(Your local model isn't responding, so this is Genie's built-in offline engine.)*\n\n" + offlineFallback
-                )
+                await streamSimulatedText(offlineFallback)
                 return
             }
 
@@ -2208,6 +3126,12 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                         await MainActor.run {
                             self.currentResponse += toAddResp
                             self.currentThinking += toAddThink
+                            if let started = self.generationStartedAt {
+                                let elapsed = Date().timeIntervalSince(started)
+                                let approxTokens = Double(self.currentResponse.count) / 4.0
+                                self.lastTokensPerSecond = elapsed > 0.1 ? approxTokens / elapsed : 0
+                            }
+                            self.streamLiveCreationIfNeeded()
                         }
                     }
 
@@ -2223,15 +3147,19 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                 await MainActor.run {
                     self.currentResponse += toAddResp
                     self.currentThinking += toAddThink
+                    if let started = self.generationStartedAt {
+                        let elapsed = Date().timeIntervalSince(started)
+                        let approxTokens = Double(self.currentResponse.count) / 4.0
+                        self.lastTokensPerSecond = elapsed > 0.1 ? approxTokens / elapsed : 0
+                    }
+                    self.streamLiveCreationIfNeeded(force: true)
                 }
             }
         } catch {
             if !Task.isCancelled {
                 // If local daemon is offline or unreachable, fall back seamlessly to Genie's built-in on-device engine
                 let offlineFallback = GenieLocalTinyModelEngine.shared.generateOfflineTinyResponse(prompt: prompt)
-                await streamSimulatedText(
-                    "*(Can't reach your local model at \(cleanHost) — this is Genie's built-in offline engine.)*\n\n" + offlineFallback
-                )
+                await streamSimulatedText(offlineFallback)
             }
         }
 
@@ -2246,15 +3174,31 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
 
     public func streamSimulatedText(_ fullText: String) async {
         let words = fullText.split(separator: " ", omittingEmptySubsequences: false)
-        for (i, word) in words.enumerated() {
+        var i = 0
+        let count = words.count
+
+        while i < count {
             if Task.isCancelled { break }
-            let chunk = (i == 0 ? "" : " ") + String(word)
+            let burstSize = min(Int.random(in: 2...4), count - i)
+            let end = i + burstSize
+            let burst = words[i..<end].joined(separator: " ")
+            let chunk = (i == 0 ? "" : " ") + burst
+            i = end
+
             await MainActor.run {
                 self.currentResponse += chunk
+                if let started = self.generationStartedAt {
+                    let elapsed = Date().timeIntervalSince(started)
+                    let approxTokens = Double(self.currentResponse.count) / 4.0
+                    self.lastTokensPerSecond = elapsed > 0.1 ? approxTokens / elapsed : 0
+                }
+                self.streamLiveCreationIfNeeded()
             }
-            try? await Task.sleep(nanoseconds: 12_000_000)
+            // Snappy human writing speed: ~10ms per phrase burst (3-4x faster without delay lag)
+            try? await Task.sleep(nanoseconds: 10_000_000)
         }
         await MainActor.run {
+            self.streamLiveCreationIfNeeded(force: true)
             self.isGenerating = false
         }
     }
@@ -2328,6 +3272,8 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             case .gemini: await generateGemini(prompt: prompt, model: model, apiKey: geminiApiKey, mediaPath: screenshot)
             case .claude: await generateClaude(prompt: prompt, model: model, apiKey: claudeApiKey)
             case .openai: await generateOpenAI(prompt: prompt, model: model, apiKey: openaiApiKey)
+            case .grok: await generateGrok(prompt: prompt, model: model, apiKey: grokApiKey)
+            case .deepseek: await generateDeepSeek(prompt: prompt, model: model, apiKey: deepseekApiKey)
             case .local: await generateLocal(prompt: prompt, model: model)
             }
         }
@@ -2370,6 +3316,10 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             await generateClaude(prompt: followUp, model: modelToUse, apiKey: self.claudeApiKey)
         case .openai:
             await generateOpenAI(prompt: followUp, model: modelToUse, apiKey: self.openaiApiKey)
+        case .grok:
+            await generateGrok(prompt: followUp, model: modelToUse, apiKey: self.grokApiKey)
+        case .deepseek:
+            await generateDeepSeek(prompt: followUp, model: modelToUse, apiKey: self.deepseekApiKey)
         case .local:
             await generateLocal(prompt: followUp, model: modelToUse)
         }
@@ -2520,6 +3470,46 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
         return results
     }
 
+    // MARK: - 🛠️ Native Agent Tool Calling Extraction
+    public func extractNativeToolCall(from text: String) -> (name: String, argument: String, payload: String)? {
+        let recognizedTools = ["find_project", "read_file", "write_file", "compile", "drive_xcode", "test_drag_and_drop", "tail", "recent_items", "siri", "browse_web", "crawl_files", "drop_worker", "trash_airlock_promote"]
+
+        // Pattern 1: ```tool:<toolName>
+        let toolPrefix = "```tool:"
+        if let start = text.range(of: toolPrefix) {
+            let remainder = text[start.upperBound...]
+            if let end = remainder.range(of: "```") {
+                let toolBody = String(remainder[..<end.lowerBound])
+                let lines = toolBody.components(separatedBy: "\n")
+                if let firstLine = lines.first {
+                    let parts = firstLine.trimmingCharacters(in: .whitespaces).components(separatedBy: .whitespaces)
+                    if let toolName = parts.first, !toolName.isEmpty {
+                        let argument = parts.dropFirst().joined(separator: " ").trimmingCharacters(in: .whitespaces)
+                        let payload = lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .newlines)
+                        return (name: toolName, argument: argument, payload: payload)
+                    }
+                }
+            }
+        }
+
+        // Pattern 2: ```<toolName>
+        for tool in recognizedTools {
+            let directPrefix = "```\(tool)"
+            if let start = text.range(of: directPrefix) {
+                let remainder = text[start.upperBound...]
+                if let end = remainder.range(of: "```") {
+                    let toolBody = String(remainder[..<end.lowerBound])
+                    let lines = toolBody.components(separatedBy: "\n")
+                    let firstLine = (lines.first ?? "").trimmingCharacters(in: .whitespaces)
+                    let payload = lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .newlines)
+                    return (name: tool, argument: firstLine, payload: payload)
+                }
+            }
+        }
+
+        return nil
+    }
+
     // MARK: - 🌐 Web Browser & Internet Search Tools
     public func extractAllWebSearches(from text: String) -> [String] {
         var results: [String] = []
@@ -2602,61 +3592,20 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
         let clean = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return ("No search query provided.", []) }
 
-        var results: [String] = []
-        var sources: [(title: String, url: String)] = []
-
-        // 1. DuckDuckGo Instant Answer API
-        if let encoded = clean.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-           let ddgURL = URL(string: "https://api.duckduckgo.com/?q=\(encoded)&format=json&no_html=1") {
-            var req = URLRequest(url: ddgURL, timeoutInterval: 5)
-            req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
-            if let (data, _) = try? await URLSession.shared.data(for: req),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                if let abstract = json["AbstractText"] as? String, !abstract.isEmpty {
-                    results.append(abstract)
-                    let src = (json["AbstractSource"] as? String) ?? "DuckDuckGo"
-                    let urlStr = (json["AbstractURL"] as? String) ?? "https://duckduckgo.com/?q=\(encoded)"
-                    sources.append((title: src, url: urlStr))
-                }
-                if let related = json["RelatedTopics"] as? [[String: Any]] {
-                    for item in related.prefix(2) {
-                        if let text = item["Text"] as? String, !text.isEmpty {
-                            results.append("• " + text)
-                            if let firstURL = item["FirstURL"] as? String {
-                                sources.append((title: text.components(separatedBy: " - ").first ?? "Source", url: firstURL))
-                            }
-                        }
-                    }
-                }
-            }
+        let indexResponse = await GenieSearchIndexCrawlerEngine.shared.search(query: clean)
+        if !indexResponse.results.isEmpty {
+            let sources = indexResponse.results.map { (title: "\($0.title) (\($0.sourceName))", url: $0.url) }
+            return (indexResponse.summary, sources)
         }
 
-        // 2. Wikipedia API (for fast encyclopedic facts & definitions)
-        if results.isEmpty, let encoded = clean.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-           let wikiURL = URL(string: "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=\(encoded)&utf8=&format=json") {
-            let req = URLRequest(url: wikiURL, timeoutInterval: 5)
-            if let (data, _) = try? await URLSession.shared.data(for: req),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let queryDict = json["query"] as? [String: Any],
-               let searchArr = queryDict["search"] as? [[String: Any]] {
-                for item in searchArr.prefix(3) {
-                    if let title = item["title"] as? String, let snippet = item["snippet"] as? String {
-                        let cleanSnippet = snippet.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-                        results.append("**\(title)**: \(cleanSnippet)")
-                        let pageURL = "https://en.wikipedia.org/wiki/\(title.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? title)"
-                        sources.append((title: title, url: pageURL))
-                    }
-                }
-            }
+        // Fallback: Direct search link
+        var fallbackSources: [(title: String, url: String)] = []
+        if let encoded = clean.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            fallbackSources.append((title: "Web Search: \"\(clean)\"", url: "https://www.google.com/search?q=\(encoded)"))
         }
 
-        // Fallback: Google search link
-        if sources.isEmpty, let encoded = clean.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-            sources.append((title: "Google Search: \"\(clean)\"", url: "https://www.google.com/search?q=\(encoded)"))
-        }
-
-        let summary = results.isEmpty ? "Direct web search initiated for \"\(clean)\". Open the mini browser above to view live results." : results.joined(separator: "\n\n")
-        return (summary, sources)
+        let summary = "Direct web search initiated for \"\(clean)\". Open the mini browser above to view live results."
+        return (summary, fallbackSources)
     }
 
     public func fetchWebPage(url: URL) async -> String {
@@ -2712,6 +3661,147 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             self.chatHistory.append(assistantMsg)
             self.saveChatHistory()
         }
+    }
+
+    // MARK: - ⚡ Parallel Disk Writing & In-RAM Live Rendering Engine
+
+    public func currentChatFolders() -> (documents: URL, presentations: URL, notes: URL, images: URL) {
+        var folders = GenieStandardDirectories.chatSessionFolderURL(
+            sessionId: self.currentSessionId,
+            title: self.savedSessions.first(where: { $0.id == self.currentSessionId })?.title
+        )
+        if let folderOverride = self.activeSaveDirectoryOverride {
+            folders.documents = folderOverride
+            folders.presentations = folderOverride
+            folders.notes = folderOverride
+            folders.images = folderOverride
+        }
+        return (documents: folders.documents, presentations: folders.presentations, notes: folders.notes, images: folders.images)
+    }
+
+    private var lastLiveStreamRenderTime: TimeInterval = 0
+    private var lastDiskWriteTime: TimeInterval = 0
+    private var pendingParallelWriteTask: Task<Void, Never>? = nil
+
+    /// Extracts live in-progress HTML / SVG / Canvas straight from RAM during generation,
+    /// broadcasts it to preview panes for real-time rendering, and writes to disk in parallel (non-blocking).
+    @MainActor
+    public func streamLiveCreationIfNeeded(force: Bool = false) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if !force && (now - lastLiveStreamRenderTime < 0.04) {
+            return
+        }
+        lastLiveStreamRenderTime = now
+
+        guard let live = extractLiveCreation(from: self.currentResponse) else { return }
+        self.activeCreationCode = live.html
+        self.activeCreationTitle = live.title
+
+        // Write file asynchronously in parallel background task — never blocks RAM rendering or UI
+        writeCreationParallel(title: live.title, html: live.html, isFinal: force)
+
+        // Broadcast directly from RAM
+        let desktopURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+        let safeTitle = live.title
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseName = safeTitle.isEmpty ? "AI Creation" : safeTitle
+        let fileOnDesktop = desktopURL.appendingPathComponent("\(baseName).html")
+
+        NotificationCenter.default.post(
+            name: NSNotification.Name("NexusAIDisplayCreation"),
+            object: live.html,
+            userInfo: [
+                "title": live.title,
+                "filePath": fileOnDesktop.path,
+                "fileURL": fileOnDesktop.absoluteString,
+                "isLiveStream": !force
+            ]
+        )
+    }
+
+    /// Asynchronously writes HTML code to disk in a detached background task without stalling main thread or inference.
+    public func writeCreationParallel(title: String, html: String, isFinal: Bool = false) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if !isFinal && (now - lastDiskWriteTime < 0.5) {
+            return // Throttle rapid disk writes during fast token bursts
+        }
+        lastDiskWriteTime = now
+
+        let safeTitle = title
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseName = safeTitle.isEmpty ? "AI Creation" : safeTitle
+
+        let desktopURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+        let fileOnDesktop = desktopURL.appendingPathComponent("\(baseName).html")
+        let fileInFolder = currentChatFolders().documents.appendingPathComponent("\(baseName).html")
+
+        let code = html
+        pendingParallelWriteTask?.cancel()
+        pendingParallelWriteTask = Task.detached(priority: .background) {
+            guard !Task.isCancelled else { return }
+            try? code.write(to: fileOnDesktop, atomically: true, encoding: .utf8)
+            try? code.write(to: fileInFolder, atomically: true, encoding: .utf8)
+        }
+    }
+
+    /// Extracts streaming or partial code from RAM, even before the code block has closed.
+    public func extractLiveCreation(from text: String) -> (title: String, html: String)? {
+        // 1. If complete creation is already available, use it
+        if let complete = extractCreation(from: text) {
+            return complete
+        }
+
+        // 2. Incomplete ```html or ```htm block streaming live
+        if let htmlRange = text.range(of: "```html", options: .caseInsensitive) ?? text.range(of: "```htm", options: .caseInsensitive) {
+            var raw = String(text[htmlRange.upperBound...])
+            if let endRange = raw.range(of: "```") {
+                raw = String(raw[..<endRange.lowerBound])
+            }
+            raw = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if raw.count >= 15 {
+                let title = extractTitle(from: raw, fallback: "Live Interactive Creation")
+                let safeHtml = closeLiveHtmlTagsIfNeeded(raw)
+                return (title: title, html: formatSelfContainedHtml(safeHtml))
+            }
+        }
+
+        // 3. Incomplete <!DOCTYPE html> or <html> streaming live
+        if let htmlStart = text.range(of: "<!DOCTYPE html", options: .caseInsensitive) ?? text.range(of: "<html", options: .caseInsensitive) {
+            var raw = String(text[htmlStart.lowerBound...])
+            if let end = raw.range(of: "</html>", options: .caseInsensitive) {
+                raw = String(raw[..<end.upperBound])
+            }
+            if raw.count >= 20 {
+                let title = extractTitle(from: raw, fallback: "Live Web Creation")
+                let safeHtml = closeLiveHtmlTagsIfNeeded(raw)
+                return (title: title, html: safeHtml)
+            }
+        }
+
+        // 4. Incomplete <svg> tag streaming live
+        if let svgStart = text.range(of: "<svg", options: .caseInsensitive) {
+            var raw = String(text[svgStart.lowerBound...])
+            if let end = raw.range(of: "</svg>", options: .caseInsensitive) {
+                raw = String(raw[..<end.upperBound])
+            } else {
+                raw += "</svg>"
+            }
+            if raw.count >= 15 {
+                return (title: "AI Vector Art (SVG)", html: wrapSvgInHtml(raw))
+            }
+        }
+
+        return nil
+    }
+
+    private func closeLiveHtmlTagsIfNeeded(_ html: String) -> String {
+        StreamingHTMLTagBalancer.balance(html)
     }
 
     // MARK: - AI Creation Extraction & Display in Player Window
@@ -2789,7 +3879,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body { margin: 0; padding: 0; background: #0b0c10; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; }
+                body { margin: 0; padding: 8px; background: #0b0c10; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: auto; word-wrap: break-word; overflow-wrap: break-word; width: 100%; min-height: 100vh; box-sizing: border-box; }
                 canvas { display: block; max-width: 100%; max-height: 100%; }
             </style>
         </head>
@@ -3020,6 +4110,24 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
         return nil
     }
 
+    public func extractAppleScriptCommand(from text: String) -> (appName: String, script: String)? {
+        let patterns = ["```applescript", "```apple_script", "```automate_app"]
+        for p in patterns {
+            if let start = text.range(of: p, options: .caseInsensitive) {
+                let remainder = text[start.upperBound...]
+                if let end = remainder.range(of: "```") {
+                    let body = String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard let firstNewline = body.firstIndex(of: "\n") else { return nil }
+                    let appName = String(body[..<firstNewline]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    let script = String(body[body.index(after: firstNewline)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !appName.isEmpty, !script.isEmpty else { return nil }
+                    return (appName: appName, script: script)
+                }
+            }
+        }
+        return nil
+    }
+
     public func extractDesktopAgentCommand(from text: String) -> String? {
         let patterns = ["```desktop_agent", "```desktop", "```antigravity_desktop", "```computer"]
         for p in patterns {
@@ -3055,7 +4163,7 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                 let remainder = text[start.upperBound...]
                 if let end = remainder.range(of: "```") {
                     let full = String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                    var target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? "nicholas.dudek@icloud.com" : GeniePhoneBridgeManager.shared.appleID
+                    var target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? (GenieAppleAuth.shared.email.isEmpty ? "user@icloud.com" : GenieAppleAuth.shared.email) : GeniePhoneBridgeManager.shared.appleID
                     var body = full
                     if full.hasPrefix("[recipient=") {
                         if let closeBracket = full.range(of: "]") {
@@ -3064,8 +4172,8 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                             body = String(full[closeBracket.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                         }
                     }
-                    if target.lowercased() == "me" || target.lowercased() == "self" || target.lowercased() == "nicholas" {
-                        target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? "nicholas.dudek@icloud.com" : GeniePhoneBridgeManager.shared.appleID
+                    if target.lowercased() == "me" || target.lowercased() == "self" {
+                        target = GeniePhoneBridgeManager.shared.appleID.isEmpty ? (GenieAppleAuth.shared.email.isEmpty ? "user@icloud.com" : GenieAppleAuth.shared.email) : GeniePhoneBridgeManager.shared.appleID
                     }
                     return (recipient: target, content: body)
                 }
@@ -3130,6 +4238,27 @@ Format with a ```app_doc <AppName>``` block (e.g. ```app_doc Safari``` or ```app
                 let remainder = text[start.upperBound...]
                 if let end = remainder.range(of: "```") {
                     return String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
+        return nil
+    }
+
+    public func extractSiriCommand(from text: String) -> (name: String, input: String)? {
+        let patterns = ["```shortcut", "```siri", "```apple_shortcut"]
+        for p in patterns {
+            if let start = text.range(of: p, options: .caseInsensitive) {
+                let remainder = text[start.upperBound...]
+                if let end = remainder.range(of: "```") {
+                    let content = String(remainder[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    let lines = content.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                    guard let firstLine = lines.first else { continue }
+                    var name = firstLine
+                    if name.lowercased().hasPrefix("run ") {
+                        name = String(name.dropFirst(4)).trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                    let input = lines.dropFirst().joined(separator: "\n")
+                    return (name: name, input: input)
                 }
             }
         }

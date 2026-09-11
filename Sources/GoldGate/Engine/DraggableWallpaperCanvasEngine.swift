@@ -134,7 +134,7 @@ public final class DraggableWallpaperCanvasEngine: ObservableObject {
 
     // MARK: - Private State & Animation Pipeline
 
-    private var displayLink: CVDisplayLink?
+    private var displayLink: DispatchSourceTimer?
     private var lastFrameTime: TimeInterval = 0.0
     private var targetOffset: CGSize = .zero
     private var isSpringRunning: Bool = false
@@ -149,40 +149,30 @@ public final class DraggableWallpaperCanvasEngine: ObservableObject {
     }
 
     deinit {
-        if let link = displayLink {
-            CVDisplayLinkStop(link)
-        }
+        displayLink?.cancel()
+        displayLink = nil
     }
 
-    // MARK: - Display Link Setup (120 FPS Metal/CADisplayLink Equivalent on macOS)
+    // MARK: - Display Link Setup (120 FPS via DispatchSourceTimer)
 
     private func setupDisplayLink() {
-        var link: CVDisplayLink?
-        let status = CVDisplayLinkCreateWithActiveCGDisplays(&link)
-        guard status == kCVReturnSuccess, let displayLink = link else { return }
-
-        self.displayLink = displayLink
-
-        let outputCallback: CVDisplayLinkOutputCallback = { _, inNow, _, _, _, displayLinkContext in
-            guard let context = displayLinkContext else { return kCVReturnSuccess }
-            let engine = Unmanaged<DraggableWallpaperCanvasEngine>.fromOpaque(context).takeUnretainedValue()
-
-            let currentTime = Double(inNow.pointee.videoTime) / Double(inNow.pointee.videoTimeScale)
-            DispatchQueue.main.async {
-                engine.stepPhysics(currentTime: currentTime)
-            }
-            return kCVReturnSuccess
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        // ~120 FPS = 8.33 ms interval
+        timer.schedule(deadline: .now(), repeating: .milliseconds(8), leeway: .milliseconds(1))
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            let t = CACurrentMediaTime()
+            Task { @MainActor [weak self] in self?.stepPhysics(currentTime: t) }
         }
-
-        let context = Unmanaged.passUnretained(self).toOpaque()
-        CVDisplayLinkSetOutputCallback(displayLink, outputCallback, context)
+        timer.suspend() // Start paused
+        self.displayLink = timer
     }
 
     private func startPhysicsLoopIfNeeded() {
         guard !isSpringRunning, let link = displayLink else { return }
         isSpringRunning = true
         lastFrameTime = CACurrentMediaTime()
-        CVDisplayLinkStart(link)
+        link.resume()
     }
 
     private func stopPhysicsLoopIfIdle() {
@@ -196,7 +186,7 @@ public final class DraggableWallpaperCanvasEngine: ObservableObject {
             chromaticShift = .zero
             springVelocity = .zero
             isSpringRunning = false
-            CVDisplayLinkStop(link)
+            link.suspend()
         }
     }
 

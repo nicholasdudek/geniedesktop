@@ -70,6 +70,8 @@ public struct SpaceGraphicLayer: Identifiable, Equatable {
     public var isGPUForkActive: Bool
     public var forkedFrame: GenieForkedFrame?
     public var metalTexture: MTLTexture?
+    public var isOffloaded: Bool = false
+    public var offloadedAt: Date? = nil
 
     public init(
         spaceIndex: Int,
@@ -88,7 +90,9 @@ public struct SpaceGraphicLayer: Identifiable, Equatable {
         liveThumbnail: NSImage? = nil,
         isGPUForkActive: Bool = false,
         forkedFrame: GenieForkedFrame? = nil,
-        metalTexture: MTLTexture? = nil
+        metalTexture: MTLTexture? = nil,
+        isOffloaded: Bool = false,
+        offloadedAt: Date? = nil
     ) {
         self.spaceIndex = spaceIndex
         self.name = name
@@ -107,6 +111,24 @@ public struct SpaceGraphicLayer: Identifiable, Equatable {
         self.isGPUForkActive = isGPUForkActive
         self.forkedFrame = forkedFrame
         self.metalTexture = metalTexture
+        self.isOffloaded = isOffloaded
+        self.offloadedAt = offloadedAt
+    }
+
+    /// Releases heavy 4K textures, video frames, and bitmaps to reclaim RAM
+    public mutating func offloadRAMLayer() {
+        self.isOffloaded = true
+        self.offloadedAt = Date()
+        self.metalTexture = nil
+        self.forkedFrame = nil
+        self.isGPUForkActive = false
+        self.liveThumbnail = nil
+    }
+
+    /// Restores the layer state to active resident RAM
+    public mutating func hydrateRAMLayer() {
+        self.isOffloaded = false
+        self.offloadedAt = nil
     }
 
     public static func == (lhs: SpaceGraphicLayer, rhs: SpaceGraphicLayer) -> Bool {
@@ -117,7 +139,8 @@ public struct SpaceGraphicLayer: Identifiable, Equatable {
         lhs.isVisible == rhs.isVisible &&
         lhs.isLocked == rhs.isLocked &&
         lhs.isSolo == rhs.isSolo &&
-        lhs.isGPUForkActive == rhs.isGPUForkActive
+        lhs.isGPUForkActive == rhs.isGPUForkActive &&
+        lhs.isOffloaded == rhs.isOffloaded
     }
 }
 
@@ -252,6 +275,7 @@ public final class SpacesLayerManager: ObservableObject {
 
     public func selectAndSwitchToLayer(spaceIndex: Int) {
         selectedLayerIndex = spaceIndex
+        hydrateLayerIfNeeded(spaceIndex: spaceIndex)
         desktopsManager.switchToDesktop(index: spaceIndex)
         HapticFeedback.playClickSound()
         statusMessage = "Switched to Space Layer \(spaceIndex)"
@@ -294,5 +318,27 @@ public final class SpacesLayerManager: ObservableObject {
         layers[idx].forkedFrame = nil
         layers[idx].metalTexture = nil
     }
+
+    // MARK: - 5. 💾 RAM Layer Offloading & Hydration
+    /// Offloads heavy bitmaps and textures for inactive or invisible space layers
+    public func offloadInactiveLayers(keepFocalIndex: Int? = nil) {
+        let focal = keepFocalIndex ?? selectedLayerIndex
+        for idx in layers.indices {
+            if layers[idx].spaceIndex != focal || !layers[idx].isVisible {
+                layers[idx].offloadRAMLayer()
+            }
+        }
+        statusMessage = "Offloaded background space layers to conserve RAM ✨"
+    }
+
+    /// Re-hydrates a previously offloaded layer into active RAM
+    public func hydrateLayerIfNeeded(spaceIndex: Int) {
+        guard let idx = layers.firstIndex(where: { $0.spaceIndex == spaceIndex }), layers[idx].isOffloaded else { return }
+        layers[idx].hydrateRAMLayer()
+        if let thumb = SpatialPlaneManager.shared.desktopPlaneCacheBuffers[spaceIndex]?.thumbnail {
+            layers[idx].liveThumbnail = thumb
+        }
+    }
 }
+
 

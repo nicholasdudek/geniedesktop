@@ -1,0 +1,16 @@
+{
+  "name": "genie-render",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HTML/CSS marketing renderer for Genie — postcards and App Previews at any resolution up to 8K.",
+  "scripts": {
+    "postcards": "node render-postcards.mjs",
+    "previews": "node render-previews.mjs",
+    "postcards:4k": "node render-postcards.mjs --res 4k",
+    "previews:4k": "node render-previews.mjs --res 4k"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

@@ -43,6 +43,7 @@ public final class WallpaperManager: ObservableObject {
     public static let shared = WallpaperManager()
 
     @Published public var activeWallpaperImage: NSImage?
+    @Published public var activeHTMLWallpaperPath: String? = nil
     @Published public var availableWallpapers: [WallpaperItem] = []
 
     private let thumbnailCache = NSCache<NSString, NSImage>()
@@ -88,7 +89,7 @@ public final class WallpaperManager: ObservableObject {
     // MARK: - 🌉 Golden Gate & Bundled 4K Asset Resolvers
     public func findBundledWallpaperPath(named name: String) -> String? {
         let clean = name.replacingOccurrences(of: " ", with: "")
-        let extensions = ["jpg", "jpeg", "png", "heic"]
+        let extensions = ["jpg", "jpeg", "png", "heic", "html"]
         
         var baseDirs: [String] = []
         if let bundleWallpapers = Bundle.main.resourceURL?.appendingPathComponent("Wallpapers").path {
@@ -99,9 +100,10 @@ public final class WallpaperManager: ObservableObject {
             baseDirs.append("\(res)/Wallpapers")
         }
         baseDirs.append("/Applications/Genie.app/Contents/Resources/Wallpapers")
-        baseDirs.append("/Users/nicholasdudek/Developer/GoldGate/Wallpapers")
         let userHome = FileManager.default.homeDirectoryForCurrentUser.path
         baseDirs.append("\(userHome)/Developer/GoldGate/Wallpapers")
+        baseDirs.append("\(userHome)/Desktop/Genie/GoldGate/Wallpapers")
+        baseDirs.append("\(userHome)/Desktop")
         baseDirs.append("\(userHome)/Pictures")
 
         for dir in baseDirs {
@@ -110,6 +112,25 @@ public final class WallpaperManager: ObservableObject {
                 if FileManager.default.fileExists(atPath: p1) { return p1 }
                 let p2 = "\(dir)/\(clean).\(ext)"
                 if FileManager.default.fileExists(atPath: p2) { return p2 }
+            }
+        }
+        return nil
+    }
+
+    public func resolvedNeuralBloomURL() -> URL? {
+        if let path = findBundledWallpaperPath(named: "Neural Bloom") ?? findBundledWallpaperPath(named: "NeuralBloom") {
+            return URL(fileURLWithPath: path)
+        }
+        let userHome = FileManager.default.homeDirectoryForCurrentUser.path
+        let candidatePaths = [
+            "\(userHome)/Desktop/Genie/GoldGate/Wallpapers/Neural Bloom.html",
+            "\(userHome)/Desktop/Neural Bloom.html",
+            "\(userHome)/Developer/GoldGate/Wallpapers/Neural Bloom.html",
+            "/Applications/Genie.app/Contents/Resources/Wallpapers/Neural Bloom.html"
+        ]
+        for p in candidatePaths {
+            if FileManager.default.fileExists(atPath: p) {
+                return URL(fileURLWithPath: p)
             }
         }
         return nil
@@ -207,11 +228,20 @@ public final class WallpaperManager: ObservableObject {
 
         var seenPaths = Set<String>()
 
-        // 1. Prominently feature the 4K Genie wallpapers at the very top
-        let geniePresets: [(id: String, name: String, file: String, fallback: String)] = [
-            ("genie_dynamic", "Genie Dynamic 4K (Day / Sunset)", "GenieDynamic", "GoldenGateDynamic"),
-            ("genie_sunset", "Genie Sunset 4K (California Dusk)", "GenieSunset", "GoldenGateSunset"),
-            ("genie_aerial", "Genie Aerial 4K (San Francisco Bay)", "GenieAerial4K", "GoldenGateAerial4K")
+        // 1. Prominently feature all 4K & 5K Genie generated wallpapers at the very top
+        let geniePresets: [(id: String, name: String, file: String, fallback: String, category: WallpaperCategory)] = [
+            ("neural_bloom", "Neural Bloom (Interactive Canvas)", "Neural Bloom", "NeuralBloom", .dynamic),
+            ("genie_dynamic", "Genie Dynamic 4K (Day / Sunset)", "GenieDynamic", "GoldenGateDynamic", .dynamic),
+            ("genie_sunset", "Genie Sunset 4K (California Dusk)", "GenieSunset", "GoldenGateSunset", .landscape),
+            ("genie_aerial", "Genie Aerial 4K (San Francisco Bay)", "GenieAerial4K", "GoldenGateAerial4K", .landscape),
+            ("sonoma_horizon", "Sonoma Horizon 4K (Dusk Horizon)", "SonomaHorizon", "Sonoma", .landscape),
+            ("sonoma_golden", "Sonoma Golden Valley (California Hills)", "Sonoma", "SonomaHorizon", .landscape),
+            ("imac_blue", "iMac Studio Blue 5K", "iMacBlue", "iMacBlue", .studio),
+            ("imac_orange", "iMac Sunset Orange 5K", "iMacOrange", "iMacOrange", .studio),
+            ("imac_purple", "iMac Deep Purple 5K", "iMacPurple", "iMacPurple", .studio),
+            ("radial_sky_blue", "Radial Sky Blue Minimal 5K", "RadialSkyBlue", "RadialSkyBlue", .studio),
+            ("retro_macintosh", "Retro 1984 Macintosh Original", "Macintosh", "Macintosh", .studio),
+            ("space_gray_pro", "Space Gray OLED Blackout Minimal", "SpaceGrayPro", "SpaceGrayPro", .solid)
         ]
         for preset in geniePresets {
             if let path = findBundledWallpaperPath(named: preset.file) ?? findBundledWallpaperPath(named: preset.fallback) {
@@ -220,7 +250,7 @@ public final class WallpaperManager: ObservableObject {
                     items.append(WallpaperItem(
                         id: preset.id,
                         name: preset.name,
-                        category: .dynamic,
+                        category: preset.category,
                         path: path
                     ))
                 }
@@ -233,9 +263,9 @@ public final class WallpaperManager: ObservableObject {
             searchDirectories.append(bundleWallpapers)
         }
         searchDirectories.append("/Applications/Genie.app/Contents/Resources/Wallpapers")
-        searchDirectories.append("/Users/nicholasdudek/Developer/GoldGate/Wallpapers")
         let homePath = FileManager.default.homeDirectoryForCurrentUser.path
         searchDirectories.append("\(homePath)/Developer/GoldGate/Wallpapers")
+        searchDirectories.append("\(homePath)/Desktop/Genie/GoldGate/Wallpapers")
         searchDirectories.append("\(homePath)/Library/Application Support/com.apple.wallpaper/aerials/thumbnails")
         if let picturesDir = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first?.path {
             searchDirectories.append(picturesDir)
@@ -255,7 +285,7 @@ public final class WallpaperManager: ObservableObject {
 
             for case let fileURL as URL in enumerator {
                 let ext = fileURL.pathExtension.lowercased()
-                if ["heic", "jpg", "jpeg", "png"].contains(ext) {
+                if ["heic", "jpg", "jpeg", "png", "html"].contains(ext) {
                     let path = fileURL.path
                     let isSolidColor = path.contains("Solid Colors")
                     let isAppleSystemThumbnail = path.contains("/System/Library/Desktop Pictures/.thumbnails") || path.contains("aerials/thumbnails")
@@ -269,6 +299,8 @@ public final class WallpaperManager: ObservableObject {
                     if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
                        let fileSize = attrs[.size] as? Int {
                         if isSolidColor {
+                            if fileSize < 50 { continue }
+                        } else if ext == "html" {
                             if fileSize < 50 { continue }
                         } else if isAppleSystemThumbnail {
                             if fileSize < 5_000 { continue }
@@ -286,7 +318,7 @@ public final class WallpaperManager: ObservableObject {
                         let category: WallpaperCategory
                         if isSolidColor {
                             category = .studio
-                        } else if cleanName.lowercased().contains("dark") || cleanName.lowercased().contains("dynamic") || cleanName.lowercased().contains("light") || cleanName.lowercased().contains("golden") {
+                        } else if ext == "html" || cleanName.lowercased().contains("neural") || cleanName.lowercased().contains("bloom") || cleanName.lowercased().contains("dark") || cleanName.lowercased().contains("dynamic") || cleanName.lowercased().contains("light") || cleanName.lowercased().contains("golden") {
                             category = .dynamic
                         } else if cleanName.lowercased().contains("sunset") || cleanName.lowercased().contains("cliff") || cleanName.lowercased().contains("beach") || cleanName.lowercased().contains("coast") || cleanName.lowercased().contains("valley") || cleanName.lowercased().contains("horizon") || cleanName.lowercased().contains("sur") || cleanName.lowercased().contains("catalina") || cleanName.lowercased().contains("sonoma") {
                             category = .landscape
@@ -318,6 +350,12 @@ public final class WallpaperManager: ObservableObject {
         let key = item.path as NSString
         if let cached = thumbnailCache.object(forKey: key) {
             return cached
+        }
+
+        if item.path.hasSuffix(".html") || item.name.contains("Neural Bloom") || item.id == "neural_bloom" {
+            let thumb = generateCuratedWallpaper(named: "Neural Bloom", targetSize: CGSize(width: 480, height: 270))
+            thumbnailCache.setObject(thumb, forKey: key)
+            return thumb
         }
 
         if let image = NSImage(contentsOfFile: item.path) {
@@ -441,10 +479,20 @@ public final class WallpaperManager: ObservableObject {
         // 2. Explicit User Chosen Custom Wallpaper (when not in sameWallpaperMode)
         if !customPath.isEmpty, FileManager.default.fileExists(atPath: customPath) {
             lastLoadedPath = customPath
+            if customPath.hasSuffix(".html") {
+                self.activeHTMLWallpaperPath = customPath
+                let preview = generateCuratedWallpaper(named: "Neural Bloom", targetSize: CGSize(width: 3840, height: 2160))
+                publishWallpaper(preview, key: customPath)
+                return
+            } else {
+                self.activeHTMLWallpaperPath = nil
+            }
             if let img = NSImage(contentsOfFile: customPath) {
                 publishWallpaper(img, key: resolvedSourceKey())
                 return
             }
+        } else {
+            self.activeHTMLWallpaperPath = nil
         }
 
         // 3. Curated 4K Wallpaper (when not in sameWallpaperMode)
@@ -466,9 +514,9 @@ public final class WallpaperManager: ObservableObject {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.image, .jpeg, .png, .heic]
+        panel.allowedContentTypes = [.image, .jpeg, .png, .heic, .html]
         panel.title = "Select Desktop Wallpaper"
-        panel.message = "Choose an ultra-high resolution image for your desktop wallpaper."
+        panel.message = "Choose an ultra-high resolution image or interactive HTML canvas for your desktop wallpaper."
         panel.level = NSWindow.Level(rawValue: max(NSWindow.Level.statusBar.rawValue, NSApp.keyWindow?.level.rawValue ?? 0) + 10)
         NSApp.activate(ignoringOtherApps: true)
         panel.center()
@@ -485,6 +533,18 @@ public final class WallpaperManager: ObservableObject {
     public func setSystemWallpaper(path: String) -> Bool {
         let fileURL = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return false }
+
+        if path.hasSuffix(".html") {
+            self.activeHTMLWallpaperPath = path
+            let preview = generateCuratedWallpaper(named: "Neural Bloom", targetSize: CGSize(width: 3840, height: 2160))
+            publishWallpaper(preview, key: path)
+            UserDefaults.standard.set(path, forKey: PrefKey.customWallpaperPath)
+            UserDefaults.standard.set(false, forKey: PrefKey.sameWallpaperMode)
+            UserDefaults.standard.set("Custom", forKey: PrefKey.wallpaperMode)
+            NotificationCenter.default.post(name: NSNotification.Name("NexusWallpaperChanged"), object: path)
+            HapticFeedback.playClickSound()
+            return true
+        }
 
         let screens = NSScreen.screens
         var success = false
@@ -552,6 +612,19 @@ public final class WallpaperManager: ObservableObject {
         ctx?.interpolationQuality = .high
 
         switch name {
+        case "Neural Bloom", "Neural Bloom (Interactive Canvas)", "Neural Bloom (Interactive HTML)", "neural_bloom":
+            let bgColors = [
+                NSColor(red: 0.02, green: 0.02, blue: 0.06, alpha: 1.0).cgColor,
+                NSColor(red: 0.05, green: 0.05, blue: 0.16, alpha: 1.0).cgColor,
+                NSColor(red: 0.18, green: 0.10, blue: 0.35, alpha: 1.0).cgColor,
+                NSColor(red: 0.40, green: 0.15, blue: 0.70, alpha: 1.0).cgColor,
+                NSColor(red: 0.20, green: 0.65, blue: 1.00, alpha: 1.0).cgColor,
+                NSColor(red: 0.90, green: 0.40, blue: 0.85, alpha: 1.0).cgColor
+            ]
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: bgColors as CFArray, locations: [0.0, 0.25, 0.50, 0.72, 0.88, 1.0]) {
+                ctx?.drawRadialGradient(gradient, startCenter: CGPoint(x: size.width * 0.5, y: size.height * 0.5), startRadius: 10, endCenter: CGPoint(x: size.width * 0.5, y: size.height * 0.5), endRadius: size.width * 0.65, options: [.drawsAfterEndLocation, .drawsBeforeStartLocation])
+            }
+
         case "Genie", "Genie Cosmic Spirit", "Genie Lamp":
             let colors = [
                 NSColor(red: 0.02, green: 0.04, blue: 0.12, alpha: 1.0).cgColor,

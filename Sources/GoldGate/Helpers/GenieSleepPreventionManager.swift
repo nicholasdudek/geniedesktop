@@ -156,9 +156,9 @@ public final class GenieSleepPreventionManager: ObservableObject {
                 let formatter = RelativeDateTimeFormatter()
                 formatter.unitsStyle = .abbreviated
                 let rel = formatter.localizedString(for: date, relativeTo: Date())
-                return "Anti-Sleep Active ☕ (Since \(rel))"
+                return "Clamshell Awake 🖥️ (Since \(rel) — keeps awake when closed)"
             }
-            return "Anti-Sleep Active ☕ (Screen & System Awake)"
+            return "Clamshell Awake 🖥️ (Keeps desktop awake when closed for monitor)"
         } else {
             return "Sleep Allowed 🌙 (Normal macOS Timer)"
         }

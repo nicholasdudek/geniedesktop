@@ -506,12 +506,35 @@ public final class CustomMenuBarWindow: NSWindow {
 }
 
 // MARK: - Safe Camera Notch Geometry Analyzer
-public struct ScreenNotchInfo {
+public struct ScreenNotchInfo: Sendable {
     public let hasNotch: Bool
     public let leftWidth: CGFloat
     public let rightWidth: CGFloat
     public let notchWidth: CGFloat
+    public let notchHeight: CGFloat
     public let notchRect: NSRect
+    public let cornerRadius: CGFloat
+    public let earRadius: CGFloat
+
+    public init(
+        hasNotch: Bool,
+        leftWidth: CGFloat,
+        rightWidth: CGFloat,
+        notchWidth: CGFloat,
+        notchHeight: CGFloat = 0,
+        notchRect: NSRect,
+        cornerRadius: CGFloat = 11.0,
+        earRadius: CGFloat = 9.0
+    ) {
+        self.hasNotch = hasNotch
+        self.leftWidth = leftWidth
+        self.rightWidth = rightWidth
+        self.notchWidth = notchWidth
+        self.notchHeight = notchHeight
+        self.notchRect = notchRect
+        self.cornerRadius = cornerRadius
+        self.earRadius = earRadius
+    }
 
     public static func forScreen(_ screen: NSScreen) -> ScreenNotchInfo {
         return inspect(screen: screen)
@@ -526,39 +549,51 @@ public struct ScreenNotchInfo {
             let rightInset = screen.auxiliaryTopRightArea?.width ?? 0
             if leftInset > 0 && rightInset > 0 {
                 let nWidth = max(0, screenW - leftInset - rightInset)
+                let nHeight = screen.safeAreaInsets.top
                 let nRect = NSRect(
                     x: screen.frame.minX + leftInset,
-                    y: screen.frame.maxY - screen.safeAreaInsets.top,
+                    y: screen.frame.maxY - nHeight,
                     width: nWidth,
-                    height: screen.safeAreaInsets.top
+                    height: nHeight
                 )
                 return ScreenNotchInfo(
                     hasNotch: true,
                     leftWidth: leftInset,
                     rightWidth: rightInset,
                     notchWidth: nWidth,
-                    notchRect: nRect
+                    notchHeight: nHeight,
+                    notchRect: nRect,
+                    cornerRadius: 11.0,
+                    earRadius: 9.0
                 )
             }
         }
 
-        // 2. Safe area fallback for notched MacBook Pro / MacBook Air
+        // 2. Safe area fallback for notched MacBook Pro / MacBook Air (Apple's latest hardware specs)
         if screen.safeAreaInsets.top > 0 {
-            let estimatedNotchW: CGFloat = 196.0
+            let estimatedNotchW: CGFloat = {
+                if screenW >= 1700 { return 212.0 } // 16" MacBook Pro
+                if screenW >= 1480 { return 204.0 } // 14" MacBook Pro
+                return 198.0                        // 13.6" / 15.3" MacBook Air
+            }()
+            let nHeight = screen.safeAreaInsets.top
             let leftW = max(100, (screenW - estimatedNotchW) / 2.0)
             let rightW = leftW
             let nRect = NSRect(
                 x: screen.frame.minX + leftW,
-                y: screen.frame.maxY - screen.safeAreaInsets.top,
+                y: screen.frame.maxY - nHeight,
                 width: estimatedNotchW,
-                height: screen.safeAreaInsets.top
+                height: nHeight
             )
             return ScreenNotchInfo(
                 hasNotch: true,
                 leftWidth: leftW,
                 rightWidth: rightW,
                 notchWidth: estimatedNotchW,
-                notchRect: nRect
+                notchHeight: nHeight,
+                notchRect: nRect,
+                cornerRadius: 11.0,
+                earRadius: 9.0
             )
         }
 
@@ -569,7 +604,10 @@ public struct ScreenNotchInfo {
             leftWidth: half,
             rightWidth: half,
             notchWidth: 0,
-            notchRect: .zero
+            notchHeight: 0,
+            notchRect: .zero,
+            cornerRadius: 0,
+            earRadius: 0
         )
     }
 }
@@ -594,8 +632,8 @@ public struct CustomMenuBarView: View {
     @AppStorage(PrefKey.menuBarBackgroundStyle) var backgroundStyle: String = "Vitreous Liquid Crystal"
     @AppStorage(PrefKey.menuBarSpanMode) var spanMode: String = "Suspended Horizon Capsule"
     @AppStorage(PrefKey.menuBarHeightMode) var heightMode: String = "Grand Dual-Tier Horizon (Camera Inset Cleared)"
-    @AppStorage(PrefKey.statusIconStyle) var statusIconStyle: String = "Genie Executive Crest"
-    @AppStorage(PrefKey.statusIconGlyph) var statusIconGlyph: String = "Genie Executive Crest"
+    @AppStorage(PrefKey.statusIconStyle) var statusIconStyle: String = "Genie Person 🧞‍♂️"
+    @AppStorage(PrefKey.statusIconGlyph) var statusIconGlyph: String = "Genie Person 🧞‍♂️"
     @AppStorage(PrefKey.miniDockBackgroundStyle) var miniDockBackgroundStyle: String = "Clear (Transparent)"
 
     private var frontAppName: String {
@@ -623,6 +661,8 @@ public struct CustomMenuBarView: View {
     @State private var isControlCenterHovered: Bool = false
     @State private var isSecondaryControlHovered: Bool = false
     @State private var isTimeHovered: Bool = false
+    @State private var isGenieTitleHovered: Bool = false
+    @State private var isFallbackStatusHovered: Bool = false
     @State private var isBarHovered: Bool = false
     @State private var cycleFeedback: String? = nil
 
@@ -941,82 +981,125 @@ public struct CustomMenuBarView: View {
     }
 
     private var appTitleMenu: some View {
-        Menu {
-            Button(LocalizedStrings.translateText("About \(frontAppName)", lang: appLanguage)) {
-                if frontAppName == "Genie" {
-                    AppDelegate.shared?.showMenuBarSettingsDropdown(targetTab: .system)
-                } else {
-                    NSWorkspace.shared.frontmostApplication?.activate(options: [.activateAllWindows])
+        Group {
+            if frontAppName == "Genie" {
+                Button(action: {
+                    HapticFeedback.selection()
+                    FinderChatWindowManager.shared.toggle(tab: .chat)
+                }) {
+                    HStack(spacing: 5) {
+                        Text("🧞‍♂️")
+                            .font(.system(size: 13))
+                        Text(frontAppName)
+                            .font(boldFont)
+                            .foregroundColor(resolvedActiveAppColor)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(isGenieTitleHovered ? Color.white.opacity(0.14) : Color.clear)
+                    )
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .onHover { h in
+                    isGenieTitleHovered = h
+                }
+                .help("Genie Studio (⌘⌥Space) — Click to open")
+                .contextMenu {
+                    appTitleMenuContent
+                }
+            } else {
+                Menu {
+                    appTitleMenuContent
+                } label: {
+                    Text(frontAppName)
+                        .font(boldFont)
+                        .foregroundColor(resolvedActiveAppColor)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var appTitleMenuContent: some View {
+        if frontAppName == "Genie" {
+            Button(LocalizedStrings.translateText("🧞‍♂️ Open Genie Studio (⌘⌥Space)", lang: appLanguage)) {
+                FinderChatWindowManager.shared.toggle(tab: .chat)
             }
             Divider()
-            Button(LocalizedStrings.translateText("Genie Settings...", lang: appLanguage)) {
+        }
+        Button(LocalizedStrings.translateText("About \(frontAppName)", lang: appLanguage)) {
+            if frontAppName == "Genie" {
                 AppDelegate.shared?.showMenuBarSettingsDropdown(targetTab: .system)
+            } else {
+                NSWorkspace.shared.frontmostApplication?.activate(options: [.activateAllWindows])
             }
-            Divider()
-            Button(LocalizedStrings.translateText((miniDockDisplayMode == "Always Hidden" || miniDockDisplayMode == "Auto-Hide") ? "Enable Always On Mini Dock" : "Always Hide Mini Dock (Pop Down)", lang: appLanguage)) {
-                let nextMode = (miniDockDisplayMode == "Always Hidden" || miniDockDisplayMode == "Auto-Hide") ? "Always Shown" : "Always Hidden"
-                miniDockDisplayMode = nextMode
-                UserDefaults.standard.set(nextMode, forKey: PrefKey.miniDockDisplayMode)
+        }
+        Divider()
+        Button(LocalizedStrings.translateText("Genie Settings...", lang: appLanguage)) {
+            AppDelegate.shared?.showMenuBarSettingsDropdown(targetTab: .system)
+        }
+        Divider()
+        Button(LocalizedStrings.translateText((miniDockDisplayMode == "Always Hidden" || miniDockDisplayMode == "Auto-Hide") ? "Enable Always On Mini Dock" : "Always Hide Mini Dock (Pop Down)", lang: appLanguage)) {
+            let nextMode = (miniDockDisplayMode == "Always Hidden" || miniDockDisplayMode == "Auto-Hide") ? "Always Shown" : "Always Hidden"
+            miniDockDisplayMode = nextMode
+            UserDefaults.standard.set(nextMode, forKey: PrefKey.miniDockDisplayMode)
+            UserDefaults.standard.synchronize()
+            NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: nil)
+        }
+        Menu(LocalizedStrings.translateText("Mini Dock Mode", lang: appLanguage)) {
+            Button(action: {
+                miniDockDisplayMode = "Always Shown"
+                UserDefaults.standard.set("Always Shown", forKey: PrefKey.miniDockDisplayMode)
                 UserDefaults.standard.synchronize()
                 NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: nil)
-            }
-            Menu(LocalizedStrings.translateText("Mini Dock Mode", lang: appLanguage)) {
-                Button(action: {
-                    miniDockDisplayMode = "Always Shown"
-                    UserDefaults.standard.set("Always Shown", forKey: PrefKey.miniDockDisplayMode)
-                    UserDefaults.standard.synchronize()
-                    NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: nil)
-                }) {
-                    HStack {
-                        Text(LocalizedStrings.translateText("Always On (Permanently Shown)", lang: appLanguage))
-                        if miniDockDisplayMode == "Always Shown" { Text("✓") }
-                    }
-                }
-                Button(action: {
-                    miniDockDisplayMode = "Always Hidden"
-                    UserDefaults.standard.set("Always Hidden", forKey: PrefKey.miniDockDisplayMode)
-                    UserDefaults.standard.synchronize()
-                    NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: nil)
-                }) {
-                    HStack {
-                        Text(LocalizedStrings.translateText("Always Hidden (Pops Down on Hover)", lang: appLanguage))
-                        if miniDockDisplayMode == "Always Hidden" || miniDockDisplayMode == "Auto-Hide" { Text("✓") }
-                    }
+            }) {
+                HStack {
+                    Text(LocalizedStrings.translateText("Always On (Permanently Shown)", lang: appLanguage))
+                    if miniDockDisplayMode == "Always Shown" { Text("✓") }
                 }
             }
-            Divider()
-            Button(LocalizedStrings.translateText("Hide \(frontAppName)", lang: appLanguage)) {
-                NSWorkspace.shared.frontmostApplication?.hide()
-            }
-            Button(LocalizedStrings.translateText("Hide Others", lang: appLanguage)) {
-                NSWorkspace.shared.hideOtherApplications()
-            }
-            Button(LocalizedStrings.translateText("Show All", lang: appLanguage)) {
-                NSWorkspace.shared.runningApplications.forEach { $0.unhide() }
-            }
-            Divider()
-            tuckedColorsAndFontsMenu
-            Divider()
-            Button(LocalizedStrings.translateText("Quit \(frontAppName)", lang: appLanguage)) {
-                if frontAppName == "Genie" {
-                    NSApplication.shared.terminate(nil)
-                } else {
-                    NSWorkspace.shared.frontmostApplication?.terminate()
+            Button(action: {
+                miniDockDisplayMode = "Always Hidden"
+                UserDefaults.standard.set("Always Hidden", forKey: PrefKey.miniDockDisplayMode)
+                UserDefaults.standard.synchronize()
+                NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockModeChanged"), object: nil)
+            }) {
+                HStack {
+                    Text(LocalizedStrings.translateText("Always Hidden (Pops Down on Hover)", lang: appLanguage))
+                    if miniDockDisplayMode == "Always Hidden" || miniDockDisplayMode == "Auto-Hide" { Text("✓") }
                 }
             }
-        } label: {
-            Text(frontAppName)
-                .font(boldFont)
-                .foregroundColor(resolvedActiveAppColor)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        Divider()
+        Button(LocalizedStrings.translateText("Hide \(frontAppName)", lang: appLanguage)) {
+            NSWorkspace.shared.frontmostApplication?.hide()
+        }
+        Button(LocalizedStrings.translateText("Hide Others", lang: appLanguage)) {
+            NSWorkspace.shared.hideOtherApplications()
+        }
+        Button(LocalizedStrings.translateText("Show All", lang: appLanguage)) {
+            NSWorkspace.shared.runningApplications.forEach { $0.unhide() }
+        }
+        Divider()
+        tuckedColorsAndFontsMenu
+        Divider()
+        Button(LocalizedStrings.translateText("Quit \(frontAppName)", lang: appLanguage)) {
+            if frontAppName == "Genie" {
+                NSApplication.shared.terminate(nil)
+            } else {
+                NSWorkspace.shared.frontmostApplication?.terminate()
+            }
+        }
     }
 
     private var standardMenus: some View {
@@ -1401,14 +1484,33 @@ public struct CustomMenuBarView: View {
             } else {
                 Button(action: {
                     HapticFeedback.selection()
-                    FinderChatWindowManager.shared.toggle()
+                    FinderChatWindowManager.shared.toggle(tab: .chat)
                 }) {
-                    Image(nsImage: StatusIconRenderer.generateGlyphImage(glyph: statusIconGlyph.isEmpty ? "Genie Lamp 🪔" : statusIconGlyph, size: 16, phase: 0))
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 16, height: 16)
+                    let glyphImg = StatusIconRenderer.generateGlyphImage(glyph: (statusIconGlyph.isEmpty || statusIconGlyph == "Genie Lamp 🪔") ? "Genie Person 🧞‍♂️" : statusIconGlyph, size: 18, phase: 0)
+                    GenieMysticalIconView(
+                        glyphImage: glyphImg,
+                        isHovered: isFallbackStatusHovered,
+                        size: 18
+                    ) {
+                        HapticFeedback.selection()
+                        FinderChatWindowManager.shared.toggle(tab: .chat)
+                    }
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(isFallbackStatusHovered ? Color.white.opacity(0.18) : Color.white.opacity(0.08))
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(isFallbackStatusHovered ? Color.white.opacity(0.32) : Color.white.opacity(0.14), lineWidth: 0.8)
+                            )
+                    )
                 }
                 .buttonStyle(PlainButtonStyle())
+                .onHover { h in
+                    isFallbackStatusHovered = h
+                }
+                .help("Genie Studio (⌘⌥Space) — Click to open")
                 .contextMenu {
                     menuBarContextMenu
                 }
@@ -1743,12 +1845,12 @@ public struct CustomMenuBarView: View {
                     )
                     .frame(width: 1, height: 18)
 
-                // ── ZONE 3: Executive Utilities (Chat, Console, Notes, Snapshot, Preferences) ──
+                // ── ZONE 3: Executive Utilities (Chat, Editor, Console, Notes, Snapshot, Preferences) ──
                 HStack(spacing: 4) {
                     // Dialogue Studio (Chat)
                     Button(action: {
                         HapticFeedback.selection()
-                        FinderChatWindowManager.shared.toggle()
+                        FinderChatWindowManager.shared.toggle(tab: .chat)
                     }) {
                         Image(systemName: "bubble.left.and.bubble.right.fill")
                             .font(.system(size: 12, weight: .medium))
@@ -1761,6 +1863,23 @@ public struct CustomMenuBarView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Open Dialogue Studio (⌘⌥Space)")
+
+                    // Editor & Code Studio
+                    Button(action: {
+                        HapticFeedback.selection()
+                        FinderChatWindowManager.shared.toggle(tab: .editor)
+                    }) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.88))
+                            .frame(width: 28, height: 26)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(Color.white.opacity(0.06))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open Editor & Files Studio")
 
                     // Precision Console (Terminal)
                     Button(action: {
@@ -1816,7 +1935,7 @@ public struct CustomMenuBarView: View {
                     // Atelier Preferences
                     Button(action: {
                         HapticFeedback.selection()
-                        AppDelegate.shared?.showMenuBarSettingsDropdown(targetTab: .menuBar)
+                        FinderChatWindowManager.shared.toggle(tab: .settings)
                     }) {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 11.5, weight: .medium))
@@ -1828,7 +1947,7 @@ public struct CustomMenuBarView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .help("Atelier Console Preferences...")
+                    .help("Genie Settings...")
                 }
                 .padding(.trailing, 10)
             }

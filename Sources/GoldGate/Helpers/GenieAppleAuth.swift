@@ -2,6 +2,7 @@ import AppKit
 import AuthenticationServices
 import Foundation
 import SQLite3
+import SwiftUI
 
 /// Sign in with Apple and Apple ID Account Management for Genie.
 ///
@@ -47,7 +48,7 @@ public final class GenieAppleAuth: NSObject, ObservableObject {
     /// Inspects the macOS system account records and user identity to discover the primary iCloud Apple ID.
     public static func discoverSystemAppleAccount() -> (email: String, displayName: String)? {
         let fullName = NSFullUserName().trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedName = fullName.isEmpty ? "Nicholas Dudek" : fullName
+        let resolvedName = fullName.isEmpty ? "User" : fullName
 
         // 1. Check Accounts4.sqlite for primary iCloud account
         let dbPath = ("~/Library/Accounts/Accounts4.sqlite" as NSString).expandingTildeInPath
@@ -73,8 +74,8 @@ public final class GenieAppleAuth: NSObject, ObservableObject {
             }
         }
 
-        // 2. Fallback to cached default
-        return (email: "nicholas.dudek@icloud.com", displayName: resolvedName)
+        // 2. Return nil if not discovered
+        return nil
     }
 
     // MARK: - Session restore
@@ -86,7 +87,7 @@ public final class GenieAppleAuth: NSObject, ObservableObject {
 
         if !savedEmail.isEmpty || identifier != nil {
             self.displayName = savedName.isEmpty ? NSFullUserName() : savedName
-            self.email = savedEmail.isEmpty ? (Self.discoverSystemAppleAccount()?.email ?? "nicholas.dudek@icloud.com") : savedEmail
+            self.email = savedEmail.isEmpty ? (Self.discoverSystemAppleAccount()?.email ?? "user@icloud.com") : savedEmail
             self.state = .signedIn
             self.syncToSubsystems()
         } else if let discovered = Self.discoverSystemAppleAccount() {
@@ -128,7 +129,7 @@ public final class GenieAppleAuth: NSObject, ObservableObject {
         let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanEmail.isEmpty else { return }
 
-        let name = displayName ?? (NSFullUserName().isEmpty ? "Nicholas Dudek" : NSFullUserName())
+        let name = displayName ?? (NSFullUserName().isEmpty ? "User" : NSFullUserName())
         self.displayName = name
         self.email = cleanEmail
         self.state = .signedIn
@@ -255,6 +256,55 @@ extension GenieAppleAuth: ASAuthorizationControllerPresentationContextProviding 
                 ?? NSApplication.shared.windows.first(where: { $0.isVisible })
                 ?? NSWindow()
         }
+    }
+}
+
+// MARK: - Apple's real Sign in with Apple button
+//
+// `ASAuthorizationAppleIDButton` is Apple's own AppKit control for this — not an
+// approximation built from an SF Symbol and a rounded rectangle. Wrapping it
+// (rather than hand-styling a Button) is what actually makes this "official
+// looking": correct logo weight, correct corner radius behavior, correct
+// baked-in light/dark variants, and it's the exact widget Apple's own HIG
+// examples use. `GenieAppleAuth.signIn()` already owns the full
+// ASAuthorizationController + delegate flow, so this button only needs to
+// trigger it — no auth logic is duplicated here.
+public struct OfficialSignInWithAppleButton: NSViewRepresentable {
+    public var style: ASAuthorizationAppleIDButton.Style
+    public var type: ASAuthorizationAppleIDButton.ButtonType
+    public var isEnabled: Bool
+    public let action: () -> Void
+
+    public init(
+        style: ASAuthorizationAppleIDButton.Style = .whiteOutline,
+        type: ASAuthorizationAppleIDButton.ButtonType = .signIn,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void
+    ) {
+        self.style = style
+        self.type = type
+        self.isEnabled = isEnabled
+        self.action = action
+    }
+
+    public func makeNSView(context: Context) -> ASAuthorizationAppleIDButton {
+        let button = ASAuthorizationAppleIDButton(authorizationButtonType: type, authorizationButtonStyle: style)
+        button.cornerRadius = 8
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.tap)
+        return button
+    }
+
+    public func updateNSView(_ nsView: ASAuthorizationAppleIDButton, context: Context) {
+        nsView.isEnabled = isEnabled
+    }
+
+    public func makeCoordinator() -> Coordinator { Coordinator(action: action) }
+
+    public final class Coordinator: NSObject {
+        let action: () -> Void
+        init(action: @escaping () -> Void) { self.action = action }
+        @objc func tap() { action() }
     }
 }
 

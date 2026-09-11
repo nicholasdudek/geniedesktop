@@ -2,6 +2,7 @@ import AppKit
 import CoreImage.CIFilterBuiltins
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 public enum DockEdge: Sendable {
     case leading
@@ -15,7 +16,6 @@ public struct RightSideChatDockView: View {
     @ObservedObject var voiceEngine = GenieVoiceEngine.shared
     @ObservedObject var desktopsManager = MacDesktopsManager.shared
     @ObservedObject var phoneBridge = GeniePhoneBridgeManager.shared
-    @ObservedObject var clockVM = WorldClockViewModel.shared
     @Binding var isRightChatDockOpen: Bool
     @Binding var isRightAppsDockOpen: Bool
     public var edge: DockEdge = .trailing
@@ -29,12 +29,14 @@ public struct RightSideChatDockView: View {
     @State private var copiedMessageId: UUID? = nil
     @State private var dragDismissOffset: CGFloat = 0
     @State private var attachedFileName: String? = nil
+    @State private var isDockDropTargeted: Bool = false
     @State private var showVoicePicker: Bool = false
     @State private var isShowingSettings: Bool = false
     @State private var showRemoteQR: Bool = false
     @State private var showAgentWorkspace: Bool = false
     @State private var settingsInitialTab: UnifiedSettingsTab = .miniDock
     @AppStorage(PrefKey.isChatLockedInPlace) private var isChatLockedInPlace: Bool = false
+    @AppStorage(PrefKey.chatZoomLevel) private var chatZoomLevel: Double = 1.0
 
     public init(
         isRightChatDockOpen: Binding<Bool>,
@@ -80,7 +82,6 @@ public struct RightSideChatDockView: View {
             VStack(spacing: 0) {
                 if !embedded { topDragHandle }
                 headerView
-                watchStrip
                 Picker("Workspace", selection: $showAgentWorkspace) {
                     Text("Chat").tag(false)
                     Text("Agent 3.0").tag(true)
@@ -108,6 +109,24 @@ public struct RightSideChatDockView: View {
             ChatInlinePreviewTrayView()
                 .padding(.bottom, 80)
                 .zIndex(2)
+
+            if isDockDropTargeted {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.cyan.opacity(0.85), style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.cyan.opacity(0.12)))
+                    .overlay(
+                        Label("Drop file into Chat", systemImage: "tray.and.arrow.down.fill")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                    )
+                    .padding(8)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                    .zIndex(10)
+            }
+        }
+        .onDrop(of: [.fileURL, .url, .item, .data, .image, .plainText], isTargeted: $isDockDropTargeted) { providers in
+            handleDockFileDrop(providers)
         }
     }
 
@@ -187,40 +206,6 @@ public struct RightSideChatDockView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // ── WORLD CLOCK WATCH STRIP ──
-    // Merged in from the old free-floating Mini Watch Dock panel: the watch faces now
-    // ride inside this dock, under the header, so there is one dock instead of two.
-    @ViewBuilder
-    private var watchStrip: some View {
-        if clockVM.dockSettings.isEnabled {
-            MiniWatchDockView(
-                pillows: clockVM.pillows,
-                date: clockVM.effectiveDate,
-                localTimeZone: clockVM.localTimeZone,
-                settings: clockVM.dockSettings,
-                onSelectPillow: openPillowInSettings
-            )
-            .padding(.horizontal, -6)
-            .padding(.top, 2)
-            .contextMenu {
-                Button("Hide Watch Strip") { clockVM.dockSettings.isEnabled = false }
-            }
-        }
-    }
-
-    /// Tapping a watch opens that city in the World Clock tab of this same dock,
-    /// rather than kicking the user out to a separate settings window.
-    private func openPillowInSettings(_ pillow: PillowClock) {
-        clockVM.editingPillow = pillow
-        settingsInitialTab = .worldClock
-        withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-            isShowingSettings = true
-        }
-        NotificationCenter.default.post(
-            name: NSNotification.Name("NexusSelectSettingsTab"),
-            object: UnifiedSettingsTab.worldClock
-        )
-    }
 
     // ── PROSCENIUM HEADER ──
     private var headerView: some View {
@@ -430,36 +415,53 @@ public struct RightSideChatDockView: View {
 
     // ── VERTICAL CHAT STREAM ──
     private var chatStreamView: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(spacing: 9) {
-                    if localModels.chatHistory.isEmpty && !localModels.isGenerating && localModels.currentResponse.isEmpty {
-                        emptyChatPlaceholder
-                    } else {
-                        ForEach(localModels.chatHistory) { msg in
-                            chatBubble(msg: msg)
-                                .id(msg.id)
+        GeometryReader { geo in
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(spacing: 9) {
+                        if localModels.chatHistory.isEmpty && !localModels.isGenerating && localModels.currentResponse.isEmpty {
+                            emptyChatPlaceholder
+                        } else {
+                            ForEach(localModels.chatHistory) { msg in
+                                chatBubble(msg: msg)
+                                    .id(msg.id)
+                            }
+
+                            if localModels.isGenerating || !localModels.currentResponse.isEmpty {
+                                streamingBubbleView
+                                    .id("active_streaming_response")
+                            }
                         }
 
-                        if localModels.isGenerating || !localModels.currentResponse.isEmpty {
-                            streamingBubbleView
-                                .id("active_streaming_response")
+                        // Always render 3 lines of space in chat to fix rendering delay and prevent layout thrashing
+                        Color.clear
+                            .frame(height: 54)
+                            .id("chat_bottom_buffer_space")
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                    .frame(width: max(100, geo.size.width / CGFloat(chatZoomLevel)))
+                    .scaleEffect(CGFloat(chatZoomLevel), anchor: .top)
+                    .animation(.spring(response: 0.22, dampingFraction: 0.82), value: chatZoomLevel)
+                }
+                .simultaneousGesture(
+                    MagnificationGesture()
+                        .onChanged { value in
+                            let delta = value - 1.0
+                            chatZoomLevel = min(2.0, max(0.70, chatZoomLevel + Double(delta) * 0.04))
+                        }
+                )
+                .onChange(of: localModels.chatHistory.count) {
+                    if let lastMsg = localModels.chatHistory.last {
+                        withAnimation {
+                            proxy.scrollTo(lastMsg.id, anchor: .bottom)
                         }
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 10)
-            }
-            .onChange(of: localModels.chatHistory.count) {
-                if let lastMsg = localModels.chatHistory.last {
-                    withAnimation {
-                        proxy.scrollTo(lastMsg.id, anchor: .bottom)
+                .onChange(of: localModels.currentResponse) {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        proxy.scrollTo("active_streaming_response", anchor: .bottom)
                     }
-                }
-            }
-            .onChange(of: localModels.currentResponse) {
-                withAnimation(.easeOut(duration: 0.15)) {
-                    proxy.scrollTo("active_streaming_response", anchor: .bottom)
                 }
             }
         }
@@ -520,10 +522,19 @@ public struct RightSideChatDockView: View {
             VStack(spacing: 6) {
                 TextField("Message Genie...", text: $inputText)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
+                    .shadow(color: Color.white.opacity(0.18), radius: 3, x: 0, y: 0.5)
                     .onSubmit {
                         submitChat()
+                    }
+                    .onChange(of: inputText) { _, newText in
+                        localModels.activeDraftPrompt = newText
+                    }
+                    .onReceive(localModels.$activeDraftPrompt) { draft in
+                        if inputText != draft {
+                            inputText = draft
+                        }
                     }
                     .padding(.horizontal, 4)
 
@@ -739,20 +750,50 @@ public struct RightSideChatDockView: View {
         if msg.role == "user" {
             HStack {
                 Spacer(minLength: 40)
-                Text(verbatim: msg.content)
-                    .font(.system(size: 11.5, weight: .regular, design: .default))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 7)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.blue.opacity(0.85), Color.blue.opacity(0.70)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                VStack(alignment: .trailing, spacing: 6) {
+                    if let mp = msg.mediaPath {
+                        let fileURL = URL(fileURLWithPath: mp)
+                        GenieAnimatedImageView(
+                            url: fileURL,
+                            scaling: .scaleProportionallyUpOrDown,
+                            animates: true
                         )
+                        .frame(maxWidth: 220, maxHeight: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.35), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.25), radius: 4, y: 2)
+                    }
+
+                    if !msg.content.isEmpty {
+                        Text(verbatim: msg.content)
+                            .font(.system(size: 11.5, weight: .regular, design: .default))
+                            .foregroundColor(.white)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(.horizontal, 11)
+                .padding(.vertical, 7)
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.85), Color.blue.opacity(0.70)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.15), radius: 4, y: 2)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: Color.black.opacity(0.15), radius: 4, y: 2)
+                .contextMenu {
+                    Button(action: {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(msg.content, forType: .string)
+                        HapticFeedback.success()
+                    }) {
+                        Label("Copy Message", systemImage: "doc.on.doc")
+                    }
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 6) {
@@ -852,6 +893,7 @@ public struct RightSideChatDockView: View {
         localModels.generate(prompt: fullPrompt)
         withAnimation {
             inputText = ""
+            localModels.activeDraftPrompt = ""
             attachedFileName = nil
         }
     }
@@ -868,6 +910,54 @@ public struct RightSideChatDockView: View {
                 HapticFeedback.success()
             }
         }
+    }
+
+    private func handleDockFileDrop(_ providers: [NSItemProvider]) -> Bool {
+        var didAccept = false
+        let supportedTypes = [
+            UTType.fileURL.identifier,
+            UTType.url.identifier,
+            UTType.item.identifier,
+            UTType.data.identifier,
+            UTType.image.identifier,
+            UTType.utf8PlainText.identifier
+        ]
+
+        for provider in providers {
+            for typeIdentifier in supportedTypes {
+                if provider.hasItemConformingToTypeIdentifier(typeIdentifier) {
+                    didAccept = true
+                    provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, _ in
+                        var resolvedURL: URL? = nil
+                        if let url = item as? URL {
+                            resolvedURL = url
+                        } else if let nsurl = item as? NSURL {
+                            resolvedURL = nsurl as URL
+                        } else if let data = item as? Data {
+                            resolvedURL = URL(dataRepresentation: data, relativeTo: nil)
+                            if resolvedURL == nil, let pathStr = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), pathStr.hasPrefix("/") || pathStr.hasPrefix("file://") {
+                                resolvedURL = URL(string: pathStr) ?? URL(fileURLWithPath: pathStr)
+                            }
+                        } else if let text = item as? String {
+                            let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if clean.hasPrefix("/") || clean.hasPrefix("file://") {
+                                resolvedURL = URL(string: clean) ?? URL(fileURLWithPath: clean)
+                            }
+                        }
+
+                        if let validURL = resolvedURL {
+                            DispatchQueue.main.async {
+                                self.attachedFileName = validURL.lastPathComponent
+                                HapticFeedback.success()
+                            }
+                        }
+                    }
+                    break
+                }
+            }
+        }
+        if didAccept { HapticFeedback.selection() }
+        return didAccept
     }
 
     private var canSubmitChat: Bool {

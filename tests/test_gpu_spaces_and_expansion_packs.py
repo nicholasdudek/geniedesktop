@@ -40,13 +40,13 @@ def test_expansion_pack_companions_and_snuggie_in_desktop_grid():
     content = desktop_grid.read_text()
 
     # Companions
-    assert "case \"Japanese Koi Sanctuary 🎏\":" in content
-    assert "case \"Pixel Yoshi Companion 🦖\":" in content
+    assert '"Japanese Koi Sanctuary 🎏"' in content
+    assert '"Pixel Yoshi Companion 🦖"' in content
     assert "Two graceful koi swimming in harmony" in content
     assert "Pixel Dino Body" in content
 
     # Icon Snuggie
-    assert "case \"Pixel Heart Armor ❤️\":" in content
+    assert '"Pixel Heart Armor ❤️"' in content
 
 
 def test_expansion_pack_shaders_in_atmospheric_engine():
@@ -96,3 +96,51 @@ def test_expansion_pack_ui_equipping_in_menubar_dropdown():
     assert "EQUIP PACK" in content
     assert "equipPackAction(pack)" in content
     assert "includedItemEquipRow" in content
+
+
+def test_commercial_pricing_tiers_and_no_free_plan():
+    """Verify commercialization rules: no free tiers ($0.00 eliminated), $120.00/yr flagship plan, and parity across codebase."""
+    store_mgr = ROOT / "Sources/GoldGate/Helpers/ExpansionStoreManager.swift"
+    assert store_mgr.exists()
+    content = store_mgr.read_text()
+
+    # Verify no free plan in active subscription plans
+    assert "planFreeOneYearID" not in content
+    assert '"$0.00"' not in content
+    assert "Pioneer Early Access" not in content
+
+    # Verify $120.00/yr Flagship Photoshop-style plan
+    assert 'name: "Genie Annual Pass"' in content
+    assert 'priceDisplay: "$120.00"' in content
+    assert 'billingCadence: "Billed annually at $120.00/year"' in content
+    assert 'effectiveMonthlyRate: "$10.00 / mo"' in content
+    assert 'isPopular: true' in content
+
+    # Verify $19.99/mo monthly plan
+    assert 'name: "Genie Pro Monthly"' in content
+    assert 'priceDisplay: "$19.99"' in content
+
+    # Verify $199/2-yr Founder plan
+    assert 'name: "Founder\'s 2-Year Pass"' in content
+    assert 'priceDisplay: "$199.00"' in content
+
+    # Verify 30-Day Free Trial across plans
+    assert 'trialText: "30-Day Free Trial included"' in content
+
+    # Verify App Store submission doc matches
+    app_store_doc = ROOT / "Marketing/Genie_AppStore_Upload_Package/APP_STORE_CONNECT_SUBMISSION.md"
+    assert app_store_doc.exists()
+    doc_content = app_store_doc.read_text()
+    assert "$120.00 / yr" in doc_content
+    assert "$0.00" not in doc_content
+    assert "30-Day Free Trial" in doc_content
+
+    # Verify website index.html has $120 pricing and 30-day trial
+    web_index = ROOT / "web/index.html"
+    assert web_index.exists()
+    web_content = web_index.read_text()
+    assert 'id="pricing"' in web_content
+    assert '$120' in web_content
+    assert '$10.00 / month' in web_content
+    assert "30-Day Free Trial" in web_content
+

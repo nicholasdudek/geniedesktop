@@ -323,6 +323,20 @@ public final class MetalTypographySharpeningProcessor: @unchecked Sendable {
         lock.unlock()
     }
 
+    public var currentConfig: TypographySharpeningConfig = TypographySharpeningConfig()
+
+    public func updateConfig(
+        sharpnessStrength: Float,
+        textContrastBoost: Float,
+        antiRingingClamp: Float
+    ) {
+        lock.lock()
+        currentConfig.sharpnessStrength = sharpnessStrength
+        currentConfig.textContrastBoost = textContrastBoost
+        currentConfig.antiRingingClamp = antiRingingClamp
+        lock.unlock()
+    }
+
     // MARK: - 🚀 Zero-Allocation Processing Pass
     /// Scales and sharpens a window framebuffer CGImage using the Metal compute pipeline with zero runtime allocations.
     public func process(

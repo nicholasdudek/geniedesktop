@@ -21,7 +21,7 @@ public final class AppDefaultsManager {
             PrefKey.windowSizeMode: "normal",
             PrefKey.barFolderPath: defaultBarFolderPath,
             PrefKey.iconEnabled: true,
-            PrefKey.statusIconStyle: "🪔",
+            PrefKey.statusIconStyle: "Genie Person 🧞‍♂️",
             PrefKey.iconStyle: "Minimal Pill",
             PrefKey.showBatteryPercentage: true,
             PrefKey.showChargingBolt: true,
@@ -30,6 +30,9 @@ public final class AppDefaultsManager {
             PrefKey.desktopPlaneEnabled: true,
             PrefKey.appFormation: "Responsive Grid",
             PrefKey.chatGridPadding: 48.0,
+            PrefKey.attachWorldClockWidget: false,
+            PrefKey.attachAnimatedChatWidget: false,
+            PrefKey.activeSubscriptionPlan: "Genie Annual Pass",
             PrefKey.isVelcroDetached: false,
             PrefKey.menuBarSnapMode: "icon",
             PrefKey.soundEnabled: false,
@@ -43,6 +46,11 @@ public final class AppDefaultsManager {
             PrefKey.gridTransitionDirection: "Pull Up from Bottom",
             PrefKey.showPageIndicator: false,
             PrefKey.showAppNames: true,
+            PrefKey.studioPanelsFlipped: true,
+            PrefKey.studioShowWelcome: true,
+            PrefKey.studioShowiPhonePreview: false,
+            PrefKey.studioiPhoneAspectMode: "9:16 Portrait (Instagram Story / Reel)",
+            PrefKey.studioActivityBarPosition: "right",
             PrefKey.windowGraphicsEnabled: false,
             PrefKey.windowShaderFxEnabled: false,
             PrefKey.dropdownBgPreset: "wallpaper_mirror",
@@ -62,6 +70,8 @@ public final class AppDefaultsManager {
             PrefKey.batteryEnabled: true,
             PrefKey.genieAnimEnabled: false,
             PrefKey.sameWallpaperMode: true,
+            PrefKey.hideWallpaperBehindApps: false,
+            PrefKey.globalCursorFxEnabled: true,
             PrefKey.bottomEdgeCursorTrigger: false,
             PrefKey.topEdgeCursorTrigger: false,
             PrefKey.rightEdgeCursorTrigger: true,
@@ -114,6 +124,8 @@ public final class AppDefaultsManager {
             PrefKey.unifiedCommandWindowEnabled: true,
             PrefKey.reverseStationScrollWheelDirection: true,
             PrefKey.wheelSlideDownShowsTopStation: true,
+            PrefKey.enableScrollWheelStationNavigation: false,
+            PrefKey.showThickScrollBars: false,
             PrefKey.clearHTMLOverlayEnabled: false,
             PrefKey.bareArrowAction: "Switch Desktops",
             PrefKey.desktopPreviewStyle: "Live Thumbnails (Windows)",
@@ -124,7 +136,9 @@ public final class AppDefaultsManager {
             PrefKey.isRightAppsDockOpen: false,
             PrefKey.rightDocksCoexistMode: "Side-by-Side 📐",
             PrefKey.showMiniDockInChatBar: true,
-            PrefKey.showMiniDockInMenuBar: false,
+            PrefKey.showMiniDockInMenuBar: true,
+            PrefKey.menuBarDockInactiveAppsOnly: true,
+            PrefKey.showMiniDockInTopDashboard: true,
             PrefKey.showAppsMiniMap: false,
             PrefKey.appIconTheme: "Apple Native Squircle",
             PrefKey.iconSnuggie: "Rounded Square",
@@ -265,7 +279,28 @@ public final class AppDefaultsManager {
             defaults.set(true, forKey: PrefKey.rightEdgeCursorTrigger)
         }
         if defaults.object(forKey: PrefKey.bottomRightHotCorner) == nil {
-            defaults.set(false, forKey: PrefKey.bottomRightHotCorner)
+            defaults.set(true, forKey: PrefKey.bottomRightHotCorner)
+        }
+        if defaults.object(forKey: PrefKey.topRightHotCorner) == nil {
+            defaults.set(true, forKey: PrefKey.topRightHotCorner)
+        }
+        if defaults.object(forKey: PrefKey.topLeftHotCorner) == nil {
+            defaults.set(true, forKey: PrefKey.topLeftHotCorner)
+        }
+        if defaults.object(forKey: PrefKey.bottomLeftHotCorner) == nil {
+            defaults.set(true, forKey: PrefKey.bottomLeftHotCorner)
+        }
+        if defaults.object(forKey: PrefKey.hotCornerTopLeftAction) == nil {
+            defaults.set("applications", forKey: PrefKey.hotCornerTopLeftAction)
+        }
+        if defaults.object(forKey: PrefKey.hotCornerBottomLeftAction) == nil {
+            defaults.set("applications", forKey: PrefKey.hotCornerBottomLeftAction)
+        }
+        if defaults.object(forKey: PrefKey.hotCornerTopRightAction) == nil {
+            defaults.set("widgets_notifications", forKey: PrefKey.hotCornerTopRightAction)
+        }
+        if defaults.object(forKey: PrefKey.hotCornerBottomRightAction) == nil {
+            defaults.set("hide_apps_show_desktop", forKey: PrefKey.hotCornerBottomRightAction)
         }
         defaults.set(0, forKey: PrefKey.appDisplayStage)
         if defaults.object(forKey: PrefKey.customMenuBarEnabled) == nil {
@@ -284,8 +319,15 @@ public final class AppDefaultsManager {
         defaults.set(true, forKey: PrefKey.dockAlwaysShowTrash)
         defaults.set(true, forKey: PrefKey.batteryEnabled)
         defaults.set(true, forKey: PrefKey.iconEnabled)
-        defaults.set("Always Hidden", forKey: PrefKey.miniDockDisplayMode)
-        defaults.set(false, forKey: PrefKey.showMiniDockInMenuBar)
+        if defaults.object(forKey: PrefKey.miniDockDisplayMode) == nil {
+            defaults.set("Always Shown", forKey: PrefKey.miniDockDisplayMode)
+        }
+        if defaults.object(forKey: PrefKey.showMiniDockInMenuBar) == nil {
+            defaults.set(true, forKey: PrefKey.showMiniDockInMenuBar)
+        }
+        if defaults.object(forKey: PrefKey.showInDock) == nil {
+            defaults.set(true, forKey: PrefKey.showInDock)
+        }
         defaults.set(true, forKey: PrefKey.rightEdgeDocksEnabled)
         defaults.set(true, forKey: PrefKey.showBatteryPercentage)
         defaults.set(true, forKey: PrefKey.showChargingBolt)
@@ -309,7 +351,7 @@ public final class AppDefaultsManager {
         defaults.set("normal", forKey: PrefKey.windowSizeMode)
         defaults.set(defaultBarFolderPath, forKey: PrefKey.barFolderPath)
         defaults.set(true, forKey: PrefKey.iconEnabled)
-        defaults.set("🪔", forKey: PrefKey.statusIconStyle)
+        defaults.set("Genie Person 🧞‍♂️", forKey: PrefKey.statusIconStyle)
         defaults.set("Minimal Pill", forKey: PrefKey.iconStyle)
         defaults.set(true, forKey: PrefKey.showBatteryPercentage)
         defaults.set(true, forKey: PrefKey.showChargingBolt)

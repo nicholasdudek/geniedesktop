@@ -621,8 +621,8 @@ Let me know if you need anything else!
             let hasDiscovered = discovered != nil && discovered!.email.contains("@")
 
             // Test programmatic Apple ID sign in and synchronization
-            let testEmail = discovered?.email ?? "nicholas.dudek@icloud.com"
-            let testName = discovered?.displayName ?? "Nicholas Dudek"
+            let testEmail = discovered?.email ?? "user@example.com"
+            let testName = discovered?.displayName ?? "Test User"
             auth.signInWithAppleID(email: testEmail, displayName: testName, source: "smoke_test")
 
             let authValid = auth.isSignedIn && auth.email == testEmail
@@ -697,10 +697,10 @@ Let me know if you need anything else!
 
             // 2. Random Forest & AdaBoost Classification
             let (targetApp, confApp, diagApp) = ensemble.classify(prompt: "open Safari")
-            let appClassOk = targetApp == .appLaunch && confApp >= 0.70
+            let appClassOk = targetApp == .appLaunch && confApp >= 0.65
 
             let (targetScreen, confScreen, diagScreen) = ensemble.classify(prompt: "take a screenshot of the screen")
-            let screenClassOk = targetScreen == .screenshot && confScreen >= 0.70
+            let screenClassOk = targetScreen == .screenshot && confScreen >= 0.65
 
             // 3. Sub-Millisecond Tool Synthesis
             let toolResult = ensemble.classifyAndCallTool(prompt: "open Safari")

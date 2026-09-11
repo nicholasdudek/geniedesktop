@@ -43,6 +43,8 @@ public struct DesktopPlaneRAMCache: Identifiable {
     public var wallpaper: NSImage? = nil
     public var isCurrent: Bool = false
     public var lastUpdated: Date = Date()
+    public var isOffloaded: Bool = false
+    public var offloadedDiskPath: URL? = nil
 
     // ── Backward-compatible property aliases ──
     public var compass: String {
@@ -70,7 +72,9 @@ public struct DesktopPlaneRAMCache: Identifiable {
         thumbnail: NSImage? = nil,
         wallpaper: NSImage? = nil,
         isCurrent: Bool = false,
-        lastUpdated: Date = Date()
+        lastUpdated: Date = Date(),
+        isOffloaded: Bool = false,
+        offloadedDiskPath: URL? = nil
     ) {
         self.id = id
         self.name = name
@@ -84,6 +88,8 @@ public struct DesktopPlaneRAMCache: Identifiable {
         self.wallpaper = wallpaper
         self.isCurrent = isCurrent
         self.lastUpdated = lastUpdated
+        self.isOffloaded = isOffloaded
+        self.offloadedDiskPath = offloadedDiskPath
     }
 
     public init(
@@ -361,6 +367,16 @@ public final class SpatialPlaneManager: ObservableObject {
         }
     }
 
+    public func isImmediateCardinalNeighbor(_ index: Int, to current: Int) -> Bool {
+        if index == current { return true }
+        for dir in SpatialPlaneDirection.allCases {
+            if neighbor(from: current, direction: dir) == index {
+                return true
+            }
+        }
+        return false
+    }
+
     // MARK: - RAM Pre-loading Engine
     // Keeps extra virtual desktop spaces allocated and warm in memory.
 
@@ -559,18 +575,28 @@ public final class SpatialPlaneManager: ObservableObject {
             if isCurrentDesktop {
                 buffer.wallpaper = currentWP
                 buffer.thumbnail = MacDesktopsManager.shared.desktopLivePreviews[screenIndex] ?? currentWP
+                buffer.isOffloaded = false
             } else if screenIndex <= 9 {
-                let distinctWP = themeWallpaper(for: screenIndex)
-                buffer.wallpaper = distinctWP
-                if let preview = MacDesktopsManager.shared.desktopLivePreviews[screenIndex], preview != currentWP {
-                    buffer.thumbnail = preview
+                let isCardinalNeighbor = isImmediateCardinalNeighbor(screenIndex, to: currentSpaceIndex)
+                if preloadExtraDesktopInRAM && isCardinalNeighbor {
+                    let distinctWP = themeWallpaper(for: screenIndex)
+                    buffer.wallpaper = distinctWP
+                    if let preview = MacDesktopsManager.shared.desktopLivePreviews[screenIndex], preview != currentWP {
+                        buffer.thumbnail = preview
+                    } else {
+                        buffer.thumbnail = distinctWP
+                    }
+                    buffer.isOffloaded = false
                 } else {
-                    buffer.thumbnail = distinctWP
+                    buffer.wallpaper = nil
+                    buffer.thumbnail = nil
+                    buffer.isOffloaded = true
                 }
             } else {
-                let distinctWP = themeWallpaper(for: sectorIndex)
-                buffer.wallpaper = distinctWP
-                buffer.thumbnail = distinctWP
+                // Distant universe screens (10..81) are offloaded to disk to prevent RAM exhaustion
+                buffer.wallpaper = nil
+                buffer.thumbnail = nil
+                buffer.isOffloaded = true
             }
             buffer.lastUpdated = Date()
             desktopPlaneCacheBuffers[screenIndex] = buffer

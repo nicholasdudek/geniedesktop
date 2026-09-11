@@ -16,7 +16,7 @@ public final class GenieThickScroller: NSScroller {
         for controlSize: NSControl.ControlSize,
         scrollerStyle: NSScroller.Style
     ) -> CGFloat {
-        18
+        20
     }
 }
 
@@ -31,19 +31,29 @@ private struct GenieThickScrollerAttachment: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         // The scroll view does not exist yet during the first layout pass.
+        let isThickEnabled = UserDefaults.standard.bool(forKey: PrefKey.showThickScrollBars)
         DispatchQueue.main.async {
             guard let scrollView = Self.enclosingScrollView(of: nsView) else { return }
 
-            scrollView.scrollerStyle = .legacy
-            scrollView.autohidesScrollers = false
-            scrollView.hasVerticalScroller = true
-            scrollView.verticalScrollElasticity = .allowed
+            if isThickEnabled {
+                scrollView.scrollerStyle = .legacy
+                scrollView.autohidesScrollers = false
+                scrollView.hasVerticalScroller = true
+                scrollView.verticalScrollElasticity = .allowed
 
-            if !(scrollView.verticalScroller is GenieThickScroller) {
-                let scroller = GenieThickScroller()
-                scroller.scrollerStyle = .legacy
-                scroller.controlSize = .regular
-                scrollView.verticalScroller = scroller
+                if !(scrollView.verticalScroller is GenieThickScroller) {
+                    let scroller = GenieThickScroller()
+                    scroller.scrollerStyle = .legacy
+                    scroller.controlSize = .regular
+                    scrollView.verticalScroller = scroller
+                }
+            } else {
+                scrollView.scrollerStyle = .overlay
+                scrollView.autohidesScrollers = true
+                scrollView.verticalScrollElasticity = .allowed
+                if scrollView.verticalScroller is GenieThickScroller {
+                    scrollView.verticalScroller = NSScroller()
+                }
             }
 
             // Wheel deltas land on the content view, so a line scroll must be generous

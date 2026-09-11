@@ -142,6 +142,11 @@ public struct MenuBarAppStripView: View {
                 continue
             }
 
+            // Merge duplicate Settings icons: macOS System Settings is merged into the dedicated Genie Settings pill
+            if lowerBid.contains("com.apple.systempreferences") || lowerName == "system settings" || lowerName == "system preferences" || lowerId.contains("systempreferences") {
+                continue
+            }
+
             // Filter out items user closed or hid from the pill dock
             if dockManager.isItemHidden(id: item.id) || dockManager.isItemHidden(id: item.bundleIdentifier ?? "") {
                 continue
@@ -1687,6 +1692,14 @@ public struct MenuBarAppStripView: View {
             handleItemHover(id: "pill_settings", hovering: h)
         }
         .help("Genie Settings ⚙️ — System Preferences & Configurations")
+        .contextMenu {
+            Button("Genie Settings (⌘,)") {
+                FinderChatWindowManager.shared.show(tab: .settings)
+            }
+            Button("macOS System Settings...") {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app"))
+            }
+        }
     }
 
     // MARK: - Dedicated Native Battery Bar Gauge View

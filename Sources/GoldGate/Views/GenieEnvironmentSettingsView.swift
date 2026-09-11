@@ -20,13 +20,29 @@ struct GenieEnvironmentSettingsView: View {
             Text("Browser, code, and files run inside Linux. Jobs continue if Genie closes.")
                 .font(.caption).foregroundStyle(.secondary)
 
-            Picker("Reach Linux by", selection: $kind) {
-                Text("OrbStack machine").tag("orbstack")
+            Picker("Runtime Engine", selection: $kind) {
+                Text("iOS Simulators (Lite)").tag("simulator")
+                Text("Hypervisor").tag("orbstack")
                 Text("SSH").tag("ssh")
             }
             .pickerStyle(.segmented)
 
-            if kind == "ssh" {
+            if kind == "simulator" {
+                HStack(spacing: 8) {
+                    Image(systemName: "iphone.gen3")
+                        .foregroundStyle(Color.accentColor)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Native Apple Silicon iOS Simulator Grid")
+                            .font(.caption.bold())
+                        Text("Multi-chat parallel execution via simctl. Zero RAM bloat (<200MB) & sub-second execution.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(8)
+                .background(Color.secondary.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else if kind == "ssh" {
                 TextField("Host (for example 192.168.64.3)", text: $host).textFieldStyle(.roundedBorder)
                 TextField("User", text: $user, prompt: Text(NSUserName())).textFieldStyle(.roundedBorder)
                 TextField("Private key", text: $key, prompt: Text("~/.ssh/genie_env_ed25519")).textFieldStyle(.roundedBorder)

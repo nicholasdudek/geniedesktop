@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - 📁 Live Native File Browser Item Model
 public struct FinderFileItem: Identifiable, Hashable {
@@ -47,14 +48,35 @@ public struct FinderFileBrowserPaneView: View {
     @State private var isLoading = false
     @State private var loadError: String?
     @State private var requestID = UUID()
+    @State private var editingFile: URL? = nil
+    @State private var editingText: String = ""
+    @State private var editorSaveStatus: EditorSaveStatus = .saved
+    @State private var autosaveTask: Task<Void, Never>? = nil
+    @State private var previewItem: FinderFileItem? = nil
+    @AppStorage(PrefKey.filesPreviewPaneHeight) private var storedPreviewHeight: Double = 240
+    @AppStorage(PrefKey.filesPreviewPaneCollapsed) private var isPreviewCollapsed: Bool = false
+    @State private var isDraggingPreviewDivider = false
+    @State private var previewDragStartHeight: CGFloat? = nil
+
+    private enum EditorSaveStatus: Equatable {
+        case saved
+        case saving
+        case error(String)
+    }
 
     private let fileManager = FileManager.default
     private let onNavigate: (URL) -> Void
+    public var onOpenFile: ((URL) -> Void)? = nil
 
-    public init(initialURL: URL? = nil, onNavigate: @escaping (URL) -> Void = { _ in }) {
+    public init(
+        initialURL: URL? = nil,
+        onNavigate: @escaping (URL) -> Void = { _ in },
+        onOpenFile: ((URL) -> Void)? = nil
+    ) {
         let defaultURL = initialURL ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
         _currentURL = State(initialValue: defaultURL)
         self.onNavigate = onNavigate
+        self.onOpenFile = onOpenFile
     }
 
     public var body: some View {
@@ -69,7 +91,9 @@ public struct FinderFileBrowserPaneView: View {
                 .background(Color.white.opacity(0.12))
 
             // 2. Main File Area
-            if isLoading {
+            if let editingFile {
+                fileEditorView(url: editingFile)
+            } else if isLoading {
                 ProgressView("Loading folder...")
                     .controlSize(.small)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -86,10 +110,31 @@ public struct FinderFileBrowserPaneView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if filteredItems.isEmpty {
                 emptyDirectoryView
-            } else if isGridView {
-                iconGridView
             } else {
-                listView
+                GeometryReader { geo in
+                    VStack(spacing: 0) {
+                        Group {
+                            if isGridView {
+                                iconGridView
+                            } else {
+                                listView
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        if let item = previewItem {
+                            previewSplitter(available: geo.size.height)
+
+                            if !isPreviewCollapsed {
+                                internalFilePreviewPane(
+                                    item: item,
+                                    height: clampedPreviewHeight(available: geo.size.height)
+                                )
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
+                        }
+                    }
+                }
             }
 
             Divider()
@@ -104,7 +149,10 @@ public struct FinderFileBrowserPaneView: View {
         .onAppear {
             refreshDirectory()
         }
-        .onChange(of: currentURL) { _, url in onNavigate(url) }
+        .onChange(of: currentURL) { _, url in
+            closeEditor()
+            onNavigate(url)
+        }
     }
 
     // MARK: - Subviews
@@ -302,10 +350,20 @@ public struct FinderFileBrowserPaneView: View {
                     )
                     .contentShape(Rectangle())
                     .onTapGesture(count: 2) {
+                        HapticFeedback.selection()
                         handleActivate(item: item)
                     }
                     .onTapGesture {
                         selectedItemID = item.id
+                        if !item.isDirectory {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                previewItem = item
+                            }
+                        } else {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                previewItem = nil
+                            }
+                        }
                     }
                     .contextMenu { finderContextMenu(for: item) }
                 }
@@ -353,10 +411,20 @@ public struct FinderFileBrowserPaneView: View {
                     )
                     .contentShape(Rectangle())
                     .onTapGesture(count: 2) {
+                        HapticFeedback.selection()
                         handleActivate(item: item)
                     }
                     .onTapGesture {
                         selectedItemID = item.id
+                        if !item.isDirectory {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                previewItem = item
+                            }
+                        } else {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                previewItem = nil
+                            }
+                        }
                     }
                     .contextMenu { finderContextMenu(for: item) }
                 }
@@ -376,6 +444,10 @@ public struct FinderFileBrowserPaneView: View {
     // sheet, which gets every file type's system renderer for free.
     @ViewBuilder
     private func finderContextMenu(for item: FinderFileItem) -> some View {
+        Button("Ask Genie About File") {
+            FinderChatWindowManager.shared.stageFile(url: item.url)
+        }
+
         Button("Open") { handleActivate(item: item) }
 
         if item.url.isBrowserRenderable {
@@ -464,12 +536,251 @@ public struct FinderFileBrowserPaneView: View {
         }
     }
 
+    // MARK: - ✏️ In-Window Text Editor with Autosave
+    private func isEditableAsText(_ url: URL) -> Bool {
+        guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
+        return type.conforms(to: .text)
+    }
+
+    private func openInEditor(_ url: URL) {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+            NSWorkspace.shared.open(url)
+            return
+        }
+        autosaveTask?.cancel()
+        editingFile = url
+        editingText = text
+        editorSaveStatus = .saved
+    }
+
+    private func closeEditor() {
+        autosaveTask?.cancel()
+        editingFile = nil
+        editingText = ""
+        editorSaveStatus = .saved
+    }
+
+    /// Debounced write-back to disk: waits for a pause in typing so every keystroke
+    /// doesn't hit the filesystem, then saves. Cancelling on each change means only
+    /// the last edit in a burst is ever written.
+    private func scheduleAutosave(text: String) {
+        guard let url = editingFile else { return }
+        autosaveTask?.cancel()
+        editorSaveStatus = .saving
+        autosaveTask = Task {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            do {
+                try text.write(to: url, atomically: true, encoding: .utf8)
+                await MainActor.run { editorSaveStatus = .saved }
+            } catch {
+                await MainActor.run { editorSaveStatus = .error(error.localizedDescription) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func internalFilePreviewPane(item: FinderFileItem, height: CGFloat) -> some View {
+        GenieUniversalFileViewer(
+            url: item.url,
+            onClose: {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.82)) {
+                    previewItem = nil
+                }
+            },
+            showHeader: true
+        )
+        .frame(height: height)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 6)
+    }
+
+    // MARK: - Preview Splitter
+    // The grid and the preview share the pane, so the preview owns a height the
+    // user can drag rather than a fixed 240pt. Both bounds are enforced against
+    // the live container height: the grid never drops below `minimumGridHeight`
+    // even when the window is short, and the stored height survives relaunch.
+    private static let minimumPreviewHeight: CGFloat = 120
+    private static let minimumGridHeight: CGFloat = 160
+
+    private func clampedPreviewHeight(available: CGFloat) -> CGFloat {
+        let ceiling = max(Self.minimumPreviewHeight, available - Self.minimumGridHeight - splitterHeight)
+        return min(max(CGFloat(storedPreviewHeight), Self.minimumPreviewHeight), ceiling)
+    }
+
+    private var splitterHeight: CGFloat { 16 }
+
+    private func togglePreviewCollapsed() {
+        withAnimation(.spring(response: 0.26, dampingFraction: 0.84)) {
+            isPreviewCollapsed.toggle()
+        }
+        HapticFeedback.selection()
+    }
+
+    @ViewBuilder
+    private func previewSplitter(available: CGFloat) -> some View {
+        let height = clampedPreviewHeight(available: available)
+
+        ZStack {
+            Rectangle()
+                .fill(Color.white.opacity(isDraggingPreviewDivider ? 0.34 : 0.14))
+                .frame(height: isDraggingPreviewDivider ? 2 : 1)
+
+            HStack(spacing: 8) {
+                Button(action: togglePreviewCollapsed) {
+                    Image(systemName: isPreviewCollapsed ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 7.5, weight: .bold))
+                        .foregroundColor(.white.opacity(0.9))
+                        .frame(width: 22, height: 12)
+                        .background(Capsule().fill(Color.black.opacity(0.72)))
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.28), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .help(isPreviewCollapsed ? "Show Preview" : "Hide Preview")
+                .accessibilityLabel(isPreviewCollapsed ? "Show preview" : "Hide preview")
+
+                Capsule()
+                    .fill(Color.white.opacity(isDraggingPreviewDivider ? 0.85 : 0.34))
+                    .frame(width: isDraggingPreviewDivider ? 54 : 40, height: 4)
+
+                if isDraggingPreviewDivider {
+                    Text("\(Int(height)) pt")
+                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.85))
+                        .transition(.opacity)
+                }
+            }
+            .animation(.spring(response: 0.22, dampingFraction: 0.85), value: isDraggingPreviewDivider)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: splitterHeight)
+        .contentShape(Rectangle())
+        .onHover { inside in
+            if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+        }
+        .gesture(
+            DragGesture(minimumDistance: 1)
+                .onChanged { value in
+                    if previewDragStartHeight == nil {
+                        previewDragStartHeight = height
+                        isDraggingPreviewDivider = true
+                        if isPreviewCollapsed { isPreviewCollapsed = false }
+                    }
+                    let start = previewDragStartHeight ?? height
+                    // Dragging up grows the preview, so the translation subtracts.
+                    let ceiling = max(Self.minimumPreviewHeight, available - Self.minimumGridHeight - splitterHeight)
+                    let proposed = start - value.translation.height
+                    storedPreviewHeight = Double(min(max(proposed, Self.minimumPreviewHeight), ceiling))
+                }
+                .onEnded { _ in
+                    previewDragStartHeight = nil
+                    isDraggingPreviewDivider = false
+                    HapticFeedback.selection()
+                }
+        )
+        .simultaneousGesture(
+            TapGesture(count: 2).onEnded { togglePreviewCollapsed() }
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Preview splitter")
+        .accessibilityHint("Drag to resize the preview, or double-click to collapse it")
+    }
+
+    @ViewBuilder
+    private func fileEditorView(url: URL) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Button(action: closeEditor) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 26, height: 26)
+                        .background(Color.white.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .help("Back to Files")
+                .accessibilityLabel("Back to Files")
+
+                Text(url.lastPathComponent)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                Spacer()
+
+                Button(action: {
+                    FinderChatWindowManager.shared.stageFile(url: url)
+                    HapticFeedback.selection()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("Ask Genie")
+                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.cyan)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.cyan.opacity(0.18)))
+                    .overlay(Capsule().strokeBorder(Color.cyan.opacity(0.40), lineWidth: 0.6))
+                }
+                .buttonStyle(.plain)
+                .help("Stage this file in Genie Chat for intelligent analysis")
+
+                saveStatusLabel
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.black.opacity(0.18))
+
+            Divider().background(Color.white.opacity(0.12))
+
+            TextEditor(text: $editingText)
+                .font(.system(size: 12, design: .monospaced))
+                .scrollContentBackground(.hidden)
+                .foregroundColor(.white)
+                .padding(8)
+                .background(Color.black.opacity(0.12))
+                .onChange(of: editingText) { _, newValue in
+                    scheduleAutosave(text: newValue)
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var saveStatusLabel: some View {
+        Group {
+            switch editorSaveStatus {
+            case .saved:
+                Label("Saved", systemImage: "checkmark.circle.fill")
+                    .foregroundColor(.green.opacity(0.85))
+            case .saving:
+                Label("Saving…", systemImage: "ellipsis.circle")
+                    .foregroundColor(.white.opacity(0.5))
+            case .error(let message):
+                Label("Save failed", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundColor(.red.opacity(0.85))
+                    .help(message)
+            }
+        }
+        .font(.system(size: 10.5, weight: .medium))
+        .labelStyle(.titleAndIcon)
+    }
+
     // MARK: - Actions
     private func handleActivate(item: FinderFileItem) {
         if item.isDirectory {
             navigateTo(item.url)
+        } else if let onOpen = onOpenFile {
+            onOpen(item.url)
+        } else if isEditableAsText(item.url) {
+            openInEditor(item.url)
         } else {
-            NSWorkspace.shared.open(item.url)
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                previewItem = item
+            }
         }
     }
 

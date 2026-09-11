@@ -19,7 +19,7 @@ public final class GeniePhoneBridgeManager: ObservableObject {
     @Published public private(set) var clientAccessCount: Int = 0
 
     // ── Apple Messages (iMessage) & iPhone Sync ──────────────────────────────
-    @Published public var appleID: String = UserDefaults.standard.string(forKey: "genie.apple_id") ?? (GenieAppleAuth.discoverSystemAppleAccount()?.email ?? "nicholas.dudek@icloud.com")
+    @Published public var appleID: String = UserDefaults.standard.string(forKey: "genie.apple_id") ?? (GenieAppleAuth.discoverSystemAppleAccount()?.email ?? "")
     @Published public private(set) var isMessageWatcherActive: Bool = false
     @Published public private(set) var imessageRelayedCount: Int = 0
     @Published public private(set) var lastiMessageReceived: String = "None"
@@ -89,13 +89,14 @@ public final class GeniePhoneBridgeManager: ObservableObject {
     }
 
     // MARK: - Server Lifecycle
-    public func startServer(port: UInt16 = 8765) {
+    public func startServer(port: UInt16 = GeniePortGovernor.defaultPhoneBridgePort) {
         guard listener == nil else { return }
-        self.serverPort = port
+        let safePort = GeniePortGovernor.allocateSafePort(preferred: port)
+        self.serverPort = safePort
         self.localIPAddress = Self.resolveLocalIPAddress()
 
         do {
-            guard let nwPort = NWEndpoint.Port(rawValue: port) else { return }
+            guard let nwPort = NWEndpoint.Port(rawValue: safePort) else { return }
             let params = NWParameters.tcp
             params.allowLocalEndpointReuse = true
             let newListener = try NWListener(using: params, on: nwPort)
@@ -106,16 +107,16 @@ public final class GeniePhoneBridgeManager: ObservableObject {
                     switch state {
                     case .ready:
                         self.isServerRunning = true
-                        self.serverPort = port
+                        self.serverPort = safePort
                         self.saveBirthCertificate()
-                        print("🪔 GENIE PHONE BRIDGE: Active on http://\(self.localIPAddress):\(port)")
+                        print("🪔 GENIE PHONE BRIDGE: Active on http://\(self.localIPAddress):\(safePort)")
                     case .failed(let error):
                         self.isServerRunning = false
                         self.listener?.cancel()
                         self.listener = nil
-                        print("🪔 GENIE PHONE BRIDGE: Listener failed on port \(port): \(error)")
+                        print("🪔 GENIE PHONE BRIDGE: Listener failed on port \(safePort): \(error)")
 
-                        // Automatic fallback to next port if port is already in use
+                        // Automatic fallback to sliced port if port is already in use
                         var isAddressInUse = false
                         if case .posix(let code) = error, code == .EADDRINUSE {
                             isAddressInUse = true
@@ -123,9 +124,9 @@ public final class GeniePhoneBridgeManager: ObservableObject {
                             isAddressInUse = true
                         }
 
-                        if isAddressInUse && port < 8780 {
-                            let nextPort = port + 1
-                            print("🪔 GENIE PHONE BRIDGE: Port \(port) in use, attempting fallback to port \(nextPort)...")
+                        if isAddressInUse && safePort < GeniePortGovernor.genieServiceSlice.upperBound {
+                            let nextPort = GeniePortGovernor.allocateSafePort(preferred: safePort + 1)
+                            print("🪔 GENIE PHONE BRIDGE: Port \(safePort) in use, attempting fallback to sliced port \(nextPort)...")
                             self.startServer(port: nextPort)
                         }
                     case .cancelled:
@@ -198,6 +199,10 @@ public final class GeniePhoneBridgeManager: ObservableObject {
         switch path {
         case "/", "/index.html":
             let html = renderMobileWebUI()
+            sendResponse(connection: connection, status: 200, type: "text/html; charset=utf-8", data: Data(html.utf8))
+
+        case "/duo", "/duo.html":
+            let html = renderiPhoneDuoWebUI()
             sendResponse(connection: connection, status: 200, type: "text/html; charset=utf-8", data: Data(html.utf8))
 
         case "/api/status":
@@ -365,7 +370,7 @@ public final class GeniePhoneBridgeManager: ObservableObject {
     // MARK: - Native iMessage Transmission
     @discardableResult
     public func sendiMessage(to recipient: String = "", message: String) -> Bool {
-        let cleanRecipient = recipient.isEmpty ? self.appleID : recipient
+        let cleanRecipient = recipient.isEmpty ? "me" : recipient
         let success = GenieiMessageExtensionManager.shared.sendiMessageDirect(to: cleanRecipient, message: message)
         if success {
             let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -380,7 +385,7 @@ public final class GeniePhoneBridgeManager: ObservableObject {
     }
 
     @discardableResult
-    public func pingNicholasPhone(withSummary summary: String? = nil) -> Bool {
+    public func pingPhone(withSummary summary: String? = nil) -> Bool {
         let content: String
         if let custom = summary, !custom.isEmpty {
             content = "🧞 [Genie Mac Ping]:\n\(custom)"
@@ -389,7 +394,12 @@ public final class GeniePhoneBridgeManager: ObservableObject {
             let battery = Self.quickBatteryStatus()
             content = "🧞 [Genie Live Ping - \(timeStr)]\nMac is responsive. Battery: \(battery).\nAttached reply from active workspace ready."
         }
-        return sendiMessage(to: self.appleID, message: content)
+        return sendiMessage(to: "me", message: content)
+    }
+
+    @discardableResult
+    public func pingNicholasPhone(withSummary summary: String? = nil) -> Bool {
+        return pingPhone(withSummary: summary)
     }
 
     // MARK: - Background Apple Messages Listener (Unified with Extension)
@@ -444,7 +454,7 @@ public final class GeniePhoneBridgeManager: ObservableObject {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.timeoutInterval = 25
 
-            let system = "You are Genie, Nicholas Dudek's intelligent personal macOS assistant. Communicate cleanly and concisely for iPhone reading. Time: \(timeStr), Battery: \(battery)."
+            let system = "You are Genie, an intelligent personal macOS assistant. Communicate cleanly and concisely for iPhone reading. Time: \(timeStr), Battery: \(battery)."
             let payload: [String: Any] = [
                 "model": "genie:latest",
                 "prompt": "\(system)\n\nUser: \(clean)\n\nGenie:",
@@ -934,7 +944,7 @@ public final class GeniePhoneBridgeManager: ObservableObject {
 
                     <div class="chat-scroll" id="chat-stream">
                         <div class="chat-msg genie">
-                            🧞 Welcome Nicholas! Talk to your local provider Genie, or text your Apple login directly from your iPhone.
+                            🧞 Welcome! Talk to your local provider Genie, or text your Apple login directly from your iPhone.
                             <div class="chat-meta">Local Provider (genie:latest)</div>
                         </div>
                     </div>
@@ -1050,6 +1060,533 @@ public final class GeniePhoneBridgeManager: ObservableObject {
                         const data = await res.json();
                         appendMessage('genie', 'Dispatched ping and latest chat attachment to \(appleID)', '📱 Sent to Apple Messages');
                     } catch (e) {}
+                }
+            </script>
+        </body>
+        </html>
+        """
+    }
+
+    // MARK: - 📱 iPhone Duo Companion Interface (Responsive to Mac, iOS & Duo)
+    public func renderiPhoneDuoWebUI() -> String {
+        return """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+            <meta name="apple-mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+            <title>Genie • Responsive Companion (Mac, iOS, iPhone Duo)</title>
+            <style>
+                :root {
+                    --bg-dark: #07090e;
+                    --glass-surface: rgba(18, 24, 38, 0.85);
+                    --glass-border: rgba(255, 255, 255, 0.12);
+                    --accent-cyan: #00d2ff;
+                    --accent-pink: #ff2d55;
+                    --accent-green: #30d158;
+                    --accent-purple: #af52de;
+                    --text-main: #f5f7fa;
+                    --text-muted: #8e9bb0;
+                    --hinge-width: 8px;
+                }
+                * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+                html, body {
+                    width: 100vw;
+                    height: 100vh;
+                    height: 100dvh;
+                    background: var(--bg-dark);
+                    color: var(--text-main);
+                    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    padding-top: env(safe-area-inset-top, 0);
+                    padding-bottom: env(safe-area-inset-bottom, 0);
+                }
+                
+                /* Top Header Ribbon */
+                .duo-header {
+                    height: 52px;
+                    background: var(--glass-surface);
+                    backdrop-filter: blur(24px);
+                    border-bottom: 1px solid var(--glass-border);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 0 16px;
+                    flex-shrink: 0;
+                    z-index: 100;
+                }
+                .brand-title {
+                    font-weight: 700;
+                    font-size: 14px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                
+                /* Responsive Mode Switcher Pill */
+                .mode-segmented-control {
+                    display: flex;
+                    background: rgba(255, 255, 255, 0.08);
+                    padding: 2px;
+                    border-radius: 16px;
+                    border: 1px solid var(--glass-border);
+                }
+                .mode-btn {
+                    background: transparent;
+                    border: none;
+                    color: var(--text-muted);
+                    padding: 4px 10px;
+                    border-radius: 14px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .mode-btn.active {
+                    background: var(--accent-cyan);
+                    color: #000;
+                    box-shadow: 0 2px 8px rgba(0, 210, 255, 0.35);
+                }
+
+                .duo-badge {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--accent-cyan);
+                    background: rgba(0, 210, 255, 0.12);
+                    padding: 3px 8px;
+                    border-radius: 12px;
+                }
+
+                /* Container Layouts */
+                .workspace-container {
+                    flex: 1;
+                    display: flex;
+                    overflow: hidden;
+                    width: 100%;
+                    height: 100%;
+                    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+
+                /* Pane 1: Desktop Screen Live Stream */
+                .pane-desktop {
+                    position: relative;
+                    background: #000;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                }
+                .pane-desktop img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                    cursor: crosshair;
+                }
+                .desktop-hud-tag {
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    background: rgba(0,0,0,0.72);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    padding: 3px 8px;
+                    border-radius: 8px;
+                    font-size: 10.5px;
+                    color: var(--accent-green);
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                    pointer-events: none;
+                }
+
+                /* Hinge Divider (for iPhone Duo dual-screen seam) */
+                .duo-hinge {
+                    display: none;
+                    width: var(--hinge-width);
+                    background: linear-gradient(180deg, #101520 0%, #05070a 100%);
+                    border-left: 1px solid rgba(255,255,255,0.06);
+                    border-right: 1px solid rgba(255,255,255,0.06);
+                    box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
+                    position: relative;
+                }
+                .duo-hinge::after {
+                    content: '';
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 2px;
+                    height: 36px;
+                    background: rgba(255,255,255,0.15);
+                    border-radius: 1px;
+                }
+
+                /* Pane 2: Genie Chat & Controls */
+                .pane-chat {
+                    display: flex;
+                    flex-direction: column;
+                    background: var(--glass-surface);
+                    backdrop-filter: blur(28px);
+                    overflow: hidden;
+                }
+                .duo-chat-log {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 12px 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                .bubble {
+                    max-width: 86%;
+                    padding: 9px 13px;
+                    border-radius: 16px;
+                    font-size: 13px;
+                    line-height: 1.4;
+                }
+                .bubble-user {
+                    align-self: flex-end;
+                    background: linear-gradient(135deg, #007aff, #0056b3);
+                    color: #fff;
+                    border-bottom-right-radius: 4px;
+                    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+                }
+                .bubble-genie {
+                    align-self: flex-start;
+                    background: rgba(255, 255, 255, 0.08);
+                    border: 1px solid var(--glass-border);
+                    color: var(--text-main);
+                    border-bottom-left-radius: 4px;
+                }
+
+                /* Quick Action Toolbar */
+                .duo-quick-actions {
+                    display: flex;
+                    gap: 8px;
+                    padding: 8px 16px;
+                    overflow-x: auto;
+                    background: rgba(0,0,0,0.20);
+                    border-top: 1px solid rgba(255,255,255,0.06);
+                    flex-shrink: 0;
+                }
+                .action-pill {
+                    background: rgba(255,255,255,0.08);
+                    border: 1px solid var(--glass-border);
+                    color: var(--text-main);
+                    padding: 5px 12px;
+                    border-radius: 16px;
+                    font-size: 11.5px;
+                    font-weight: 500;
+                    white-space: nowrap;
+                    cursor: pointer;
+                    transition: background 0.15s ease;
+                }
+                .action-pill:hover, .action-pill:active {
+                    background: var(--accent-cyan);
+                    color: #000;
+                }
+
+                /* Bottom Prompt Bar */
+                .duo-input-bar {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 10px 16px;
+                    border-top: 1px solid var(--glass-border);
+                    background: rgba(10, 14, 24, 0.95);
+                    flex-shrink: 0;
+                }
+                .duo-input {
+                    flex: 1;
+                    background: rgba(255,255,255,0.08);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    border-radius: 20px;
+                    padding: 9px 16px;
+                    color: #fff;
+                    font-size: 13.5px;
+                    outline: none;
+                }
+                .duo-mic-btn {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 18px;
+                    background: rgba(255,255,255,0.10);
+                    border: 1px solid var(--glass-border);
+                    color: #fff;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 14px;
+                }
+                .duo-mic-btn.recording {
+                    background: var(--accent-pink);
+                    animation: pulse 1s infinite;
+                }
+                .duo-send-btn {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 18px;
+                    background: var(--accent-cyan);
+                    border: none;
+                    color: #000;
+                    font-weight: bold;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 16px;
+                }
+
+                @keyframes pulse {
+                    0% { transform: scale(1); opacity: 1; }
+                    50% { transform: scale(1.08); opacity: 0.8; }
+                    100% { transform: scale(1); opacity: 1; }
+                }
+
+                /* ──────────────────────────────────────────────────────────
+                   RESPONSIVE LAYOUT MODES: Mac, iOS, and Duo
+                   ────────────────────────────────────────────────────────── */
+                
+                /* Mode 1: iOS Single Screen (Vertical Stack: 393 x 852 pt) */
+                body.mode-ios .workspace-container,
+                @media (max-width: 699px) {
+                    .workspace-container {
+                        flex-direction: column;
+                    }
+                    .pane-desktop {
+                        height: 44%;
+                        border-bottom: 1px solid var(--glass-border);
+                    }
+                    .duo-hinge {
+                        display: none;
+                    }
+                    .pane-chat {
+                        height: 56%;
+                    }
+                }
+
+                /* Mode 2: iPhone Duo Dual-Screen (Split Side-by-Side: 786 x 852 pt) */
+                body.mode-duo .workspace-container,
+                @media (min-width: 700px) and (max-width: 1024px) {
+                    .workspace-container {
+                        flex-direction: row;
+                    }
+                    .pane-desktop {
+                        flex: 1;
+                        height: 100%;
+                    }
+                    .duo-hinge {
+                        display: block;
+                    }
+                    .pane-chat {
+                        flex: 1;
+                        height: 100%;
+                    }
+                }
+
+                /* Mode 3: Mac Desktop Workstation (Large Display) */
+                body.mode-mac .workspace-container,
+                @media (min-width: 1025px) {
+                    .workspace-container {
+                        flex-direction: row;
+                    }
+                    .pane-desktop {
+                        flex: 1.35;
+                        height: 100%;
+                    }
+                    .duo-hinge {
+                        display: block;
+                        width: 4px;
+                    }
+                    .pane-chat {
+                        flex: 1;
+                        height: 100%;
+                        border-left: 1px solid var(--glass-border);
+                    }
+                }
+            </style>
+        </head>
+        <body class="mode-auto">
+            <div class="duo-header">
+                <div class="brand-title">
+                    <span>Genie 🧞‍♂️</span>
+                    <span style="font-size: 11px; opacity: 0.6; font-weight: normal;">Bridge</span>
+                </div>
+
+                <!-- Device Mode Switcher: Mac, iOS, Duo -->
+                <div class="mode-segmented-control">
+                    <button class="mode-btn active" id="btn-auto" onclick="setMode('auto')">Auto</button>
+                    <button class="mode-btn" id="btn-ios" onclick="setMode('ios')">📱 iOS (393)</button>
+                    <button class="mode-btn" id="btn-duo" onclick="setMode('duo')">📲 Duo (786)</button>
+                    <button class="mode-btn" id="btn-mac" onclick="setMode('mac')">💻 Mac</button>
+                </div>
+
+                <div class="duo-badge" id="layout-tag">
+                    <span>●</span> <span id="layout-label">Auto (Responsive)</span>
+                </div>
+            </div>
+
+            <div class="workspace-container">
+                <!-- Screen 1 / Left Screen: Desktop Live Frame -->
+                <div class="pane-desktop" onclick="handleScreenTap(event)">
+                    <div class="desktop-hud-tag">● Live Desktop Mirror (Tap to Click)</div>
+                    <img id="stream-frame" src="/api/screen.jpg" alt="Live Desktop Screen" />
+                </div>
+
+                <!-- Duo Center Hinge / Fold Seam -->
+                <div class="duo-hinge"></div>
+
+                <!-- Screen 2 / Right Screen: Genie AI Chat & Remote Tools -->
+                <div class="pane-chat">
+                    <div class="duo-quick-actions">
+                        <button class="action-pill" onclick="sendAction('enter')">⏎ Click Enter</button>
+                        <button class="action-pill" onclick="quickSend('Send chat to mobile')">📲 Mobile Sync</button>
+                        <button class="action-pill" onclick="quickSend('pick up on iphone duo same size dimense')">📲 Duo Handoff</button>
+                        <button class="action-pill" onclick="quickSend('Run system diagnostics')">🛠️ Diagnostics</button>
+                        <button class="action-pill" onclick="clearDuoChat()">🧹 Clear</button>
+                    </div>
+
+                    <div class="duo-chat-log" id="duo-chat">
+                        <div class="bubble bubble-genie">
+                            Connected to Mac via Responsive Continuity. Automatically formatted for Mac, iOS, and iPhone Duo.
+                        </div>
+                    </div>
+
+                    <div class="duo-input-bar">
+                        <button class="duo-mic-btn" id="mic-btn" onclick="toggleWebSpeech()" title="Voice Dictation">🎙️</button>
+                        <input class="duo-input" id="duo-input" placeholder="Ask Genie or speak command..." onkeydown="if(event.key==='Enter') submitDuoChat()" />
+                        <button class="duo-send-btn" onclick="submitDuoChat()">↑</button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                // 1. Live Screen Mirror Refresher
+                setInterval(() => {
+                    const img = document.getElementById('stream-frame');
+                    if (img) {
+                        img.src = '/api/screen.jpg?t=' + Date.now();
+                    }
+                }, 1000);
+
+                // 2. Responsive Mode Switcher (Auto, iOS, Duo, Mac)
+                function setMode(mode) {
+                    document.body.className = 'mode-' + mode;
+                    ['auto', 'ios', 'duo', 'mac'].forEach(m => {
+                        const btn = document.getElementById('btn-' + m);
+                        if (btn) btn.classList.toggle('active', m === mode);
+                    });
+                    
+                    const label = document.getElementById('layout-label');
+                    if (mode === 'auto') {
+                        label.innerText = 'Auto (' + window.innerWidth + 'px)';
+                    } else if (mode === 'ios') {
+                        label.innerText = 'iPhone (393 × 852)';
+                    } else if (mode === 'duo') {
+                        label.innerText = 'iPhone Duo (786 × 852)';
+                    } else if (mode === 'mac') {
+                        label.innerText = 'Mac Workstation';
+                    }
+                }
+
+                window.addEventListener('resize', () => {
+                    if (document.body.className === 'mode-auto') {
+                        document.getElementById('layout-label').innerText = 'Auto (' + window.innerWidth + 'px)';
+                    }
+                });
+
+                // 3. Coordinate Tap / Click on Desktop Frame
+                function handleScreenTap(event) {
+                    sendAction('enter');
+                }
+
+                async function sendAction(act) {
+                    await fetch('/api/action/' + act, { method: 'POST' });
+                }
+
+                function quickSend(txt) {
+                    document.getElementById('duo-input').value = txt;
+                    submitDuoChat();
+                }
+
+                async function submitDuoChat() {
+                    const input = document.getElementById('duo-input');
+                    const text = input.value.trim();
+                    if (!text) return;
+                    input.value = '';
+
+                    const chat = document.getElementById('duo-chat');
+                    const userBubble = document.createElement('div');
+                    userBubble.className = 'bubble bubble-user';
+                    userBubble.innerText = text;
+                    chat.appendChild(userBubble);
+                    chat.scrollTop = chat.scrollHeight;
+
+                    try {
+                        const res = await fetch('/api/genie/chat?prompt=' + encodeURIComponent(text), { method: 'POST' });
+                        const data = await res.json();
+                        const genieBubble = document.createElement('div');
+                        genieBubble.className = 'bubble bubble-genie';
+                        genieBubble.innerText = data.response || 'Action executed successfully.';
+                        chat.appendChild(genieBubble);
+                        chat.scrollTop = chat.scrollHeight;
+                    } catch (e) {
+                        const errBubble = document.createElement('div');
+                        errBubble.className = 'bubble bubble-genie';
+                        errBubble.innerText = 'Relayed command to desktop.';
+                        chat.appendChild(errBubble);
+                    }
+                }
+
+                function clearDuoChat() {
+                    document.getElementById('duo-chat').innerHTML = '<div class="bubble bubble-genie">Chat buffer cleared.</div>';
+                }
+
+                // 4. Web Speech Dictation Support
+                let recognition = null;
+                let isRecording = false;
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognition = new SpeechRec();
+                    recognition.continuous = false;
+                    recognition.interimResults = true;
+
+                    recognition.onresult = (e) => {
+                        const transcript = Array.from(e.results)
+                            .map(r => r[0].transcript)
+                            .join('');
+                        document.getElementById('duo-input').value = transcript;
+                    };
+
+                    recognition.onend = () => {
+                        isRecording = false;
+                        document.getElementById('mic-btn').classList.remove('recording');
+                    };
+                }
+
+                function toggleWebSpeech() {
+                    if (!recognition) {
+                        alert('Speech recognition not supported in this browser.');
+                        return;
+                    }
+                    if (isRecording) {
+                        recognition.stop();
+                        isRecording = false;
+                        document.getElementById('mic-btn').classList.remove('recording');
+                    } else {
+                        recognition.start();
+                        isRecording = true;
+                        document.getElementById('mic-btn').classList.add('recording');
+                    }
                 }
             </script>
         </body>

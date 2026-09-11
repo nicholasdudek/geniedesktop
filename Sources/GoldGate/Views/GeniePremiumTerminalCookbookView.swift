@@ -45,6 +45,8 @@ Type any shell directive, or choose a LeetCode algorithm from the cookbook below
     @State private var showCookbookDrawer: Bool = true
     @State private var toastNotification: String? = nil
     @FocusState private var isTerminalFocused: Bool
+    
+    public init() {}
 
     // ── LeetCode Algorithm Recipes ──────────────────────────────────────────
     private let leetCodeCookbooks: [LeetCodeRecipe] = [
@@ -411,6 +413,27 @@ print("Rotated Index of 0 in [4,5,6,7,0,1,2]:", search_rotated([4,5,6,7,0,1,2], 
             }
             .buttonStyle(.plain)
 
+            // Tail Past Computer Logs & Recents Quick Button
+            Button(action: {
+                runCommand("log show --last 5m --style syslog --predicate 'messageType == error || messageType == fault' 2>/dev/null | tail -n 35")
+                showToast("Tailing macOS System Logs 📜")
+                HapticFeedback.selection()
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .foregroundColor(.green)
+                    Text("Tail Logs")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Color.green.opacity(0.14)))
+                .overlay(Capsule().stroke(Color.green.opacity(0.35), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+            .help("Tail recent system logs and past errors")
+
             // Clear Terminal Buffer
             Button(action: {
                 terminalOutput = ""
@@ -491,6 +514,17 @@ print("Rotated Index of 0 in [4,5,6,7,0,1,2]:", search_rotated([4,5,6,7,0,1,2], 
                     .buttonStyle(.plain)
                 }
             }
+
+            Button(action: {
+                NSWorkspace.shared.open(URL(string: "https://github.com/QwenLM/Qwen3-VL/blob/main/LICENSE")!)
+            }) {
+                Text("These are Alibaba Cloud Qwen models, licensed Apache 2.0 — view license")
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundColor(.white.opacity(0.40))
+                    .underline()
+            }
+            .buttonStyle(.plain)
+            .help("Opens the Apache 2.0 license this model family is released under")
 
             // Model Cards Grid
             HStack(spacing: 8) {

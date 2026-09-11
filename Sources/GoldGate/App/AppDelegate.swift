@@ -65,6 +65,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 0b-2. Listen for requests handed off from the GenieFinderSync Finder extension
         FinderSyncBridge.shared.start()
 
+        // 0b-3. Start continuous diagnostics & parallel thread sentinel (zero-investigation invariant)
+        _ = GenieContinuousDiagnosticsEngine.shared
+
+        // 0b-4. Start global cursor FX overlay manager (always-on cursor trails across desktop, wallpapers, & inactive app states)
+        GenieGlobalCursorFXOverlayManager.shared.start()
+
         // 0c. On the very first launch after install, actually ask for the access Genie needs
         // (screen recording, accessibility, full disk) instead of silently running degraded.
         if !UserDefaults.standard.bool(forKey: PrefKey.hasPromptedForPermissions) {
@@ -112,10 +118,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 2e-2. Initialize Screen Warp Manager (Instant Multi-Screen Window Teleportation: ⌃⌥→ / ⌃⌥←)
         ScreenWarpManager.shared.setup()
 
-        // 2e-3. Notch Dock & Alarm Clock. The World Clock watch strip is no longer its own
-        // panel: it renders inside the chat dock (RightSideChatDockView.watchStrip).
+        // 2e-3. Notch Dock & Alarm Clock
         NotchDockPanelManager.shared.setup()
-        _ = AlarmClockManager.shared
+        _ = GenieAlarmClockManager.shared
         _ = UnifiedCommandWindowManager.shared
 
         // 3. Initialize Status Item with Dynamic Animated Battery & Menu Bar App Switcher
@@ -139,6 +144,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 6. App Installation & DMG Drag-to-Install Manager (Menu Bar & Dock Anchor)
         _ = AppInstallationManager.shared
+        AppInstallationManager.shared.applyActivationPolicy()
         AppInstallationManager.shared.promptMoveToApplicationsIfNeeded()
 
         // 7. Launch Initial Compact Setup Walkthrough on First Install
@@ -158,8 +164,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             GenieSleepPreventionManager.shared.enableSleepPrevention()
         }
 
+        // 8c. Native Speech Recognition & Autonomous Python Self-Repair Learning Engines
+        // Keep microphone OFF by default on launch to prevent persistent open-mic indicator.
+        // Speech recognition is activated on-demand via mic button or when wake-word is explicitly enabled.
+        if UserDefaults.standard.bool(forKey: PrefKey.voiceSpeechRecognitionEnabled) &&
+           UserDefaults.standard.bool(forKey: PrefKey.voiceWakeWordEnabled) {
+            GenieSpeechRecognitionEngine.shared.startListening()
+        }
+        _ = GenieSelfRepairLearningEngine.shared
+
         // 9. Instant File IPC Watcher for Autonomous Commands & External Triggers
         setupFileIPCWatcher()
+
+        // 10. Chrome Resource Governor & Lightning-Fast Workspace Restore
+        GenieResourceGovernor.shared.start()
+        if UserDefaults.standard.bool(forKey: PrefKey.showWorkspaceRestoreHUDOnLaunch) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                GenieWorkspaceRestoreManager.shared.showHUD()
+            }
+        }
 
         print("GENIE: applicationDidFinishLaunching completed")
     }
@@ -181,7 +204,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             queue: DispatchQueue.global(qos: .userInitiated)
         )
 
-        source.setEventHandler { [weak self] in
+        source.setEventHandler {
             guard FileManager.default.fileExists(atPath: triggerPath) else { return }
             do {
                 let content = try String(contentsOfFile: triggerPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -200,11 +223,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         FinderChatWindowManager.shared.toggle()
                     } else if content == "toggle-command-window" || content == "command-window" {
                         UnifiedCommandWindowManager.shared.toggle()
-                    } else if content == "toggle-watch-dock" || content == "watch-dock" {
-                        WorldClockViewModel.shared.dockSettings.isEnabled.toggle()
-                    } else if content == "open-world-clock-settings" {
-                        NotificationCenter.default.post(name: NSNotification.Name("NexusOpenSettingsInChat"), object: nil)
-                        NotificationCenter.default.post(name: NSNotification.Name("NexusSelectSettingsTab"), object: UnifiedSettingsTab.worldClock)
                     } else if content.hasPrefix("pan ") {
                         let parts = content.split(separator: " ")
                         if parts.count >= 3, let dx = Double(parts[1]), let dy = Double(parts[2]) {
@@ -221,6 +239,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     } else if content == "hand-grab" {
                         SpatialPlaneManager.shared.screenWebpagePanMode = "Hand Drag & Scroll"
                         SpatialPlaneManager.shared.cursorFollowPanningEnabled = false
+                    } else if content == "restore-hud" || content == "show-hud" {
+                        GenieWorkspaceRestoreManager.shared.showHUD()
+                    } else if content == "save-snapshot" || content == "snapshot" {
+                        GenieWorkspaceRestoreManager.shared.saveSnapshot()
+                    } else if content == "restore" {
+                        GenieWorkspaceRestoreManager.shared.restoreWorkspace()
+                    } else if content == "restart" || content == "fast-restart" {
+                        GenieWorkspaceRestoreManager.shared.fastRestart()
                     }
                 }
             } catch {
@@ -251,8 +277,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             dismissMenuBarPopover()
         }
 
-        // Dock icon click: toggle Chat window directly (no applications pop up)
-        FinderChatWindowManager.shared.toggle()
+        // Show Lightning-Fast Restore HUD window only if explicitly enabled
+        if UserDefaults.standard.bool(forKey: PrefKey.showWorkspaceRestoreHUDOnLaunch) {
+            GenieWorkspaceRestoreManager.shared.showHUD()
+        }
+
+        // 1. Toggle Lock & Unlock on the dock
+        let currentLock = UserDefaults.standard.bool(forKey: PrefKey.isChatLockedInPlace)
+        let newLock = !currentLock
+        UserDefaults.standard.set(newLock, forKey: PrefKey.isChatLockedInPlace)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockLock"), object: newLock)
+
+        // 2. Always activate the Genie chat main desktop view first!
+        DesktopWindowManager.shared.switchToStation(.desktop)
+        FinderChatWindowManager.shared.show(tab: .chat)
+        NSApp.activate(ignoringOtherApps: true)
+
+        // 3. Keep it open for a timer so we can activate the dock when we need to
+        NotificationCenter.default.post(name: NSNotification.Name("NexusRevealDockWithTimer"), object: 8.0)
 
         let smokeOn = UserDefaults.standard.object(forKey: PrefKey.smokeEffectsEnabled) == nil ? true : UserDefaults.standard.bool(forKey: PrefKey.smokeEffectsEnabled)
         if smokeOn {
@@ -261,7 +303,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             GenieSmokeEngine.shared.triggerBurst(
                 origin: .dock,
                 bounds: panelSize,
-                style: "Royal Purple 🔮",
+                style: newLock ? "Royal Purple 🔮" : "Mystical Cyan 🧞‍♂️",
                 count: 64
             )
         }
@@ -357,13 +399,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     public var activeAnchorSource: MenuBarAnchorSource = .battery
 
     func toggleMenuBarSettingsDropdown(targetTab: DropdownSidebarTab = .system) {
-        if menuBarPanel.isVisible {
-            if UserDefaults.standard.string(forKey: PrefKey.selectedStudioTab) == targetTab.rawValue &&
-               UserDefaults.standard.string(forKey: PrefKey.dropdownMode) == MenuBarDropdownMode.settings.rawValue {
-                dismissMenuBarPopover()
-            } else {
-                showMenuBarSettingsDropdown(targetTab: targetTab)
+        let targetWindowTab: FinderWindowTab = {
+            switch targetTab {
+            case .chat: return .chat
+            case .applications: return .applications
+            case .battery, .menuBar, .workspace, .formations: return .notchAndMenuBar
+            case .soundHaptics: return .soundAndEffects
+            case .aiModels: return .models
+            case .virtualMachines: return .virtualMachines
+            default: return .settings
             }
+        }()
+
+        if FinderChatWindowManager.shared.isVisible && FinderChatWindowManager.shared.activeTab == targetWindowTab {
+            FinderChatWindowManager.shared.hide()
         } else {
             showMenuBarSettingsDropdown(targetTab: targetTab)
         }
@@ -376,11 +425,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.set(targetTab.rawValue, forKey: PrefKey.selectedStudioTab)
         NotificationCenter.default.post(name: NSNotification.Name("NexusSelectStudioTab"), object: targetTab.rawValue)
         NotificationCenter.default.post(name: NSNotification.Name("NexusSetDropdownMode"), object: mode.rawValue)
-        showLegacyMenuBarPanel(targetScreen: targetScreen)
+
+        // Dismiss any secondary floating panels to guarantee single unified window
+        if menuBarPanel.isVisible {
+            dismissMenuBarPopover()
+        }
+
+        let targetWindowTab: FinderWindowTab = {
+            switch targetTab {
+            case .chat: return .chat
+            case .applications: return .applications
+            case .battery, .menuBar, .workspace, .formations: return .notchAndMenuBar
+            case .soundHaptics: return .soundAndEffects
+            case .aiModels: return .models
+            case .virtualMachines: return .virtualMachines
+            default: return .settings
+            }
+        }()
+
+        FinderChatWindowManager.shared.openTab(targetWindowTab)
+        FinderChatWindowManager.shared.show(tab: targetWindowTab)
     }
 
     public func openSettingsInChatWindow() {
-        FinderChatWindowManager.shared.show()
+        FinderChatWindowManager.shared.show(tab: .settings)
         if let st = WorkspaceTabManager.shared.tabs.first(where: { $0.type == .settings }) {
             WorkspaceTabManager.shared.selectTab(id: st.id)
         } else {
@@ -390,11 +458,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showMenuBarApplicationsDropdown(anchor: MenuBarAnchorSource = .leo, targetScreen: NSScreen? = nil) {
-        showMenuBarSettingsDropdown(targetTab: .battery, targetScreen: targetScreen)
+        showMenuBarSettingsDropdown(targetTab: .applications, targetScreen: targetScreen)
     }
 
     func toggleMenuBarApplicationsDropdown(anchor: MenuBarAnchorSource = .leo) {
-        toggleMenuBarSettingsDropdown(targetTab: .battery)
+        toggleMenuBarSettingsDropdown(targetTab: .applications)
     }
 
     var applicationsSettingsPanel: NSPanel?
@@ -407,8 +475,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .miniDock: dropdownTab = .battery
         case .desktop: dropdownTab = .workspace
         case .soundAndSmoke: dropdownTab = .soundHaptics
-        case .worldClock: dropdownTab = .workspace
-        case .models, .livingGlass, .systemAccess, .huggingface, .generalAndPrivacy: dropdownTab = .privacy
+        case .studio, .models, .livingGlass, .systemAccess, .huggingface, .generalAndPrivacy, .virtualMachines, .expansion, .ergonomics: dropdownTab = .privacy
         }
         toggleMenuBarSettingsDropdown(targetTab: dropdownTab)
     }
@@ -421,8 +488,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .miniDock: dropdownTab = .battery
         case .desktop: dropdownTab = .workspace
         case .soundAndSmoke: dropdownTab = .soundHaptics
-        case .worldClock: dropdownTab = .workspace
-        case .models, .livingGlass, .systemAccess, .huggingface, .generalAndPrivacy: dropdownTab = .privacy
+        case .studio, .models, .livingGlass, .systemAccess, .huggingface, .generalAndPrivacy, .virtualMachines, .expansion, .ergonomics: dropdownTab = .privacy
         }
         showMenuBarSettingsDropdown(targetTab: dropdownTab)
     }
@@ -463,6 +529,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Elevate window level over virtual top level command UI, custom menu bar, and status windows
         let popoverLevel = NSWindow.Level(Int(CGWindowLevelForKey(.popUpMenuWindow)) + 5)
+
+        // The top dock and this dropdown are two presentations of the same
+        // chat. Opening one closes the other, so the user is never typing into
+        // a surface while a second copy sits behind it holding its own thread.
+        DesktopWindowManager.shared.dismissTopDock()
 
         menuBarPanel.setFrame(targetFrame, display: true)
         menuBarPanel.alphaValue = 1.0
@@ -709,7 +780,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem.length = NSStatusItem.squareLength
             let glyph = UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
                 ?? UserDefaults.standard.string(forKey: PrefKey.statusIconStyle)
-                ?? "Genie Lamp 🪔"
+                ?? "Genie Person 🧞‍♂️"
             button.image = StatusIconRenderer.generateGlyphImage(glyph: glyph, size: 18, phase: self.phase)
             button.imagePosition = .imageOnly
             button.target = self
@@ -742,14 +813,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private var lastRenderedGlyph: String? = nil
+
     func renderIcon() {
         NotificationCenter.default.post(name: NSNotification.Name("NexusAnimTick"), object: self.phase)
         let showMiniDock = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInMenuBar)
         if !showMiniDock, let button = statusItem?.button {
-            let glyph = UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
+            let rawGlyph = UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
                 ?? UserDefaults.standard.string(forKey: PrefKey.statusIconStyle)
-                ?? "Genie Lamp 🪔"
-            button.image = StatusIconRenderer.generateGlyphImage(glyph: glyph, size: 18, phase: self.phase)
+                ?? "Genie Person 🧞‍♂️"
+            let glyph = rawGlyph.isEmpty ? "Genie Person 🧞‍♂️" : rawGlyph
+            if lastRenderedGlyph != glyph || button.image == nil {
+                lastRenderedGlyph = glyph
+                let img = StatusIconRenderer.generateGlyphImage(glyph: glyph, size: 18, phase: self.phase)
+                button.image = img
+            }
         }
     }
 
@@ -772,7 +850,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if isRight {
                 MenuBarActionDispatcher.shared.showStatusMenu(in: button, event: event ?? NSEvent())
             } else {
-                FinderChatWindowManager.shared.toggle()
+                FinderChatWindowManager.shared.toggle(tab: .chat)
             }
         }
     }
@@ -820,9 +898,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupMainMenu() {
         let mainMenu = NSMenu()
+
+        // 1. 🧞‍♂️ Genie Application Menu
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu(title: "Genie")
-        appMenu.addItem(withTitle: "About Genie", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "About Genie", action: #selector(showAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: "Genie Settings...", action: #selector(menuOpenSettings), keyEquivalent: ",")
+
+        let quickSettingsItem = NSMenuItem(title: "Quick Settings", action: nil, keyEquivalent: "")
+        let quickMenu = NSMenu(title: "Quick Settings")
+
+        let zenItem = NSMenuItem(title: "Zen Mode Overlay (SkyLight)", action: #selector(menuToggleZenMode(_:)), keyEquivalent: "z")
+        zenItem.keyEquivalentModifierMask = [.command, .option]
+        zenItem.state = SkyLightZenOverlayManager.shared.isOverlayActive || UserDefaults.standard.bool(forKey: "genieZenModeEnabled") ? .on : .off
+        quickMenu.addItem(zenItem)
+
+        let soundItem = NSMenuItem(title: "Sound Effects & Haptics", action: #selector(menuToggleSound(_:)), keyEquivalent: "")
+        soundItem.state = UserDefaults.standard.bool(forKey: PrefKey.soundEnabled) ? .on : .off
+        quickMenu.addItem(soundItem)
+
+        let atmosphereItem = NSMenuItem(title: "Living Atmospheric FX", action: #selector(menuToggleAtmosphere(_:)), keyEquivalent: "")
+        atmosphereItem.state = UserDefaults.standard.bool(forKey: PrefKey.smokeEffectsEnabled) ? .on : .off
+        quickMenu.addItem(atmosphereItem)
+
+        let glassItem = NSMenuItem(title: "Liquid Glass Surface", action: #selector(menuToggleLiquidGlass(_:)), keyEquivalent: "")
+        glassItem.state = UserDefaults.standard.bool(forKey: PrefKey.liquidGlassEnabled) ? .on : .off
+        quickMenu.addItem(glassItem)
+
+        let dockItem = NSMenuItem(title: "Apple Mini Dock in Chat", action: #selector(menuToggleAppleDock(_:)), keyEquivalent: "")
+        dockItem.state = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInChatBar) ? .on : .off
+        quickMenu.addItem(dockItem)
+
+        let sandboxItem = NSMenuItem(title: "Agent Sandbox Confinement", action: #selector(menuToggleSandbox(_:)), keyEquivalent: "")
+        sandboxItem.state = UserDefaults.standard.bool(forKey: PrefKey.agentSandboxEnabled) ? .on : .off
+        quickMenu.addItem(sandboxItem)
+
+        quickSettingsItem.submenu = quickMenu
+        appMenu.addItem(quickSettingsItem)
+
         appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(withTitle: "Hide Genie", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthersItem = NSMenuItem(title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
@@ -834,7 +948,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
 
-        // Standard macOS Edit Menu (Guarantees ⌘V Paste, ⌘C Copy, ⌘X Cut, ⌘A Select All across all views)
+        // 2. 🚀 Mini Dock Menu Bar Strip & File Controls (Right next to Apple & Genie!)
+        let fileMenuItem = NSMenuItem()
+        let fileMenu = NSMenu(title: "File")
+        fileMenu.addItem(withTitle: "New Project or File...", action: #selector(menuNewProject), keyEquivalent: "n")
+        fileMenu.addItem(withTitle: "New Genie Chat", action: #selector(menuNewChatTab), keyEquivalent: "t")
+        fileMenu.addItem(withTitle: "New Editor Tab", action: #selector(menuNewEditorTab), keyEquivalent: "e")
+        let newFinderItem = NSMenuItem(title: "New Finder Tab", action: #selector(menuNewFinderTab), keyEquivalent: "f")
+        newFinderItem.keyEquivalentModifierMask = [.command, .shift]
+        fileMenu.addItem(newFinderItem)
+        fileMenu.addItem(withTitle: "Attach Files or Code...", action: #selector(menuOpenFile), keyEquivalent: "o")
+        fileMenu.addItem(NSMenuItem.separator())
+
+        let zenOverlayItem = NSMenuItem(title: "Zen Mode Overlay (SkyLight 2nd Space)", action: #selector(menuToggleZenOverlay), keyEquivalent: "z")
+        zenOverlayItem.keyEquivalentModifierMask = [.command, .option]
+        fileMenu.addItem(zenOverlayItem)
+
+        let slideDownItem = NSMenuItem(title: "Slide-Down Full Screen Chat", action: #selector(menuSlideDownFullScreen), keyEquivalent: String(UnicodeScalar(NSUpArrowFunctionKey)!))
+        slideDownItem.keyEquivalentModifierMask = [.command, .option]
+        fileMenu.addItem(slideDownItem)
+
+        let desktopFormItem = NSMenuItem(title: "Desktop Window Form", action: #selector(menuShowDesktopForm), keyEquivalent: String(UnicodeScalar(NSDownArrowFunctionKey)!))
+        desktopFormItem.keyEquivalentModifierMask = [.command, .option]
+        fileMenu.addItem(desktopFormItem)
+
+        fileMenu.addItem(NSMenuItem.separator())
+        fileMenu.addItem(withTitle: "Close Window", action: #selector(menuCloseWindow), keyEquivalent: "w")
+        fileMenuItem.submenu = fileMenu
+
+        // Embed Mini Dock directly in the macOS menu bar next to Apple logo!
+        let miniDockStrip = MenuBarAppStripView()
+        let miniDockHostingView = ClickableHostingView(rootView: miniDockStrip)
+        miniDockHostingView.frame = NSRect(x: 0, y: 0, width: 340, height: 24)
+        fileMenuItem.view = miniDockHostingView
+
+        mainMenu.addItem(fileMenuItem)
+
+        // 3. ✏️ Standard macOS Edit Menu
         let editMenuItem = NSMenuItem()
         let editMenu = NSMenu(title: "Edit")
         editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
@@ -850,6 +1000,129 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(editMenuItem)
 
         NSApp.mainMenu = mainMenu
+    }
+
+    // MARK: - Menu Bar Actions
+    @objc func menuNewProject() {
+        FinderChatWindowManager.shared.show(tab: .chat)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusOpenQuickCreationSheet"), object: nil)
+    }
+
+    @objc func menuNewChatTab() {
+        FinderChatWindowManager.shared.newChatTab()
+    }
+
+    @objc func menuNewEditorTab() {
+        FinderChatWindowManager.shared.newEditorTab()
+    }
+
+    @objc func menuNewFinderTab() {
+        FinderChatWindowManager.shared.newFinderTab()
+    }
+
+    @objc func menuOpenFile() {
+        FinderChatWindowManager.shared.show(tab: .chat)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusTriggerOpenFilePicker"), object: nil)
+    }
+
+    @objc func menuSlideDownFullScreen() {
+        FinderChatWindowManager.shared.slideDownFullScreen()
+    }
+
+    @objc func menuShowDesktopForm() {
+        FinderChatWindowManager.shared.showInDesktopForm()
+    }
+
+    @objc func menuCloseWindow() {
+        FinderChatWindowManager.shared.hide()
+    }
+
+    @objc func showAboutPanel(_ sender: Any?) {
+        let credits = NSMutableAttributedString()
+        let titleFont = NSFont.boldSystemFont(ofSize: 11)
+        let bodyFont = NSFont.systemFont(ofSize: 10)
+        let legalFont = NSFont.systemFont(ofSize: 9)
+
+        credits.append(NSAttributedString(
+            string: "PATENT & PROPRIETARY UTILITY NOTICE\n",
+            attributes: [.font: titleFont, .foregroundColor: NSColor.labelColor]
+        ))
+        credits.append(NSAttributedString(
+            string: "Genie is a proprietary spatial computing utility and developer workspace. Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party. United States & International Patents Pending. All rights reserved.\n\n",
+            attributes: [.font: bodyFont, .foregroundColor: NSColor.secondaryLabelColor]
+        ))
+
+        credits.append(NSAttributedString(
+            string: "COMMENTS, COMPLAINTS & ISSUE INQUIRIES\n",
+            attributes: [.font: titleFont, .foregroundColor: NSColor.labelColor]
+        ))
+        credits.append(NSAttributedString(
+            string: "For comments, suggestions, complaints, or technical issues related to the utility:\nEmail: contact@nicholasdudek.com\nWebsite: https://nicholasdudek.com\nDeveloper: Nicholas M. Dudek\n\n",
+            attributes: [.font: bodyFont, .foregroundColor: NSColor.secondaryLabelColor]
+        ))
+
+        credits.append(NSAttributedString(
+            string: "DISCLAIMER & AS-IS WARRANTY\n",
+            attributes: [.font: titleFont, .foregroundColor: NSColor.labelColor]
+        ))
+        credits.append(NSAttributedString(
+            string: "THE SOFTWARE AND UTILITY ARE PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+            attributes: [.font: legalFont, .foregroundColor: NSColor.secondaryLabelColor]
+        ))
+
+        var options: [NSApplication.AboutPanelOptionKey: Any] = [
+            .applicationName: "Genie",
+            .applicationVersion: "1.0",
+            .version: "Build 1.0",
+            .credits: credits
+        ]
+        options[NSApplication.AboutPanelOptionKey(rawValue: "Copyright")] = "Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party. All rights reserved."
+        NSApplication.shared.orderFrontStandardAboutPanel(options: options)
+    }
+
+    @objc func menuOpenSettings() {
+        FinderChatWindowManager.shared.show(settings: true)
+    }
+
+    @objc func menuToggleZenOverlay() {
+        SkyLightZenOverlayManager.shared.toggle()
+        HapticFeedback.selection()
+    }
+
+    @objc func menuToggleZenMode(_ sender: NSMenuItem) {
+        SkyLightZenOverlayManager.shared.toggle()
+        sender.state = SkyLightZenOverlayManager.shared.isOverlayActive ? .on : .off
+        HapticFeedback.selection()
+    }
+
+    @objc func menuToggleSound(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: PrefKey.soundEnabled)
+        UserDefaults.standard.set(!current, forKey: PrefKey.soundEnabled)
+        sender.state = !current ? .on : .off
+    }
+
+    @objc func menuToggleAtmosphere(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: PrefKey.smokeEffectsEnabled)
+        UserDefaults.standard.set(!current, forKey: PrefKey.smokeEffectsEnabled)
+        sender.state = !current ? .on : .off
+    }
+
+    @objc func menuToggleLiquidGlass(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: PrefKey.liquidGlassEnabled)
+        UserDefaults.standard.set(!current, forKey: PrefKey.liquidGlassEnabled)
+        sender.state = !current ? .on : .off
+    }
+
+    @objc func menuToggleAppleDock(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInChatBar)
+        UserDefaults.standard.set(!current, forKey: PrefKey.showMiniDockInChatBar)
+        sender.state = !current ? .on : .off
+    }
+
+    @objc func menuToggleSandbox(_ sender: NSMenuItem) {
+        let current = UserDefaults.standard.bool(forKey: PrefKey.agentSandboxEnabled)
+        UserDefaults.standard.set(!current, forKey: PrefKey.agentSandboxEnabled)
+        sender.state = !current ? .on : .off
     }
 
     private func setupGlobalDismissMonitor() {
@@ -950,6 +1223,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 Task { @MainActor [weak self] in
                     guard let self = self else { return }
                     var didDismiss = false
+                    if SkyLightZenOverlayManager.shared.isOverlayActive {
+                        SkyLightZenOverlayManager.shared.hide()
+                        didDismiss = true
+                    }
                     if FinderChatWindowManager.shared.isVisible {
                         FinderChatWindowManager.shared.hide()
                         didDismiss = true
@@ -977,6 +1254,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 return nil
             }
+            // 3. ⌥⌘Z: Toggle SkyLight Zen Mode Full-Screen Overlay
+            if event.modifierFlags.contains(.command) && event.modifierFlags.contains(.option) && event.charactersIgnoringModifiers?.lowercased() == "z" {
+                Task { @MainActor in
+                    SkyLightZenOverlayManager.shared.toggle()
+                    HapticFeedback.selection()
+                }
+                return nil
+            }
             return event
         }
     }
@@ -985,6 +1270,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let nc = NotificationCenter.default
 
         nc.addObserver(forName: NSNotification.Name("NexusClose"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.dismissMenuBarPopover() }
+        }
+
+        // Other half of the one-chat-at-a-time rule: the top dock posts this as
+        // it opens, and the dropdown steps aside. The forward direction lives in
+        // showLegacyMenuBarPanel, which dismisses the top dock.
+        nc.addObserver(forName: .genieDismissMenuBarDropdown, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in self?.dismissMenuBarPopover() }
         }
 
@@ -1309,6 +1601,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         print("GENIE: applicationWillTerminate entered — invalidating all timers and monitors")
+        GenieWorkspaceRestoreManager.shared.saveSnapshot()
         animTimer?.invalidate()
         animTimer = nil
         fileIPCSource?.cancel()
@@ -1321,6 +1614,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         GenieSleepPreventionManager.shared.disableSleepPrevention()
         GenieiMessageExtensionManager.shared.stopWatcher()
         GeniePhoneBridgeManager.shared.stopServer()
+        GenieSpeechRecognitionEngine.shared.stopListening()
+        GenieGlobalCursorFXOverlayManager.shared.stop()
         DesktopWindowManager.shared.cleanup()
     }
 }

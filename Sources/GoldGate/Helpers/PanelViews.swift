@@ -19,7 +19,6 @@ class MenuBarPopoverPanel: NSPanel, NSWindowDelegate {
         self.isMovableByWindowBackground = true
         self.minSize = NSSize(width: 460, height: 44)
         self.maxSize = NSSize(width: 2200, height: 1600)
-        self.showsResizeIndicator = false
         self.collectionBehavior = [
             .canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle, .stationary,
         ]

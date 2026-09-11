@@ -22,7 +22,10 @@ public struct RightEdgeDockTabsView: View {
     @AppStorage(PrefKey.dockActiveAppsOnly) var dockActiveAppsOnly: Bool = false
     @AppStorage(PrefKey.isChatLockedInPlace) private var isChatLockedInPlace: Bool = false
     @AppStorage(PrefKey.dockBackgroundOpacity) private var dockBackgroundOpacity: Double = 0.70
+    @AppStorage("genie.dock.pet.emoji") var dockPetEmoji: String = "🦊"
 
+    @State private var petBounce: Bool = false
+    @State private var petSpeechBubble: String? = nil
     @State private var hoveredItemId: String? = nil
     @State private var isDockHovered: Bool = false
     @State private var hoverDebounceTimer: Timer? = nil
@@ -126,16 +129,30 @@ public struct RightEdgeDockTabsView: View {
     }
 
     // MARK: - Auto-Hide / Edge Reveal
-    private func scheduleAutoHide() {
+    private func scheduleAutoHide(duration: TimeInterval = 6.0) {
         autoHideTimer?.invalidate()
-        autoHideTimer = Timer.scheduledTimer(withTimeInterval: 1.4, repeats: false) { _ in
+        guard !isChatLockedInPlace else {
+            isRevealed = true
+            return
+        }
+        autoHideTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { _ in
             Task { @MainActor in
-                guard !isDockHovered, hoveredItemId == nil,
+                guard !isChatLockedInPlace, !isDockHovered, hoveredItemId == nil,
                       !isRightChatDockOpen, !isRightAppsDockOpen else { return }
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
                     isRevealed = false
                 }
             }
+        }
+    }
+
+    private func revealAndScheduleTimer(duration: TimeInterval = 8.0) {
+        autoHideTimer?.invalidate()
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+            isRevealed = true
+        }
+        if !isChatLockedInPlace {
+            scheduleAutoHide(duration: duration)
         }
     }
 
@@ -149,11 +166,7 @@ public struct RightEdgeDockTabsView: View {
                 guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLoc) }) ?? NSScreen.main else { return }
                 let distanceFromRightEdge = screen.frame.maxX - mouseLoc.x
                 if distanceFromRightEdge <= 24, !isRevealed {
-                    autoHideTimer?.invalidate()
-                    autoHideTimer = nil
-                    withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
-                        isRevealed = true
-                    }
+                    revealAndScheduleTimer(duration: 8.0)
                 }
             }
         }
@@ -164,18 +177,76 @@ public struct RightEdgeDockTabsView: View {
         let isAppsActive = (desktopWindowManager.currentStation == .applications || isRightAppsDockOpen)
 
         VStack(alignment: .trailing, spacing: 5) {
-            // ── 1. GENIE LAUNCHER (reveals this dock) ──
+            // ── 0. LIVING DOCK PET COMPANION ──
+            Button(action: {
+                HapticFeedback.selection()
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.55)) {
+                    petBounce = true
+                }
+                let petPhrases = ["Woof! 🐾", "Mew! ✨", "Sovereign Mac Guard 🛡️", "Purr... 💜", "Ready! 🚀", "Master of Pixels 🎨"]
+                petSpeechBubble = petPhrases.randomElement()
+                revealAndScheduleTimer(duration: 8.0)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    petBounce = false
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    petSpeechBubble = nil
+                }
+            }) {
+                ZStack {
+                    if let bubble = petSpeechBubble {
+                        Text(bubble)
+                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color.black.opacity(0.85)).overlay(Capsule().stroke(Color.cyan.opacity(0.6), lineWidth: 0.8)))
+                            .offset(x: -54, y: 0)
+                            .transition(.opacity.combined(with: .scale))
+                    }
+                    Text(dockPetEmoji)
+                        .font(.system(size: 20))
+                        .scaleEffect(petBounce ? 1.35 : 1.0)
+                        .rotationEffect(.degrees(petBounce ? 12 : 0))
+                        .shadow(color: Color.purple.opacity(0.6), radius: 6)
+                }
+                .frame(width: 32, height: 32)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Your Living Dock Pet (Click to interact or feed)")
+            .contextMenu {
+                Text("Select Dock Pet Companion:")
+                ForEach(["🦊 Kitsune", "🐺 Cyber Wolf", "🐈‍⬛ Quantum Cat", "🐕 Shiba Inu", "🐉 Golden Dragon", "🦉 Celestial Owl", "🛸 Micro Drone", "🐋 Star Whale"], id: \.self) { petOption in
+                    Button(petOption) {
+                        if let first = petOption.first {
+                            dockPetEmoji = String(first)
+                        }
+                    }
+                }
+            }
+
+            // ── 1. GENIE DOCK / LOCK & UNLOCK TOGGLE ──
             dockShortcutButton(
                 id: "genie",
-                title: "Genie Dock",
-                iconName: "sparkles",
-                tintColor: .cyan,
-                isActive: isRightChatDockOpen || isRightAppsDockOpen
+                title: isChatLockedInPlace ? "Unlock Dock 🔒" : "Lock Dock 🔓",
+                iconName: isChatLockedInPlace ? "lock.fill" : "sparkles",
+                tintColor: isChatLockedInPlace ? .yellow : .cyan,
+                isActive: isRightChatDockOpen || isRightAppsDockOpen || isChatLockedInPlace
             ) {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                    isRightChatDockOpen = true
-                    isRightAppsDockOpen = false
-                }
+                HapticFeedback.selection()
+                // 1. Toggle Lock & Unlock
+                isChatLockedInPlace.toggle()
+                UserDefaults.standard.set(isChatLockedInPlace, forKey: PrefKey.isChatLockedInPlace)
+                NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockLock"), object: isChatLockedInPlace)
+
+                // 2. Always activate the Genie chat main desktop view first!
+                desktopWindowManager.switchToStation(.desktop)
+                finderChatManager.show(tab: .chat)
+                NSApp.activate(ignoringOtherApps: true)
+
+                // 3. Keep it open for a timer so we can activate the dock when we need to
+                revealAndScheduleTimer(duration: 8.0)
             }
 
             // ── 2. PRIMARY CHAT SHORTCUT (Consolidated Single Chat Window) ──
@@ -336,6 +407,18 @@ public struct RightEdgeDockTabsView: View {
             edgeRevealTimer = nil
             autoHideTimer?.invalidate()
             autoHideTimer = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusRevealDockWithTimer"))) { notif in
+            let dur = (notif.object as? Double) ?? 8.0
+            revealAndScheduleTimer(duration: dur)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusToggleDockLock"))) { notif in
+            if let locked = notif.object as? Bool {
+                isChatLockedInPlace = locked
+            } else {
+                isChatLockedInPlace.toggle()
+            }
+            revealAndScheduleTimer(duration: 8.0)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusRightDockScrollWheel"))) { notification in
             if let delta = notification.object as? CGFloat {

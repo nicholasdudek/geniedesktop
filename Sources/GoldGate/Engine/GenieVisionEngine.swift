@@ -227,6 +227,39 @@ public final class GenieVisionEngine: ObservableObject {
         return fullText
     }
 
+    // MARK: - App-Specific Window Optical Intelligence
+    /// Captures the primary window of a targeted process, extracts its window title, and runs Neural OCR
+    public func scanAppWindowAndRecognize(pid: pid_t) async -> (image: NSImage?, windowTitle: String?, ocrText: String) {
+        guard let winList = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            return (nil, nil, "")
+        }
+
+        var candidateWid: CGWindowID? = nil
+        var candidateTitle: String? = nil
+
+        for info in winList {
+            if let ownerPID = info[kCGWindowOwnerPID as String] as? pid_t, ownerPID == pid,
+               let wid = info[kCGWindowNumber as String] as? CGWindowID {
+                if let boundsDict = info[kCGWindowBounds as String] as? [String: Any],
+                   let w = boundsDict["Width"] as? CGFloat, w > 80,
+                   let h = boundsDict["Height"] as? CGFloat, h > 80 {
+                    candidateWid = wid
+                    candidateTitle = info[kCGWindowName as String] as? String
+                    break
+                }
+            }
+        }
+
+        guard let wid = candidateWid else { return (nil, nil, "") }
+        guard let cgImg = safeCGWindowListCreateImage(.null, .optionIncludingWindow, wid, [.bestResolution, .nominalResolution]) else {
+            return (nil, candidateTitle, "")
+        }
+
+        let nsImg = NSImage(cgImage: cgImg, size: NSSize(width: cgImg.width, height: cgImg.height))
+        let (fullText, _, _) = await performOCR(on: nsImg)
+        return (nsImg, candidateTitle, fullText)
+    }
+
     // MARK: - Persist Temporary Snapshot for Multimodal Attachment
     private func persistTemporarySnapshot(image: NSImage) -> String? {
         let tempDir = FileManager.default.temporaryDirectory

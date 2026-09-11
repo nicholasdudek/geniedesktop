@@ -1,0 +1,53 @@
+[
+  {
+    "id": "1",
+    "name": "App_Preview_1_Spatial_Canvas_1080p",
+    "title": "THE INSTANT SUMMON",
+    "subtitle": "Opening the Menu Bar Rail & 81-Screen Spatial Canvas",
+    "feature_title": "SPATIAL DESKTOP MATRIX",
+    "feature_desc": "Continuous coordinate mapping across an infinite 81-screen plane with 120 FPS Metal rendering.",
+    "bg_wallpaper": "GenieAerial4K.jpg",
+    "main_capture": "21_spatial_desktop_grid.png",
+    "accent": "#f4c375",
+    "pills": [
+      "81-Screen Universe",
+      "Sub-35MB Footprint",
+      "Zero Telemetry"
+    ],
+    "callout": "Tap Cmd+Shift+Space to expand into infinite space"
+  },
+  {
+    "id": "2",
+    "name": "App_Preview_2_Living_Themes_1080p",
+    "title": "AUTONOMOUS CREATION STUDIO",
+    "subtitle": "Opening Genie Chat & Dual-Tab Live Web Studio",
+    "feature_title": "VISION AI & LIVE WEB STUDIO",
+    "feature_desc": "On-device reasoning with real-time tool execution, live HTML5/CSS preview, and instant source editing.",
+    "bg_wallpaper": "GoldenGateSunset.jpg",
+    "main_capture": "19_chat_dual_tab_preview.png",
+    "accent": "#60a5fa",
+    "pills": [
+      "Local Vision Model",
+      "Live Split Preview",
+      "Local Ollama Routing"
+    ],
+    "callout": "Instant live rendering of code creations"
+  },
+  {
+    "id": "3",
+    "name": "App_Preview_3_Formations_And_Controls_1080p",
+    "title": "SOVEREIGN POWER STATION",
+    "subtitle": "Opening World Clock Pillows & Dedicated Linux Hypervisor",
+    "feature_title": "OLED CLOCKS & HYPERVISOR",
+    "feature_desc": "Specular rim blackout clock cards and direct Apple Silicon virtualization kernel for Linux clones.",
+    "bg_wallpaper": "SonomaHorizon.jpg",
+    "main_capture": "18_hypervisor_ai_stations.png",
+    "accent": "#34d399",
+    "pills": [
+      "Direct Virtualization",
+      "Time Travel Scrubber",
+      "Parallel Thread Sentinel"
+    ],
+    "callout": "Spin up isolated Linux clones in milliseconds"
+  }
+]

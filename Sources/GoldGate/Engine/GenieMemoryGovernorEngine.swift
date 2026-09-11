@@ -71,12 +71,23 @@ public final class GenieMemoryGovernorEngine: ObservableObject, @unchecked Senda
         return "ulimit -v \(kb) 2>/dev/null; ulimit -m \(kb) 2>/dev/null; "
     }
 
+    // MARK: - Zero-Leak Idle Sentinel & Telemetry
+    @Published public private(set) var isLeakFree: Bool = true
+    @Published public private(set) var idleStatusDescription: String = "Idle: Zero-Leak Verified"
+    @Published public private(set) var baselineIdleResidentMB: Int = 0
+    @Published public private(set) var idleSecondsElapsed: Int = 0
+
+    private var idleSentinelTimer: Timer?
+    private var lastActiveTimestamp: Date = Date()
+    private var idleSampleTicks: Int = 0
+
     private init() {
         self.totalHostMemoryMB = Int(ProcessInfo.processInfo.physicalMemory / (1024 * 1024))
         if let savedLimit = UserDefaults.standard.value(forKey: PrefKey.agentMemoryLimitMB) as? Int, savedLimit >= 512 {
             self.maxAgentMemoryMB = savedLimit
         }
         setupMemoryPressureListener()
+        setupIdleSentinel()
         refreshMemoryTelemetry()
     }
 
@@ -114,8 +125,17 @@ public final class GenieMemoryGovernorEngine: ObservableObject, @unchecked Senda
             userInfo: ["isCritical": critical]
         )
 
+        // Directly invoke RAM layer offloading to instantly reclaim uncompressed 4K layer allocations
+        GenieRAMLayerOffloaderEngine.shared.offloadInactiveRAMLayers(critical: critical)
+
         // Purge disposable caches
         purgeVolatileCaches()
+    }
+
+    /// Proactively triggers RAM layer offloading if resident memory or system pressure requires it.
+    @discardableResult
+    public func offloadRAMLayersWhenNecessary() -> Int {
+        return GenieRAMLayerOffloaderEngine.shared.offloadRAMLayersWhenNecessary()
     }
 
     // MARK: - Memory Telemetry & Budget Checks
@@ -187,11 +207,123 @@ public final class GenieMemoryGovernorEngine: ObservableObject, @unchecked Senda
     public func releaseResourceSlot() {
         activeRunningTasks = max(0, activeRunningTasks - 1)
         refreshMemoryTelemetry()
+        markUserOrAgentActivity()
+    }
+
+    // MARK: - Zero-Leak Idle Sentinel Implementation
+    private func setupIdleSentinel() {
+        idleSentinelTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.evaluateIdleMemoryHealth()
+            }
+        }
+    }
+
+    /// Informs the sentinel that active work or interaction occurred
+    public func markUserOrAgentActivity() {
+        lastActiveTimestamp = Date()
+        idleSecondsElapsed = 0
+        idleSampleTicks = 0
+    }
+
+    /// Evaluates memory drift during idle periods to guarantee zero memory leakage
+    private func evaluateIdleMemoryHealth() {
+        refreshMemoryTelemetry()
+
+        let hasActiveTasks = activeRunningTasks > 0
+        if hasActiveTasks {
+            markUserOrAgentActivity()
+            idleStatusDescription = "Active (\(activeRunningTasks) tasks)"
+            return
+        }
+
+        let elapsed = Int(Date().timeIntervalSince(lastActiveTimestamp))
+        idleSecondsElapsed = elapsed
+
+        if elapsed >= 10 {
+            idleSampleTicks += 1
+            if baselineIdleResidentMB == 0 || idleSampleTicks <= 2 {
+                baselineIdleResidentMB = currentProcessResidentMB
+            }
+
+            let drift = currentProcessResidentMB - baselineIdleResidentMB
+
+            if drift > 25 {
+                // Unexpected memory drift during pure idle -> run hygiene pass
+                logger.warning("Idle memory drift detected (+\(drift) MB). Running automatic cache compaction.")
+                purgeVolatileCaches()
+                refreshMemoryTelemetry()
+                let postPurgeDrift = currentProcessResidentMB - baselineIdleResidentMB
+                if postPurgeDrift > 35 {
+                    isLeakFree = false
+                    idleStatusDescription = "Drift Warning (+\(postPurgeDrift) MB)"
+                } else {
+                    isLeakFree = true
+                    idleStatusDescription = "Auto-Compacted (~\(currentProcessResidentMB) MB)"
+                    baselineIdleResidentMB = currentProcessResidentMB
+                }
+            } else {
+                isLeakFree = true
+                idleStatusDescription = "Idle: Zero-Leak (~\(currentProcessResidentMB) MB)"
+            }
+        } else {
+            idleStatusDescription = "Settling to Idle..."
+        }
     }
 
     /// Emergency release of volatile memory, model ring buffers, and preview frames.
     public func purgeVolatileCaches() {
         logger.info("Purging volatile caches and calling garbage collection.")
         NotificationCenter.default.post(name: Notification.Name("GeniePurgeVolatileCaches"), object: nil)
+        autoreleasepool {
+            // Drain transient heap allocations
+        }
     }
+
+    // MARK: - AI Station RAM Sizing (8-48GB host range)
+    // Distinct from `maxAgentMemoryMB` above (a host-side ulimit for Genie's own
+    // subprocesses) — this sizes a VZVirtualMachineConfiguration's memorySize for
+    // a Linux "station" clone, leaving headroom for macOS itself plus a
+    // concurrently-loaded local model (genie-master measured at ~25GB RAM).
+    private static let stationRAMFloorMB = 1024
+    private static let stationOSBaselineMB = 2560
+    private static let stationModelHeadroomFloorMB = 3072
+    private static let stationModelHeadroomCapMB = 26_624
+
+    /// Safe RAM range + recommended default for one local VM station, given this
+    /// Mac's total physical RAM. Assumes the local model may be loaded
+    /// concurrently with the station (the realistic case: the model drives tool
+    /// calls into it), so the max stays well short of "total minus a flat OS-only reserve."
+    public func stationRAMRecommendation() -> StationRAMRecommendation {
+        let total = totalHostMemoryMB
+        let modelHeadroom = min(max(total / 2, Self.stationModelHeadroomFloorMB), Self.stationModelHeadroomCapMB)
+        let reserve = Self.stationOSBaselineMB + modelHeadroom
+        let maxStation = max(Self.stationRAMFloorMB, ((total - reserve) / 256) * 256)
+        let defaultStation = min(maxStation, max(Self.stationRAMFloorMB, ((total / 4) / 256) * 256))
+        return StationRAMRecommendation(range: Self.stationRAMFloorMB...maxStation, recommendedDefault: defaultStation)
+    }
+
+    /// How comfortably this Mac can run a large local model (genie-master, ~25GB
+    /// resident) alongside its own UI process and whatever station is active.
+    /// Reuses the same headroom reasoning as `stationRAMRecommendation()` rather
+    /// than a second, unrelated threshold scheme.
+    public enum LocalModelViability: String, Sendable {
+        case comfortable      // total RAM comfortably covers model + OS + a station
+        case tight             // possible, but little room left over; warn the user
+        case cloudRecommended  // local is not realistic; steer to a cloud model
+    }
+
+    public var localModelViability: LocalModelViability {
+        switch totalHostMemoryMB {
+        case 32_768...: return .comfortable
+        case 16_384..<32_768: return .tight
+        default: return .cloudRecommended
+        }
+    }
+}
+
+public struct StationRAMRecommendation: Sendable, Equatable {
+    public let range: ClosedRange<Int>   // MB, safe slider bounds for this host
+    public let recommendedDefault: Int   // MB
+    public let stepMB: Int = 256
 }

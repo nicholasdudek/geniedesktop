@@ -2,11 +2,12 @@ import Foundation
 
 /// Single authority on where Genie's agent is allowed to create or modify files.
 ///
-/// The policy is deliberately narrow: **the Desktop is Genie's workspace, and nothing
-/// else is.** The agent may create, edit, and delete freely under `~/Desktop`, plus the
+/// The policy: **the Desktop is Genie's workspace, and installed apps under
+/// `/Applications` are its automation target — nothing else is.** The agent may
+/// create, edit, and delete freely under `~/Desktop` and `/Applications`, plus the
 /// process-scoped temporary directories it needs to stage work. Every other path —
 /// including the rest of the home directory (`~/Library`, `~/.ssh`, `~/Documents`) and
-/// all system locations — is refused.
+/// all other system locations — is refused.
 ///
 /// This guards *in-process* Swift writes. Subprocesses are separately confined by the
 /// `sandbox-exec` profile in `GenieSandboxedExecutionEngine`, which is kept in agreement
@@ -47,8 +48,13 @@ public enum GenieDesktopFileGuard {
     /// Paths that must never be written even if some future change widens the roots.
     private static let forbiddenPrefixes: [String] = [
         "/System", "/usr", "/bin", "/sbin", "/Library/LaunchDaemons",
-        "/Library/LaunchAgents", "/private/etc", "/Applications",
+        "/Library/LaunchAgents", "/private/etc",
     ]
+
+    /// Installed applications. Writable so Genie's automation tools can modify an
+    /// app's own files (preferences, plugins, support files) when the user has
+    /// approved automating that app — see `GenieAppAutomationApprovalGate`.
+    private static let applicationsRoot = URL(fileURLWithPath: "/Applications").resolvingSymlinksInPath()
 
     /// True when `url` is a path Genie's agent may create or modify.
     ///
@@ -70,10 +76,18 @@ public enum GenieDesktopFileGuard {
             throw Violation.systemPath(attempted: path)
         }
 
-        let permitted = [desktopRoot] + scratchRoots
+        let permitted = [desktopRoot, applicationsRoot] + scratchRoots
         for root in permitted {
             let rootPath = root.path
             if path == rootPath || path.hasPrefix(rootPath + "/") { return resolved }
+        }
+
+        // Check if authorized by User File Permissions Manager or Permissions Agent
+        if GenieFilePermissionManager.shared.isPathPermitted(path) {
+            return resolved
+        }
+        if GeniePermissionsAgent.shared.isFileWritePermitted(to: resolved) {
+            return resolved
         }
 
         throw Violation.outsideDesktop(attempted: path)

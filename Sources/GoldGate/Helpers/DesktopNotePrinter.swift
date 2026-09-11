@@ -396,6 +396,18 @@ public struct GenieStandardDirectories {
         return url
     }
 
+    public static var extensionsURL: URL {
+        let url = rootURL.appendingPathComponent("Extensions")
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    public static var environmentsURL: URL {
+        let url = rootURL.appendingPathComponent("Environments")
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
     public static func chatSessionFolderURL(sessionId: UUID, title: String? = nil) -> (root: URL, documents: URL, presentations: URL, images: URL, notes: URL) {
         let cleanTitle: String
         if let title = title, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

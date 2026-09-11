@@ -631,7 +631,12 @@ public struct AIEmotionPlayerWindowView: View {
                 GenieCreationDualTabPreviewView(
                     title: localModels.activeCreationTitle.isEmpty ? "HTML Creation" : localModels.activeCreationTitle,
                     rawHtml: customHtmlContent,
-                    emotion: currentEmotion
+                    emotion: currentEmotion,
+                    onClose: {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                            currentMediaMode = .gradientShader
+                        }
+                    }
                 )
             case .videoMovie:
                 MovieLoopPlayerView(videoUrl: mediaUrl)
@@ -805,6 +810,11 @@ public struct AIEmotionPlayerWindowView: View {
 public struct InteractiveHtmlWebView: NSViewRepresentable {
     public let htmlString: String
     public let emotionColorHex: String
+    public var customBaseURL: URL? = nil
+
+    private var effectiveBaseURL: URL {
+        GenieWebAssetResolver.effectiveBaseURL(for: customBaseURL)
+    }
 
     public func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -812,6 +822,7 @@ public struct InteractiveHtmlWebView: NSViewRepresentable {
 
     public final class Coordinator {
         var lastLoadedHtml: String = ""
+        var isInitialLoaded: Bool = false
     }
 
     public func makeNSView(context: Context) -> WKWebView {
@@ -820,17 +831,52 @@ public struct InteractiveHtmlWebView: NSViewRepresentable {
         config.defaultWebpagePreferences.allowsContentJavaScript = true
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground") // Transparent background
-        context.coordinator.lastLoadedHtml = htmlString
-        let desktopURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
-        webView.loadHTMLString(htmlString, baseURL: desktopURL)
+
+        let effectiveHtml = LivePreviewFrameRetainer.shared.update(html: htmlString)
+        context.coordinator.lastLoadedHtml = effectiveHtml
+        context.coordinator.isInitialLoaded = true
+        let baseURL = effectiveBaseURL
+        webView.loadHTMLString(effectiveHtml.isEmpty ? "<!DOCTYPE html><html><body style='background:transparent;'></body></html>" : effectiveHtml, baseURL: baseURL)
         return webView
     }
 
     public func updateNSView(_ nsView: WKWebView, context: Context) {
-        if context.coordinator.lastLoadedHtml != htmlString {
-            context.coordinator.lastLoadedHtml = htmlString
-            let desktopURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
-            nsView.loadHTMLString(htmlString, baseURL: desktopURL)
+        let effectiveHtml = LivePreviewFrameRetainer.shared.update(html: htmlString)
+        guard !effectiveHtml.isEmpty else { return }
+
+        if context.coordinator.lastLoadedHtml != effectiveHtml {
+            context.coordinator.lastLoadedHtml = effectiveHtml
+            let baseURL = effectiveBaseURL
+
+            if context.coordinator.isInitialLoaded {
+                // In-place document write prevents flashing white / destroying scroll position
+                if let data = try? JSONSerialization.data(withJSONObject: [effectiveHtml]),
+                   let jsonArray = String(data: data, encoding: .utf8) {
+                    let js = """
+                    (() => {
+                        try {
+                            const html = (\(jsonArray))[0];
+                            document.open();
+                            document.write(html);
+                            document.close();
+                        } catch (e) {
+                            console.error("Live HTML update failed:", e);
+                            throw e;
+                        }
+                    })();
+                    """
+                    nsView.evaluateJavaScript(js) { _, err in
+                        if err != nil {
+                            nsView.loadHTMLString(effectiveHtml, baseURL: baseURL)
+                        }
+                    }
+                } else {
+                    nsView.loadHTMLString(effectiveHtml, baseURL: baseURL)
+                }
+            } else {
+                context.coordinator.isInitialLoaded = true
+                nsView.loadHTMLString(effectiveHtml, baseURL: baseURL)
+            }
         }
     }
 }
@@ -911,11 +957,13 @@ public struct ImageGifPlayerView: View {
 
     public var body: some View {
         ZStack {
-            if let url = imageUrl, let image = NSImage(contentsOf: url) {
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .padding(8)
+            if let url = imageUrl {
+                GenieAnimatedImageView(
+                    url: url,
+                    scaling: .scaleProportionallyUpOrDown,
+                    animates: true
+                )
+                .padding(8)
             } else {
                 // Dynamic Emotion Emblem Placeholder
                 VStack(spacing: 8) {
@@ -924,7 +972,7 @@ public struct ImageGifPlayerView: View {
                         .foregroundColor(emotion.accentColor)
                         .shadow(color: emotion.accentColor, radius: 8)
 
-                    Text("Drop or Select any .gif, .png, .mov or .html file")
+                    Text("Drop or Select any .gif, .png, .jpg, .mov or .html file")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.white.opacity(0.70))
                 }
@@ -1224,6 +1272,8 @@ public struct MiniWebKitRepresentable: NSViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         if browserEngineMode.contains("Safari") {
             webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"
+        } else if browserEngineMode.contains("VM") || browserEngineMode.contains("Sandbox") {
+            webView.customUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
         } else {
             webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
         }
@@ -1519,13 +1569,19 @@ extension Color {
     }
 }
 
-// MARK: - Interactive Web Search & Link Tool Card
+// MARK: - Interactive Web Search & Link Tool Card (Browser DOM Retrieval Upgraded)
 public struct WebToolCardView: View {
     let queryOrUrl: String
+    @ObservedObject private var retrieval = GenieBrowserDOMRetrievalManager.shared
     @State private var isHovered: Bool = false
+    @State private var isExpanded: Bool = false
 
     private var isURL: Bool {
         queryOrUrl.hasPrefix("http://") || queryOrUrl.hasPrefix("https://")
+    }
+
+    private var item: GenieRetrievedWebItem? {
+        retrieval.retrievedItems[queryOrUrl]
     }
 
     public init(queryOrUrl: String) {
@@ -1533,64 +1589,226 @@ public struct WebToolCardView: View {
     }
 
     public var body: some View {
-        Button(action: {
-            HapticFeedback.selection()
-            if isURL, let url = URL(string: queryOrUrl) {
-                MiniBrowserManager.shared.browse(url: url)
-            } else {
-                MiniBrowserManager.shared.search(query: queryOrUrl)
-            }
-            NotificationCenter.default.post(
-                name: NSNotification.Name("NexusOpenMiniBrowser"),
-                object: queryOrUrl
-            )
-        }) {
-            HStack(spacing: 7) {
-                ZStack {
-                    Circle()
-                        .fill(Color.cyan.opacity(isHovered ? 0.35 : 0.18))
-                        .frame(width: 20, height: 20)
-                    Image(systemName: isURL ? "link" : "globe")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.cyan)
-                }
+        VStack(alignment: .leading, spacing: 6) {
+            // Main clickable bar
+            HStack(spacing: 8) {
+                // Leading: Thumbnail Image or Site Favicon/Icon
+                leadingMediaThumbnail
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(isURL ? "Web Link" : "Internet Search")
-                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                        .foregroundColor(.cyan.opacity(0.85))
-                    Text(queryOrUrl)
-                        .font(.system(size: 10.5, weight: .medium))
+                // Center: Domain badge, Decoded Title, and DOM Telemetry
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 5) {
+                        Text(item?.domain.isEmpty == false ? item!.domain : (isURL ? "Web Link" : "Internet Search"))
+                            .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                            .foregroundColor(.cyan.opacity(0.90))
+
+                        if let count = item?.domElementsCount, count > 0 {
+                            Text("• \(count) DOM items")
+                                .font(.system(size: 8, weight: .medium, design: .monospaced))
+                                .foregroundColor(.cyan.opacity(0.70))
+                        }
+
+                        if let latency = item?.latencyMs, latency > 0 {
+                            Text("• \(Int(latency))ms")
+                                .font(.system(size: 8, weight: .medium, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.40))
+                        }
+
+                        if item?.isSearching == true {
+                            ProgressView()
+                                .controlSize(.mini)
+                                .scaleEffect(0.6)
+                        }
+                    }
+
+                    Text(item?.title.isEmpty == false ? item!.title : queryOrUrl)
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.white.opacity(0.95))
-                        .lineLimit(1)
+                        .lineLimit(isExpanded ? 3 : 1)
+
+                    if !isExpanded, let snippet = item?.snippet, !snippet.isEmpty {
+                        Text(snippet)
+                            .font(.system(size: 9.5, weight: .regular))
+                            .foregroundColor(.white.opacity(0.65))
+                            .lineLimit(1)
+                    }
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
-                HStack(spacing: 3) {
-                    Text(isURL ? "Open" : "Search")
-                        .font(.system(size: 9.5, weight: .semibold))
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 8, weight: .bold))
+                // Trailing actions
+                HStack(spacing: 5) {
+                    // Expand/collapse snippet toggle
+                    if let snippet = item?.snippet, !snippet.isEmpty {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                isExpanded.toggle()
+                            }
+                            HapticFeedback.tick()
+                        }) {
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 8.5, weight: .bold))
+                                .foregroundColor(.white.opacity(0.70))
+                                .frame(width: 20, height: 20)
+                                .background(Circle().fill(Color.white.opacity(0.08)))
+                        }
+                        .buttonStyle(.plain)
+                        .help(isExpanded ? "Collapse Details" : "Expand Summary")
+                    }
+
+                    // Open Button
+                    Button(action: {
+                        HapticFeedback.selection()
+                        if isURL, let url = URL(string: queryOrUrl) {
+                            MiniBrowserManager.shared.browse(url: url)
+                        } else {
+                            MiniBrowserManager.shared.search(query: queryOrUrl)
+                        }
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("NexusOpenMiniBrowser"),
+                            object: queryOrUrl
+                        )
+                    }) {
+                        HStack(spacing: 3) {
+                            Text(isURL ? "Open" : "Search")
+                                .font(.system(size: 9.5, weight: .semibold))
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 8, weight: .bold))
+                        }
+                        .foregroundColor(.cyan)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3.5)
+                        .background(Capsule().fill(Color.cyan.opacity(isHovered ? 0.30 : 0.16)))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .foregroundColor(.cyan)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2.5)
-                .background(Capsule().fill(Color.cyan.opacity(isHovered ? 0.30 : 0.15)))
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(Color.black.opacity(0.35))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .strokeBorder(Color.cyan.opacity(isHovered ? 0.50 : 0.25), lineWidth: 0.6)
-                    )
-            )
+
+            // Expanded Detail View: Rich Summary & DOM Inspector Controls
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    Divider().opacity(0.18)
+
+                    if let snippet = item?.snippet, !snippet.isEmpty {
+                        Text(snippet)
+                            .font(.system(size: 10, weight: .regular))
+                            .foregroundColor(.white.opacity(0.85))
+                            .lineSpacing(2)
+                    }
+
+                    HStack(spacing: 8) {
+                        // DOM Inspector Button
+                        Button(action: {
+                            HapticFeedback.selection()
+                            if isURL, let url = URL(string: queryOrUrl) {
+                                MiniBrowserManager.shared.browse(url: url)
+                            } else {
+                                MiniBrowserManager.shared.search(query: queryOrUrl)
+                            }
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("NexusOpenMiniBrowser"),
+                                object: queryOrUrl
+                            )
+                            Task {
+                                try? await Task.sleep(nanoseconds: 600_000_000)
+                                _ = await GenieHTMLBrowserDOMWatcherEngine.shared.scanLiveDOM()
+                            }
+                        }) {
+                            Label("Inspect DOM", systemImage: "bolt.horizontal.fill")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Color.cyan.opacity(0.15)))
+                        }
+                        .buttonStyle(.plain)
+
+                        // Copy Link/Query
+                        Button(action: {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(queryOrUrl, forType: .string)
+                            HapticFeedback.tick()
+                        }) {
+                            Label("Copy Link", systemImage: "doc.on.doc")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.70))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Color.white.opacity(0.08)))
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        // Raw URL or Query
+                        Text(queryOrUrl)
+                            .font(.system(size: 8.5, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.40))
+                            .lineLimit(1)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.black.opacity(isHovered ? 0.45 : 0.35))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.cyan.opacity(isHovered ? 0.50 : 0.25), lineWidth: 0.6)
+                )
+        )
         .onHover { h in isHovered = h }
+        .onAppear {
+            retrieval.retrieve(queryOrUrl: queryOrUrl)
+        }
+    }
+
+    @ViewBuilder
+    private var leadingMediaThumbnail: some View {
+        if let previewURL = item?.previewImageURL, let img = retrieval.cachedImage(for: previewURL) {
+            Image(nsImage: img)
+                .resizable()
+                .scaledToFill()
+                .frame(width: isExpanded ? 52 : 36, height: isExpanded ? 52 : 36)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.20), lineWidth: 0.5)
+                )
+        } else if let previewURL = item?.previewImageURL, let url = URL(string: previewURL) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: isExpanded ? 52 : 36, height: isExpanded ? 52 : 36)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.20), lineWidth: 0.5)
+                        )
+                default:
+                    fallbackIconBadge
+                }
+            }
+        } else {
+            fallbackIconBadge
+        }
+    }
+
+    private var fallbackIconBadge: some View {
+        ZStack {
+            Circle()
+                .fill(Color.cyan.opacity(isHovered ? 0.35 : 0.18))
+                .frame(width: 24, height: 24)
+            Image(systemName: isURL ? "link" : "globe")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.cyan)
+        }
     }
 }
 
@@ -1599,7 +1817,12 @@ public struct CompactChatStreamView: View {
     let emotion: AIEmotionType
     var showHeader: Bool
     @ObservedObject var localModels = LocalModelManager.shared
+    @ObservedObject var appearanceDetector = GenieSystemAppearanceDetector.shared
+    @AppStorage(PrefKey.isTerminalBannerVisible) private var isTerminalBannerVisible: Bool = true
+    @AppStorage(PrefKey.chatZoomLevel) private var chatZoomLevel: Double = 1.0
     @State private var isThinkingExpanded: Bool = false
+    @State private var autoScrollEnabled: Bool = true
+    @State private var expandedMessageIDs: Set<UUID> = []
     @State private var statusFeedback: String? = nil
     @State private var feedbackTimer: Timer? = nil
 
@@ -1608,81 +1831,358 @@ public struct CompactChatStreamView: View {
         self.showHeader = showHeader
     }
 
+    private func zoomIn() {
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
+            chatZoomLevel = min(2.0, (chatZoomLevel + 0.10))
+        }
+        HapticFeedback.selection()
+    }
+
+    private func zoomOut() {
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
+            chatZoomLevel = max(0.70, (chatZoomLevel - 0.10))
+        }
+        HapticFeedback.selection()
+    }
+
+    private func resetZoom() {
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
+            chatZoomLevel = 1.0
+        }
+        HapticFeedback.selection()
+    }
+
+    // MARK: - 🎛️ Terminal Slide Drawer Handle & Chat Zoom Controls Bar
+    private var terminalAndZoomControlBar: some View {
+        HStack(spacing: 6) {
+            // Terminal Slide Toggle
+            Button(action: {
+                HapticFeedback.selection()
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                    isTerminalBannerVisible.toggle()
+                }
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: "terminal.fill")
+                        .font(.system(size: 8.5))
+                        .foregroundColor(.cyan)
+                    Text("Terminal Shell")
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.85))
+                    Text("100% LOCAL")
+                        .font(.system(size: 7.5, weight: .heavy, design: .monospaced))
+                        .foregroundColor(.green.opacity(0.85))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(Color.green.opacity(0.18)))
+                    Image(systemName: isTerminalBannerVisible ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 7.5, weight: .bold))
+                        .foregroundColor(.white.opacity(0.60))
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color.white.opacity(0.06)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+            .help(isTerminalBannerVisible ? "Slide up Terminal Shell (leaves messages in place)" : "Slide down Terminal Shell & quick actions")
+
+            Spacer()
+
+            // ↕️ Slide drawer grip handle
+            Capsule()
+                .fill(Color.white.opacity(0.26))
+                .frame(width: 28, height: 3.5)
+                .help("Drag up/down to slide Terminal Shell")
+
+            Spacer()
+
+            // 📋 Copy & Paste Whole Chat Pills
+            HStack(spacing: 3) {
+                Button(action: {
+                    if localModels.copyWholeChat() {
+                        showFeedback("Copied whole chat! 📋")
+                    } else {
+                        showFeedback("No messages to copy!")
+                    }
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 7.5))
+                        Text("Copy")
+                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.white.opacity(0.75))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2.5)
+                    .background(Capsule().fill(Color.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+                .help("Copy Whole Chat (⌘⇧C)")
+
+                Button(action: {
+                    let res = localModels.pasteWholeChat()
+                    if res.success {
+                        showFeedback("Pasted whole chat (\(res.count) msgs) 📋✨")
+                    } else {
+                        showFeedback("No chat transcript on clipboard ⚠️")
+                    }
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "doc.on.clipboard")
+                            .font(.system(size: 7.5))
+                        Text("Paste")
+                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.cyan)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2.5)
+                    .background(Capsule().fill(Color.cyan.opacity(0.14)))
+                }
+                .buttonStyle(.plain)
+                .help("Paste Whole Chat (⌘⇧V)")
+            }
+            .padding(.horizontal, 3)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Color.white.opacity(0.04)))
+            .overlay(Capsule().stroke(Color.white.opacity(0.10), lineWidth: 0.5))
+
+            // ⚡ Real-Time Token Generation Speed Telemetry (tkps)
+            if localModels.lastTokensPerSecond > 0 || localModels.isGenerating {
+                HStack(spacing: 2.5) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundColor(localModels.isGenerating ? .yellow : .cyan)
+                    Text(String(format: "%.1f tkps", localModels.lastTokensPerSecond))
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundColor(localModels.isGenerating ? .yellow : .white.opacity(0.90))
+                }
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2.5)
+                .background(Capsule().fill(Color.white.opacity(0.06)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+                .help("Generation Speed: \(String(format: "%.1f", localModels.lastTokensPerSecond)) tokens/second")
+            }
+
+            // 🔍 Live Chat Zoom In / Zoom Out Controls
+            HStack(spacing: 3) {
+                Button(action: zoomOut) {
+                    Image(systemName: "minus")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.white.opacity(0.70))
+                        .frame(width: 17, height: 17)
+                        .background(Circle().fill(Color.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("-", modifiers: .command)
+                .help("Zoom Out (⌘-)")
+
+                Button(action: resetZoom) {
+                    Text("\(Int((chatZoomLevel * 100).rounded()))%")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(chatZoomLevel != 1.0 ? .cyan : .white.opacity(0.75))
+                        .frame(minWidth: 32)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("0", modifiers: .command)
+                .help("Reset Zoom to 100% (⌘0)")
+
+                Button(action: zoomIn) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.white.opacity(0.70))
+                        .frame(width: 17, height: 17)
+                        .background(Circle().fill(Color.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("+", modifiers: .command)
+                .help("Zoom In (⌘+)")
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Color.white.opacity(0.06)))
+            .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.5))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
+        .background(Color.black.opacity(0.20))
+        .gesture(
+            DragGesture(minimumDistance: 10)
+                .onEnded { value in
+                    if value.translation.height < -15 && isTerminalBannerVisible {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                            isTerminalBannerVisible = false
+                        }
+                        HapticFeedback.selection()
+                    } else if value.translation.height > 15 && !isTerminalBannerVisible {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                            isTerminalBannerVisible = true
+                        }
+                        HapticFeedback.selection()
+                    }
+                }
+        )
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
+            // ── 🍎 Authentic Apple Menu Bar Inside Chat ──
+            GenieChatAppleMenuBarView()
+
             // ── Chat Management Header Bar (Optional) ──
             if showHeader {
                 chatManagementHeader
             }
 
-            // ── Scrollable Chat Messages Stream ──
-            ScrollViewReader { proxy in
-                ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 10) {
-                        Color.clear.frame(height: 6)
-
-                        if localModels.chatHistory.isEmpty && !localModels.isGenerating {
-                            emptyStateView
-                        } else {
-                            ForEach(localModels.chatHistory) { msg in
-                                compactMessageBubble(for: msg)
-                                    .id(msg.id.uuidString)
-                                    .trackChatRenderFocus(message: msg, space: "genieChatScroll")
-                            }
-
-                            if localModels.isGenerating {
-                                compactActiveGeneratingBubble
-                                    .id("active-generating-bubble")
-                            } else if !localModels.currentResponse.isEmpty && localModels.chatHistory.last?.content != localModels.currentResponse {
-                                compactMessageBubble(for: ChatMessage(role: "assistant", content: localModels.currentResponse, model: localModels.selectedModelDisplayName))
-                                    .id("streaming-fallback")
-                            }
-                        }
-
-                        Color.clear.frame(height: 8)
-                            .id("bottom-anchor")
+            // ── 📟 Slideable Terminal Shell & Quick Actions Drawer ──
+            // Anchored in place above messages so scrollbar only scrolls messages below it
+            if isTerminalBannerVisible {
+                GenieTerminalSplashView(compact: !localModels.chatHistory.isEmpty, onDismiss: {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                        isTerminalBannerVisible = false
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                }
-                .publishFocusedChatRender(space: "genieChatScroll") { localModels.chatHistory }
-                .overlay(alignment: .bottomTrailing) {
-                    if localModels.chatHistory.count > 4 {
-                        Button(action: {
-                            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
-                                proxy.scrollTo("bottom-anchor", anchor: .bottom)
+                })
+                .gesture(
+                    DragGesture(minimumDistance: 20)
+                        .onEnded { value in
+                            if value.translation.height < -25 {
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                    isTerminalBannerVisible = false
+                                }
+                                HapticFeedback.selection()
                             }
-                            HapticFeedback.tick()
-                        }) {
-                            HStack(spacing: 3) {
-                                Image(systemName: "arrow.down.to.line")
-                                    .font(.system(size: 8, weight: .bold))
-                                Text("Latest")
-                                    .font(.system(size: 8.5, weight: .semibold, design: .rounded))
-                            }
-                            .foregroundColor(.white.opacity(0.9))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3.5)
-                            .background(Capsule().fill(Color.black.opacity(0.70)))
-                            .overlay(Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.5))
-                            .shadow(color: Color.black.opacity(0.35), radius: 4, y: 2)
                         }
-                        .buttonStyle(.plain)
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
+            }
+
+            // ── 🎛️ Terminal Slide Drawer Handle & Chat Zoom Controls Bar ──
+            terminalAndZoomControlBar
+
+            // ── Scrollable Chat Messages Stream (Scrollbar breaks here, leaving terminal in place) ──
+            GeometryReader { geo in
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: true) {
+                        LazyVStack(spacing: 10) {
+                            Color.clear.frame(height: 6)
+
+                            if localModels.chatHistory.isEmpty && !localModels.isGenerating {
+                                if !isTerminalBannerVisible {
+                                    VStack(spacing: 10) {
+                                        Image(systemName: "sparkles")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(.cyan.opacity(0.7))
+                                        Text("Ask Genie anything or tap Terminal Shell above to view quick tools")
+                                            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                                            .foregroundColor(.white.opacity(0.55))
+                                            .multilineTextAlignment(.center)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.top, 40)
+                                    .padding(.horizontal, 24)
+                                }
+                            } else {
+                                ForEach(localModels.chatHistory) { msg in
+                                    compactMessageBubble(for: msg)
+                                        .id(msg.id.uuidString)
+                                        .trackChatRenderFocus(message: msg, space: "genieChatScroll")
+                                }
+
+                                if localModels.isGenerating {
+                                    compactActiveGeneratingBubble
+                                        .id("active-generating-bubble")
+                                } else if !localModels.currentResponse.isEmpty && localModels.chatHistory.last?.content != localModels.currentResponse {
+                                    compactMessageBubble(for: ChatMessage(role: "assistant", content: localModels.currentResponse, model: localModels.selectedModelDisplayName))
+                                        .id("streaming-fallback")
+                                }
+                            }
+
+                            // Always render 3 lines of space in chat to fix rendering delay
+                            Color.clear.frame(height: 54)
+                                .id("bottom-anchor")
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .frame(width: max(100, geo.size.width / CGFloat(chatZoomLevel)))
+                        .scaleEffect(CGFloat(chatZoomLevel), anchor: .top)
+                        .animation(.spring(response: 0.22, dampingFraction: 0.82), value: chatZoomLevel)
+                    }
+                    .genieThickScrollBars()
+                    .publishFocusedChatRender(space: "genieChatScroll") { localModels.chatHistory }
+                    .simultaneousGesture(
+                        MagnificationGesture()
+                            .onChanged { value in
+                                let delta = value - 1.0
+                                chatZoomLevel = min(2.0, max(0.70, chatZoomLevel + Double(delta) * 0.04))
+                            }
+                    )
+                    .overlay(alignment: .bottomTrailing) {
+                        HStack(spacing: 4) {
+                            if localModels.isGenerating {
+                                Button(action: {
+                                    autoScrollEnabled.toggle()
+                                    HapticFeedback.selection()
+                                }) {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: autoScrollEnabled ? "lock.fill" : "lock.open.fill")
+                                            .font(.system(size: 7.5, weight: .bold))
+                                        Text(autoScrollEnabled ? "Auto-Scroll" : "Free Scroll")
+                                            .font(.system(size: 8, weight: .medium, design: .rounded))
+                                    }
+                                    .foregroundColor(autoScrollEnabled ? .cyan : .secondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3.5)
+                                    .background(Capsule().fill(Color.black.opacity(0.75)))
+                                    .overlay(Capsule().stroke(autoScrollEnabled ? Color.cyan.opacity(0.4) : Color.white.opacity(0.20), lineWidth: 0.5))
+                                }
+                                .buttonStyle(.plain)
+                                .help("Toggle auto-scrolling during response generation")
+                            }
+
+                            if localModels.chatHistory.count > 4 || localModels.isGenerating {
+                                Button(action: {
+                                    autoScrollEnabled = true
+                                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                                        proxy.scrollTo("bottom-anchor", anchor: .bottom)
+                                    }
+                                    HapticFeedback.tick()
+                                }) {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "arrow.down.to.line")
+                                            .font(.system(size: 8, weight: .bold))
+                                        Text("Latest")
+                                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                                    }
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3.5)
+                                    .background(Capsule().fill(Color.black.opacity(0.70)))
+                                    .overlay(Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.5))
+                                    .shadow(color: Color.black.opacity(0.35), radius: 4, y: 2)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Scroll to latest message")
+                            }
+                        }
                         .padding(.trailing, 10)
                         .padding(.bottom, 6)
-                        .help("Scroll to latest message")
                     }
-                }
-                .onChange(of: localModels.chatHistory.count) { _, _ in
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                    .onChange(of: localModels.chatHistory.count) { _, _ in
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                            proxy.scrollTo("bottom-anchor", anchor: .bottom)
+                        }
+                    }
+                    .onChange(of: localModels.currentResponse) { _, _ in
+                        if autoScrollEnabled {
+                            proxy.scrollTo("bottom-anchor", anchor: .bottom)
+                        }
+                    }
+                    .onAppear {
                         proxy.scrollTo("bottom-anchor", anchor: .bottom)
                     }
-                }
-                .onChange(of: localModels.currentResponse) { _, _ in
-                    proxy.scrollTo("bottom-anchor", anchor: .bottom)
-                }
-                .onAppear {
-                    proxy.scrollTo("bottom-anchor", anchor: .bottom)
                 }
             }
 
@@ -1705,6 +2205,26 @@ public struct CompactChatStreamView: View {
             }
         }
         .background(Color.clear)
+        .onKeyPress { press in
+            if press.modifiers.contains([.command, .shift]) && (press.characters == "C" || press.characters == "c") {
+                if localModels.copyWholeChat() {
+                    showFeedback("Copied whole chat! 📋")
+                } else {
+                    showFeedback("No messages to copy!")
+                }
+                return .handled
+            }
+            if press.modifiers.contains([.command, .shift]) && (press.characters == "V" || press.characters == "v") {
+                let res = localModels.pasteWholeChat()
+                if res.success {
+                    showFeedback("Pasted whole chat (\(res.count) msgs) 📋✨")
+                } else {
+                    showFeedback("No chat transcript on clipboard ⚠️")
+                }
+                return .handled
+            }
+            return .ignored
+        }
     }
 
     // MARK: - Chat Management Header
@@ -1836,18 +2356,65 @@ public struct CompactChatStreamView: View {
             .buttonStyle(.plain)
             .help("Save conversation to Genie Note & open in TextEdit")
 
+            // Name Chat Button — lets the user give the session a custom name
+            Button(action: { nameChatSession() }) {
+                HStack(spacing: 2.5) {
+                    Image(systemName: "tag.fill")
+                        .font(.system(size: 8.5))
+                    Text("Name")
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.yellow)
+                .padding(.horizontal, 5.5)
+                .padding(.vertical, 3)
+                .background(RoundedRectangle(cornerRadius: 4).fill(Color.yellow.opacity(0.14)))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.yellow.opacity(0.35), lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+            .help("Give this chat session a name")
+
+            // View Chat in Browser — generate full HTML transcript & open in Safari
+            Button(action: { viewChatInBrowser() }) {
+                HStack(spacing: 2.5) {
+                    Image(systemName: "safari.fill")
+                        .font(.system(size: 8.5))
+                    Text("Browser")
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.orange)
+                .padding(.horizontal, 5.5)
+                .padding(.vertical, 3)
+                .background(RoundedRectangle(cornerRadius: 4).fill(Color.orange.opacity(0.14)))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.orange.opacity(0.35), lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+            .help("Open this chat as a formatted HTML page in Safari")
+
             // Copy All Button
             Button(action: {
                 copyFullTranscript()
             }) {
                 Image(systemName: "doc.on.doc")
                     .font(.system(size: 8.5))
-                    .foregroundColor(.white.opacity(0.65))
+                    .foregroundColor(.white.opacity(0.75))
                     .frame(width: 19, height: 19)
                     .background(RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.08)))
             }
             .buttonStyle(.plain)
-            .help("Copy all messages")
+            .help("Copy whole chat transcript to clipboard (⌘⇧C)")
+
+            // Paste All Button
+            Button(action: {
+                pasteFullTranscript()
+            }) {
+                Image(systemName: "doc.on.clipboard")
+                    .font(.system(size: 8.5))
+                    .foregroundColor(.cyan.opacity(0.85))
+                    .frame(width: 19, height: 19)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.cyan.opacity(0.12)))
+            }
+            .buttonStyle(.plain)
+            .help("Paste whole chat from clipboard (⌘⇧V)")
 
             // Stop Generation Button
             if localModels.isGenerating {
@@ -1891,14 +2458,9 @@ public struct CompactChatStreamView: View {
                             Circle()
                                 .fill(LinearGradient(colors: [emotion.accentColor.opacity(0.35), Color.cyan.opacity(0.20)], startPoint: .topLeading, endPoint: .bottomTrailing))
                                 .frame(width: 16, height: 16)
-                            if isClaudeOrGemma {
-                                Text("✳️")
-                                    .font(.system(size: 8.5))
-                            } else {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundColor(emotion.accentColor)
-                            }
+                            Image(systemName: isClaudeOrGemma ? "circle.hexagongrid.fill" : "sparkles")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(isClaudeOrGemma ? Color(red: 0.95, green: 0.70, blue: 0.60) : emotion.accentColor)
                         }
 
                         Text(msg.model.isEmpty ? localModels.selectedModelDisplayName : msg.model)
@@ -1923,6 +2485,20 @@ public struct CompactChatStreamView: View {
                         .font(.system(size: 8, weight: .medium, design: .monospaced))
                         .foregroundColor(.white.opacity(0.40))
 
+                    if !isUser && msg.id == localModels.chatHistory.last(where: { $0.role != "user" })?.id && localModels.lastTokensPerSecond > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 6))
+                            Text(String(format: "%.1f tkps", localModels.lastTokensPerSecond))
+                                .font(.system(size: 7.5, weight: .semibold, design: .monospaced))
+                        }
+                        .foregroundColor(.cyan.opacity(0.85))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(Color.cyan.opacity(0.12)))
+                        .help("Generation Speed: \(String(format: "%.1f", localModels.lastTokensPerSecond)) tokens/second")
+                    }
+
                     if !isUser {
                         Spacer()
                     }
@@ -1934,7 +2510,7 @@ public struct CompactChatStreamView: View {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(msg.content, forType: .string)
                             HapticFeedback.selection()
-                            showFeedback("Copied! 📋")
+                            showFeedback("Copied")
                         }) {
                             Image(systemName: "doc.on.doc")
                                 .font(.system(size: 8))
@@ -1950,7 +2526,7 @@ public struct CompactChatStreamView: View {
                             Button(action: {
                                 _ = DesktopNotePrinter.shared.printNote(content: msg.content, openInFile: true)
                                 HapticFeedback.success()
-                                showFeedback("Saved to Note! 📝")
+                                showFeedback("Saved to Note")
                             }) {
                                 Image(systemName: "doc.text.fill")
                                     .font(.system(size: 7.5))
@@ -1981,22 +2557,19 @@ public struct CompactChatStreamView: View {
                 // Bubble Content (Markdown Message View)
                 if isUser {
                     VStack(alignment: .trailing, spacing: 6) {
-                        if let mp = msg.mediaPath, let img = NSImage(contentsOfFile: mp) {
-                            Image(nsImage: img)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(maxWidth: 240, maxHeight: 180)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .strokeBorder(Color.white.opacity(0.35), lineWidth: 1)
-                                )
-                                .shadow(color: Color.black.opacity(0.35), radius: 6, y: 2)
+                        if let mp = msg.mediaPath {
+                            let fileURL = URL(fileURLWithPath: mp)
+                            GenieImageCardView(
+                                url: fileURL,
+                                altText: nil,
+                                maxDisplayHeight: 220
+                            )
+                            .frame(maxWidth: 280)
                         }
 
                         if !msg.content.isEmpty {
                             Text(msg.content)
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .font(.system(size: appearanceDetector.scaledPoint(13.0, userZoom: chatZoomLevel), weight: .medium, design: .rounded))
                                 .foregroundColor(.white)
                                 .textSelection(.enabled)
                         }
@@ -2007,10 +2580,10 @@ public struct CompactChatStreamView: View {
                             ZStack {
                                 if isShort {
                                     Capsule()
-                                        .fill(LinearGradient(colors: [Color(red: 0.05, green: 0.52, blue: 0.98), Color(red: 0.0, green: 0.72, blue: 0.95)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .fill(appearanceDetector.folderBubbleGradient)
                                 } else {
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(LinearGradient(colors: [Color(red: 0.05, green: 0.52, blue: 0.98), Color(red: 0.0, green: 0.72, blue: 0.95)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .fill(appearanceDetector.folderBubbleGradient)
                                 }
                             }
                         )
@@ -2019,62 +2592,92 @@ public struct CompactChatStreamView: View {
                                 if isShort {
                                     Capsule()
                                         .strokeBorder(
-                                            LinearGradient(colors: [Color.white.opacity(0.70), Color.cyan.opacity(0.50), Color.white.opacity(0.20)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                            appearanceDetector.folderSpecularHighlight,
                                             lineWidth: 0.85
                                         )
                                 } else {
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                                         .strokeBorder(
-                                            LinearGradient(colors: [Color.white.opacity(0.70), Color.cyan.opacity(0.50), Color.white.opacity(0.20)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                            appearanceDetector.folderSpecularHighlight,
                                             lineWidth: 0.85
                                         )
                                 }
                             }
                         )
-                        .shadow(color: Color.cyan.opacity(0.35), radius: 8, y: 3)
+                        .shadow(color: appearanceDetector.folderBlueBottom.opacity(0.38), radius: 8, y: 3)
                 } else {
-                    GenieMarkdownMessageView(text: msg.content)
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 10)
-                        .background(
-                            ZStack {
-                                VisualEffectBlur(material: .popover, blendingMode: .withinWindow, state: .active)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.12, green: 0.14, blue: 0.20).opacity(0.48),
-                                        Color(red: 0.06, green: 0.07, blue: 0.12).opacity(0.58)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    let isExpanded = expandedMessageIDs.contains(msg.id)
+                    let isLongMessage = msg.content.count > 450 || msg.content.components(separatedBy: "\n").count > 10
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        if isLongMessage && !isExpanded {
+                            ScrollView(.vertical, showsIndicators: true) {
+                                GenieMarkdownMessageView(text: msg.content)
+                                    .padding(.horizontal, 13)
+                                    .padding(.vertical, 10)
                             }
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.white.opacity(0.28),
-                                            Color.white.opacity(0.08),
-                                            Color.cyan.opacity(0.18)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 0.85
-                                )
-                        )
-                        .shadow(color: Color.black.opacity(0.35), radius: 12, x: 0, y: 5)
+                            .frame(maxHeight: 240)
+                        } else {
+                            GenieMarkdownMessageView(text: msg.content)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 10)
+                        }
+
+                        if isLongMessage {
+                            HStack {
+                                Spacer()
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                        if isExpanded {
+                                            expandedMessageIDs.remove(msg.id)
+                                        } else {
+                                            expandedMessageIDs.insert(msg.id)
+                                        }
+                                    }
+                                    HapticFeedback.selection()
+                                }) {
+                                    HStack(spacing: 3.5) {
+                                        Image(systemName: isExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                                            .font(.system(size: 8, weight: .bold))
+                                        Text(isExpanded ? "Compact" : "Expand Message")
+                                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                    }
+                                    .foregroundColor(appearanceDetector.folderBlueTop)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Capsule().fill(appearanceDetector.folderBlueTop.opacity(0.14)))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, 10)
+                                .padding(.bottom, 6)
+                            }
+                        }
+                    }
+                    .background(
+                        ZStack {
+                            VisualEffectBlur(material: .popover, blendingMode: .withinWindow, state: .active)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            appearanceDetector.assistantBubbleGradient
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(
+                                appearanceDetector.assistantSpecularHighlight,
+                                lineWidth: 0.85
+                            )
+                    )
+                    .shadow(color: Color.black.opacity(0.35), radius: 12, x: 0, y: 5)
                 }
 
                 // Interactive Claude / Local Code Artifact Card
                 if !isUser, let artifact = extractCodeArtifact(from: msg.content) {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
-                            Text("✳️")
-                                .font(.system(size: 10))
+                            Image(systemName: "curlybraces")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.cyan)
                             Text("Artifact — \(artifact.language.capitalized)")
                                 .font(.system(size: 10, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
@@ -2082,7 +2685,7 @@ public struct CompactChatStreamView: View {
                             Button("Copy") {
                                 NSPasteboard.general.clearContents()
                                 NSPasteboard.general.setString(artifact.code, forType: .string)
-                                showFeedback("Artifact Copied! 📋")
+                                showFeedback("Artifact Copied")
                             }
                             .font(.system(size: 9, weight: .semibold))
                             .buttonStyle(.plain)
@@ -2090,7 +2693,7 @@ public struct CompactChatStreamView: View {
                             .padding(.vertical, 2.5)
                             .background(Capsule().fill(Color.white.opacity(0.12)))
 
-                            Button("Open in Editor 📝") {
+                            Button("Open in Editor") {
                                 let tabMgr = WorkspaceTabManager.shared
                                 if let edTab = tabMgr.tabs.first(where: { $0.type == .editor }) {
                                     tabMgr.selectTab(id: edTab.id)
@@ -2099,7 +2702,7 @@ public struct CompactChatStreamView: View {
                                     tabMgr.createTab(type: .editor, title: "\(artifact.language.capitalized) Snippet")
                                     tabMgr.updateEditor(content: artifact.code)
                                 }
-                                showFeedback("Opened in Code Editor! 📝")
+                                showFeedback("Opened in Code Editor")
                             }
                             .font(.system(size: 9, weight: .semibold))
                             .buttonStyle(.plain)
@@ -2129,6 +2732,7 @@ public struct CompactChatStreamView: View {
                     )
                     .padding(.top, 2)
                 }
+
 
                 // Interactive Terminal Tools in bubble
                 if !isUser && localModels.terminalAccessEnabled {
@@ -2304,6 +2908,19 @@ public struct CompactChatStreamView: View {
 
                     ProgressView().controlSize(.mini)
 
+                    if localModels.lastTokensPerSecond > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 6.5, weight: .bold))
+                            Text(String(format: "%.1f tkps", localModels.lastTokensPerSecond))
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        }
+                        .foregroundColor(.yellow)
+                        .padding(.horizontal, 4.5)
+                        .padding(.vertical, 1.5)
+                        .background(Capsule().fill(Color.yellow.opacity(0.18)))
+                    }
+
                     Spacer()
 
                     Button(action: {
@@ -2376,43 +2993,11 @@ public struct CompactChatStreamView: View {
         }
     }
 
-    // MARK: - Empty State with Quick Starter Chips
+    // MARK: - Empty State with Futuristic Terminal / Mario Block Splash Animation
     private var emptyStateView: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(emotion.accentColor.opacity(0.18))
-                    .frame(width: 36, height: 36)
-                Image(systemName: "sparkles")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(emotion.accentColor)
-            }
-
-            Text("Genie AI Studio")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-
-            Text("Ask questions, search the internet, or run shell tools.")
-                .font(.system(size: 10, weight: .regular))
-                .foregroundColor(.white.opacity(0.65))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 16)
-
-            VStack(spacing: 4) {
-                starterChip("📐 Explain this app's architecture") {
-                    localModels.generate(prompt: "Explain the architectural design patterns of our macOS app.")
-                }
-                starterChip("✳️ Refactor & optimize the Swift codebase") {
-                    localModels.generate(prompt: "Review our latest Swift codebase components and suggest clean refactorings.")
-                }
-                starterChip("⑂ Review GitHub git diff & draft Pull Request") {
-                    localModels.generate(prompt: "Analyze our git repository working tree diff and draft detailed pull request release notes.")
-                }
-            }
-            .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity, minHeight: 170)
-        .padding(10)
+        GenieTerminalSplashView(compact: false)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
     }
 
     private func starterChip(_ text: String, action: @escaping () -> Void) -> some View {
@@ -2472,19 +3057,20 @@ public struct CompactChatStreamView: View {
     }
 
     private func copyFullTranscript() {
-        guard !localModels.chatHistory.isEmpty else {
+        if localModels.copyWholeChat() {
+            showFeedback("Copied Whole Chat! 📋")
+        } else {
             showFeedback("No messages to copy!")
-            return
         }
-        var transcript = ""
-        for msg in localModels.chatHistory {
-            let sender = (msg.role == "user") ? "User" : "Genie (\(msg.model))"
-            transcript += "[\(sender) - \(formattedTime(msg.timestamp))]:\n\(msg.content)\n\n"
+    }
+
+    private func pasteFullTranscript() {
+        let res = localModels.pasteWholeChat()
+        if res.success {
+            showFeedback("Pasted whole chat (\(res.count) msgs) 📋✨")
+        } else {
+            showFeedback("No chat transcript on clipboard ⚠️")
         }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(transcript, forType: .string)
-        HapticFeedback.selection()
-        showFeedback("Copied All! 📋")
     }
 
     private func saveChatToNote() {
@@ -2499,6 +3085,115 @@ public struct CompactChatStreamView: View {
         }
         if let fileURL = DesktopNotePrinter.shared.printNote(content: transcript, openInFile: true) {
             showFeedback("Saved & opened \(fileURL.lastPathComponent) 📄")
+        }
+    }
+
+    // MARK: - 🏷️ Name Chat Session
+    private func nameChatSession() {
+        guard !localModels.chatHistory.isEmpty else {
+            showFeedback("Start a chat first!")
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Name This Conversation"
+        alert.informativeText = "Give your chat session a memorable title so you can find it later."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        // Pre-fill with current session title if available
+        if let current = localModels.savedSessions.first(where: { $0.id == localModels.currentSessionId }) {
+            inputField.stringValue = current.hasCustomTitle ? current.title : ""
+        }
+        inputField.placeholderString = localModels.chatHistory.first(where: { $0.role == "user" })
+            .map { String($0.content.prefix(60)) } ?? "My Chat"
+        alert.accessoryView = inputField
+
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return }
+
+        let title = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+
+        localModels.renameCurrentSession(to: title)
+        showFeedback("Saved as \"\(title)\" 🏷️")
+    }
+
+
+    // MARK: - 🌐 View Chat as HTML in Safari / Browser
+    private func viewChatInBrowser() {
+        guard !localModels.chatHistory.isEmpty else {
+            showFeedback("No chat to view!")
+            return
+        }
+
+        // Build a styled HTML transcript
+        let sessionTitle: String = localModels.savedSessions
+            .first(where: { $0.id == localModels.currentSessionId })?.title ?? "Genie Chat"
+        let dateStr = Date().formatted(date: .long, time: .shortened)
+        let modelName = localModels.selectedModelDisplayName
+
+        var messagesHtml = ""
+        for msg in localModels.chatHistory {
+            let isUser = msg.role == "user"
+            let role = isUser ? "You" : (msg.model.isEmpty ? modelName : msg.model)
+            let escaped = msg.content
+                .replacingOccurrences(of: "&", with: "&amp;")
+                .replacingOccurrences(of: "<", with: "&lt;")
+                .replacingOccurrences(of: ">", with: "&gt;")
+                .replacingOccurrences(of: "\n", with: "<br>")
+            let bubbleClass = isUser ? "user-bubble" : "ai-bubble"
+            messagesHtml += """
+            <div class="message \(bubbleClass)">
+              <div class="sender">\(role)</div>
+              <div class="content">\(escaped)</div>
+              <div class="timestamp">\(msg.timestamp.formatted(date: .omitted, time: .shortened))</div>
+            </div>\n
+            """
+        }
+
+        let html = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>\(sessionTitle)</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { margin: 0; background: #0b0c10; color: #e8eaf0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px 16px; }
+            h1 { font-size: 18px; color: #00d4ff; margin-bottom: 4px; }
+            .meta { font-size: 11px; color: #666; margin-bottom: 24px; }
+            .message { max-width: 760px; margin: 12px auto; padding: 12px 16px; border-radius: 14px; position: relative; }
+            .user-bubble { background: linear-gradient(135deg, #0d5cbf, #00a6e8); margin-left: auto; text-align: right; }
+            .ai-bubble { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); }
+            .sender { font-size: 10px; font-weight: 700; opacity: 0.65; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+            .content { font-size: 13px; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
+            .timestamp { font-size: 9px; opacity: 0.4; margin-top: 6px; }
+          </style>
+        </head>
+        <body>
+          <h1>\(sessionTitle)</h1>
+          <div class="meta">\(dateStr) · \(modelName) · \(localModels.chatHistory.count) messages</div>
+          \(messagesHtml)
+        </body>
+        </html>
+        """
+
+        let tmpURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("GenieChatTranscript_\(Int(Date().timeIntervalSince1970)).html")
+        do {
+            try html.write(to: tmpURL, atomically: true, encoding: .utf8)
+            if let safariURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") {
+                NSWorkspace.shared.open([tmpURL], withApplicationAt: safariURL, configuration: NSWorkspace.OpenConfiguration())
+            } else {
+                NSWorkspace.shared.open(tmpURL)
+            }
+            showFeedback("Opened chat in browser 🌐")
+        } catch {
+            showFeedback("Failed to export chat")
         }
     }
 }

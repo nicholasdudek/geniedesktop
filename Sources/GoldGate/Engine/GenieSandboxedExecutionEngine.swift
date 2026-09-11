@@ -199,7 +199,7 @@ public final class GenieSandboxedExecutionEngine: @unchecked Sendable {
                     let rawOut = String(data: data, encoding: .utf8) ?? ""
                     let elapsed = Date().timeIntervalSince(startTime)
                     
-                    let prefix = sandboxed ? "🛡️ [Sandbox Active - Workspace: ~/Desktop/Genie/Workspace - RAM Cap: \(ramLimitMB)MB]\n" : ""
+                    let prefix = sandboxed ? "🛡️ [Restricted Sandbox Active - Permissions Governed - RAM Cap: \(ramLimitMB)MB]\n" : "🔒 [Custom Execution Confinement - RAM Cap: \(ramLimitMB)MB]\n"
                     let out = rawOut.isEmpty ? (prefix + "Executed with exit code \(task.terminationStatus).") : (prefix + rawOut)
 
                     continuation.resume(returning: ExecutionResult(
@@ -223,11 +223,20 @@ public final class GenieSandboxedExecutionEngine: @unchecked Sendable {
         }
     }
 
-    /// Generates a Scheme sandbox profile isolating file write capabilities.
+    /// Generates a Scheme sandbox profile isolating file write capabilities based on user permission grants.
     private func generateSandboxProfile(allowedWorkspace: String) -> String {
-        let desktop = GenieDesktopFileGuard.desktopRoot.path
+        let permissions = GenieFilePermissionManager.shared
+        let allowedDirs = permissions.allAllowedFolderURLs.map { $0.standardizedFileURL.path }
+        var allowSubpaths = allowedDirs.map { "    (subpath \"\($0)\")" }.joined(separator: "\n")
+
         let perUserTemp = URL(fileURLWithPath: NSTemporaryDirectory())
             .resolvingSymlinksInPath().path
+        allowSubpaths += "\n    (subpath \"\(allowedWorkspace)\")"
+        allowSubpaths += "\n    (subpath \"/Applications\")"
+        allowSubpaths += "\n    (subpath \"/tmp\")"
+        allowSubpaths += "\n    (subpath \"/private/tmp\")"
+        allowSubpaths += "\n    (subpath \"\(perUserTemp)\")"
+
         return """
         (version 1)
         (allow default)
@@ -235,11 +244,7 @@ public final class GenieSandboxedExecutionEngine: @unchecked Sendable {
             (subpath "/")
         )
         (allow file-write*
-            (subpath "\(desktop)")
-            (subpath "\(allowedWorkspace)")
-            (subpath "/tmp")
-            (subpath "/private/tmp")
-            (subpath "\(perUserTemp)")
+        \(allowSubpaths)
         )
 
         ;; Last match wins in SBPL, so these re-deny system locations even though the
@@ -249,7 +254,6 @@ public final class GenieSandboxedExecutionEngine: @unchecked Sendable {
             (subpath "/usr")
             (subpath "/bin")
             (subpath "/sbin")
-            (subpath "/Applications")
             (subpath "/private/etc")
             (subpath "/Library/LaunchDaemons")
             (subpath "/Library/LaunchAgents")

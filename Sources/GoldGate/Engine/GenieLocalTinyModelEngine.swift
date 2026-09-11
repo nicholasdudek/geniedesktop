@@ -39,73 +39,73 @@ public final class GenieLocalTinyModelEngine: ObservableObject {
     public let curatedFreeModels: [FreeLocalModelCard] = [
         FreeLocalModelCard(
             id: "qwen3.5:0.8b",
-            name: "Qwen3.5 0.8B (Ultra-Light Vision)",
+            name: "Genie Fast Lite (1.0 GB)",
             tag: "qwen3.5:0.8b",
             parameterSize: "0.8B",
             diskSizeBytes: 1_000_000_000,
             memoryRequirementMB: 950,
-            category: "Ultra-Light Vision & Tools",
-            description: "Alibaba's smallest unified vision-language model — reads images and calls tools even at 0.8B params.",
+            category: "Fast Lite & Parallel Agents",
+            description: "Ultra-fast multimodal model (1.0 GB) designed for low memory footprints and parallel multi-agent swarms.",
             iconName: "bolt.fill",
             isRecommended: false
         ),
         FreeLocalModelCard(
             id: "qwen3.5:2b",
-            name: "Qwen3.5 2B (Vision & Tools)",
+            name: "Genie Fast (2.7 GB)",
             tag: "qwen3.5:2b",
             parameterSize: "2B",
             diskSizeBytes: 2_700_000_000,
             memoryRequirementMB: 2600,
-            category: "Vision & Tools",
-            description: "Compact vision-language model with real function calling, tuned for agent benchmarks like BFCL-V4 and Tool Decathlon.",
+            category: "Fast Vision & Tools",
+            description: "High-speed vision-language model (2.7 GB) tuned for function calling and rapid tool orchestration.",
             iconName: "eye.fill",
             isRecommended: true
         ),
         FreeLocalModelCard(
-            id: "qwen3.5:4b",
-            name: "Qwen3.5 4B (Flagship Compact)",
-            tag: "qwen3.5:4b",
-            parameterSize: "4B",
-            diskSizeBytes: 3_400_000_000,
-            memoryRequirementMB: 3800,
-            category: "Vision & Tools",
-            description: "Larger Qwen3.5 checkpoint — stronger image understanding and tool orchestration for more demanding agent tasks.",
-            iconName: "flame.fill",
-            isRecommended: false
-        ),
-        FreeLocalModelCard(
-            id: "qwen3-vl:4b",
-            name: "Qwen3-VL 4B (Vision Agent)",
-            tag: "qwen3-vl:4b",
-            parameterSize: "4B",
-            diskSizeBytes: 3_300_000_000,
-            memoryRequirementMB: 4000,
-            category: "Vision Agent & GUI Tools",
-            description: "Qwen's dedicated vision-agent model — recognizes on-screen GUI elements and calls tools to complete tasks (top OS World scores).",
-            iconName: "viewfinder",
-            isRecommended: true
-        ),
-        FreeLocalModelCard(
             id: "ministral-3:3b",
-            name: "Ministral 3 3B (Mistral)",
+            name: "Genie Function (3.0 GB)",
             tag: "ministral-3:3b",
             parameterSize: "3B",
             diskSizeBytes: 3_000_000_000,
             memoryRequirementMB: 3400,
             category: "Vision & Function Calling",
-            description: "Mistral's efficient edge model with native function calling, JSON output, and image understanding.",
+            description: "Mistral edge model (3.0 GB) with native function calling, JSON output, and image understanding.",
             iconName: "function",
             isRecommended: true
         ),
         FreeLocalModelCard(
+            id: "qwen3-vl:4b",
+            name: "Genie Vision (3.3 GB)",
+            tag: "qwen3-vl:4b",
+            parameterSize: "4B",
+            diskSizeBytes: 3_300_000_000,
+            memoryRequirementMB: 4000,
+            category: "Vision Agent & GUI Tools",
+            description: "Dedicated vision agent (3.3 GB) — inspects on-screen GUI elements and executes UI automation tools.",
+            iconName: "viewfinder",
+            isRecommended: true
+        ),
+        FreeLocalModelCard(
+            id: "qwen3.5:4b",
+            name: "Genie Balanced (3.4 GB)",
+            tag: "qwen3.5:4b",
+            parameterSize: "4B",
+            diskSizeBytes: 3_400_000_000,
+            memoryRequirementMB: 3800,
+            category: "Balanced Vision & Tools",
+            description: "Deep reasoning and high-precision tool calling (3.4 GB) for comprehensive agent tasks.",
+            iconName: "flame.fill",
+            isRecommended: false
+        ),
+        FreeLocalModelCard(
             id: "gemma4:e2b",
-            name: "Gemma 4 E2B (Google)",
+            name: "Genie Pro (7.2 GB)",
             tag: "gemma4:e2b",
             parameterSize: "2.3B eff.",
             diskSizeBytes: 7_200_000_000,
             memoryRequirementMB: 7000,
-            category: "Vision & Tools (Efficient)",
-            description: "Google's efficient multimodal model (2.3B effective params) built for local agents — vision plus native function calling.",
+            category: "Pro Multimodal & Tools",
+            description: "Google multimodal flagship model (7.2 GB) built for complex reasoning, tool planning, and multi-turn workflows.",
             iconName: "sparkles.rectangle.stack.fill",
             isRecommended: true
         )
@@ -611,40 +611,121 @@ Genie is fully optimized for **Mac App Store** sandbox performance and privacy:
         }
 
         // 13. General Conversational / Greetings / Introduction
-        if lower == "hi" || lower == "hello" || lower == "hey" || lower.contains("who are you") || lower.contains("what can you do") || lower.contains("help") {
+        if lower == "hi" || lower == "hello" || lower == "hey" || lower.hasPrefix("hi ") || lower.hasPrefix("hello ") || lower.hasPrefix("hey ") || lower.contains("who are you") || lower.contains("what can you do") || lower.contains("help") {
+            return generateWittyGreeting()
+        }
+
+        // 14. Acknowledgements deserve an acknowledgement, not a feature menu.
+        let acknowledgements: Set<String> = [
+            "ok", "okay", "k", "kk", "sure", "alright", "fine", "cool", "nice", "great",
+            "thanks", "thank you", "ty", "got it", "yes", "yeah", "yep", "no", "nope"
+        ]
+        if acknowledgements.contains(lower.trimmingCharacters(in: CharacterSet(charactersIn: " .!?,"))) {
+            let responses = [
+                "Right with you.",
+                "Locked and loaded.",
+                "On it.",
+                "At your command.",
+                "Standing by.",
+                "Anytime."
+            ]
+            return responses.randomElement() ?? "Got it."
+        }
+
+        // 15. Intelligent Conversational Synthesis & Developer Fallback
+        return generateIntelligentResponse(for: prompt, lower: lower)
+    }
+
+    // MARK: - 🎨 Futuristic Mario Pop-Art Terminal Header & Witty Greetings
+    private func generateWittyGreeting() -> String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let timeGreeting: String
+        let timeMode: String
+        switch hour {
+        case 0..<5:
+            timeMode = "LATE NIGHT"
+            timeGreeting = "Late night."
+        case 5..<12:
+            timeMode = "MORNING"
+            timeGreeting = "Good morning."
+        case 12..<17:
+            timeMode = "AFTERNOON"
+            timeGreeting = "Good afternoon."
+        case 17..<22:
+            timeMode = "EVENING"
+            timeGreeting = "Good evening."
+        default:
+            timeMode = "NIGHT"
+            timeGreeting = "Hello."
+        }
+
+        let asciiBanner = """
+```terminal
+┌─────────────────────────────────────────────────────────────┐
+│  ██████   ██████  ███   ██  ███  ██████                     │
+│  ██       ██      ████  ██   ██  ██                         │
+│  ██  ███  █████   ██ ██ ██   ██  █████    ⚡ GENIE OS       │
+│  ██   ██  ██      ██  ████   ██  ██       ✦ APPLE SILICON   │
+│  ██████   ██████  ██   ███  ███  ██████   ◈ ZERO LATENCY    │
+└─────────────────────────────────────────────────────────────┘
+>>> GENIE NEURAL ENGINE // ARM64 // METAL ACCELERATED // \(timeMode)
+```
+"""
+
+        let inquiries = [
+            "How can I help you today?",
+            "What are we building today?",
+            "What's on your mind?",
+            "How can I help you take this to the next level?",
+            "What problem are we tackling right now?",
+            "Where should we begin today?",
+            "What can I create or solve for you?",
+            "Ready when you are. What's the plan?",
+            "How can I assist you right now?",
+            "What project are we diving into today?",
+            "Need a hand with code, design, or architecture?"
+        ]
+
+        let pickedInquiry = inquiries.randomElement() ?? "How can I help you today?"
+        return "\(asciiBanner)\n\n\(timeGreeting) \(pickedInquiry)"
+    }
+
+    private func generateIntelligentResponse(for prompt: String, lower: String) -> String {
+        // Swift / iOS / macOS patterns
+        if lower.contains("swiftui") || lower.contains("swift") {
             return """
-✨ **Hello! I'm Genie AI** — your native Apple Silicon on-device assistant.
+### Swift & Apple Architecture Insight
+When building responsive interfaces in SwiftUI on macOS:
+- **Keep views pure**: Defer heavy state mutation to `@Observable` models or `@MainActor` stores.
+- **Glass & Materials**: Combine `VisualEffectBlur(material: .hudWindow)` with subtle specular linear strokes for true Apple Liquid Polymorphism.
+- **Async Concurrency**: Use `Task.detached(priority: .userInitiated)` for file I/O or background regex transforms to keep the main thread locked at 120 FPS.
 
-I am running locally on your Mac with zero cloud latency and complete data privacy. Here is what I can do:
-
-- 📊 **Generate Presentations**: Ask me to *"create slides about [topic]"*
-- 📄 **Compile Executive PDFs**: Ask me to *"write a PDF report on [topic]"*
-- 📈 **Render Interactive Charts**: Ask me to *"chart quarterly performance"*
-- 📐 **Diagram Systems**: Ask me to *"draw an architecture diagram for [system]"*
-- 💻 **Solve Code & Algorithms**: Ask me for Swift/Python algorithms (Two Sum, Trees, DP)
-- 🚀 **Control Apps**: Ask me to *"open Safari"* or *"launch Notes"*
-- 🔢 **Calculate Math**: Try *"what is (48 * 24) / 6"* or *"15% of 640"*
-- 🛠️ **Local AI Hub**: Connect external local models (Ollama, Apple MLX) or BYOK cloud keys in Settings
-
-How can I assist you today?
+Need me to write a custom Swift component or test runner? Ask away!
 """
         }
 
-        // 14. Intelligent Fallback Context
+        // Git / Terminal
+        if lower.contains("git") || lower.contains("branch") || lower.contains("commit") {
+            return """
+### Git & Workflow Quick Ref
+- **Check Status**: `git status -s`
+- **Recent Log**: `git log --oneline -n 10 --graph`
+- **Stash Changes**: `git stash push -m "wip"` / `git stash pop`
+- **Branch Clean**: `git branch -d <branch_name>`
+
+You can also switch to the **Terminal** tab to run these directly!
+"""
+        }
+
+        // General intelligent thought
         return """
-✨ **Genie Native Assistant (On-Device Local Engine)**
+Thinking through **\(prompt.prefix(60))**:
 
-I have processed your request locally on your Mac:
-> "\(trimmed)"
-
-**Recommendations & Actions:**
-- To generate a slide presentation, ask: `create slides for this topic`
-- To generate a PDF report, ask: `create a PDF report on this`
-- To visualize data, ask: `chart performance metrics`
-- To draft a document, ask: `take a note on this`
-- To open an application, ask: `open [App Name]`
-
-*(Operating offline with complete privacy. Configure additional local models or cloud keys anytime in Settings).*
+To explore or execute this:
+1. **Interactive HTML/Canvas**: Ask me to *"build an HTML5 interactive UI for \(prompt.prefix(30))"* to preview it live.
+2. **Slides & Documents**: Say *"create slides on \(prompt.prefix(30))"* or *"write a PDF report"*.
+3. **Genio Studio Editor**: Jump into the **Editor** tab to write and test code.
+4. **Local Models**: Connect Ollama (`localhost:11434`) or Apple MLX in Settings for unbounded local deep reasoning!
 """
     }
 

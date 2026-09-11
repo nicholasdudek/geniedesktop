@@ -1,0 +1,127 @@
+/* Design tokens — kept in sync with web/previews.html so the marketing renders
+   and the website read as one system. */
+:root {
+  --bg: #07090e;
+  --bg-surface: #0e121d;
+  --card-bg: rgba(255, 255, 255, 0.035);
+  --border: rgba(255, 255, 255, 0.08);
+  --gold: #f4c375;
+  --purple: #935ff5;
+  --blue: #38bdf8;
+  --green: #34d399;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+
+  /* Per-card accent, set inline by the template. */
+  --accent: var(--gold);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Helvetica Neue", Helvetica, system-ui, sans-serif;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+/* Full-bleed wallpaper, cover-cropped like the PIL version did by hand. */
+.wallpaper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Dark luxury vignette + vitreous top light. */
+.vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 42%, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.72) 100%),
+    linear-gradient(180deg, rgba(10, 14, 22, 0.62) 0%, rgba(10, 14, 22, 0.30) 34%, rgba(10, 14, 22, 0.80) 100%);
+}
+
+.stamp {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(203, 213, 225, 0.86);
+  text-transform: uppercase;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 22px;
+  border-radius: 999px;
+  background: rgba(20, 30, 48, 0.90);
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  color: rgba(241, 245, 249, 0.94);
+  font-size: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  backdrop-filter: blur(16px);
+}
+
+.pill::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+}
+
+/* Device-style frame for embedded app captures. The rim gradient is what PIL
+   could only fake with a flat outline. */
+.capture-frame {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:
+    0 48px 110px rgba(0, 0, 0, 0.75),
+    0 8px 28px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.capture-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Specular rim sweep across the top edge of the capture. */
+.capture-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 42%);
+}

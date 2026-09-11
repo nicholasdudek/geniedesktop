@@ -56,15 +56,21 @@ public final class GenieVectorSearchKernel {
         let currentDocs = self.documents
         lock.unlock()
 
-        var results: [(id: String, title: String, score: Float)] = []
-        results.reserveCapacity(currentDocs.count)
+        // Bounded insertion keeps only the top-K running results, so we never
+        // sort the full document set (matches the batch kernel's "never sort
+        // all scores" contract for top-k retrieval).
+        var top: [(id: String, title: String, score: Float)] = []
+        top.reserveCapacity(topK)
 
         for doc in currentDocs {
             let score = Self.cosineSimilarity(a: queryVector, b: doc.embedding)
-            results.append((id: doc.id, title: doc.title, score: score))
+            guard top.count < topK || score > top[top.count - 1].score else { continue }
+
+            let insertIndex = top.firstIndex { $0.score < score } ?? top.count
+            top.insert((id: doc.id, title: doc.title, score: score), at: insertIndex)
+            if top.count > topK { top.removeLast() }
         }
 
-        results.sort { $0.score > $1.score }
-        return Array(results.prefix(topK))
+        return top
     }
 }

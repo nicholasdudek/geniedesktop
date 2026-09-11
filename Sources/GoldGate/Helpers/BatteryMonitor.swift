@@ -5,18 +5,36 @@ import IOKit.ps
 // MARK: - Battery Monitor
 
 @MainActor
-final class BatteryMonitor: ObservableObject {
-    static let shared = BatteryMonitor()
+public final class BatteryMonitor: ObservableObject {
+    public static let shared = BatteryMonitor()
 
-    @Published var batteryPct: Int? = nil
-    @Published var isCharging: Bool = false
-    @Published var isPluggedIn: Bool = false
-    @Published var isCharged: Bool = false
+    @Published public var batteryPct: Int? = nil
+    @Published public var isCharging: Bool = false
+    @Published public var isPluggedIn: Bool = false
+    @Published public var isCharged: Bool = false
+
+    public var thermalStateString: String {
+        switch ProcessInfo.processInfo.thermalState {
+        case .nominal: return "Nominal (Cool)"
+        case .fair: return "Fair (Warm)"
+        case .serious: return "Serious (Throttling)"
+        case .critical: return "Critical (High Heat)"
+        @unknown default: return "Nominal"
+        }
+    }
+
+    public var powerSourceDescription: String {
+        if isPluggedIn {
+            return isCharging ? "Power Adapter (Charging)" : (isCharged ? "Power Adapter (Fully Charged)" : "Power Adapter")
+        } else {
+            return "Battery"
+        }
+    }
 
     private var timer: Timer?
     private var runLoopSource: CFRunLoopSource?
 
-    init() {
+    public init() {
         refresh()
         startMonitoring()
     }

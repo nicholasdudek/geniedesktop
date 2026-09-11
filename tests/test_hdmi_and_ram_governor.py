@@ -34,6 +34,13 @@ def test_memory_governor_thread_safe_critical_pressure_store():
     assert "nonisolated public static var isCriticalPressureActive: Bool" in content
     assert "purgeVolatileCaches" in content
 
+def test_memory_governor_zero_leak_idle_sentinel():
+    content = GOVERNOR_FILE.read_text(encoding="utf-8")
+    assert "isLeakFree" in content
+    assert "idleStatusDescription" in content
+    assert "setupIdleSentinel" in content
+    assert "evaluateIdleMemoryHealth" in content
+
 # MARK: - 2. Zero-Copy GPU Pixel Forking Pipeline Tests
 
 def test_hdmi_capture_pixel_forking_structures():

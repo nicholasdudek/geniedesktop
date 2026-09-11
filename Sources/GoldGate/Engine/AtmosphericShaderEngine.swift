@@ -5,6 +5,7 @@ import simd
 // MARK: - Atmospheric Shader Engine & Reusable Canvas (Hardware-Accelerated Metal)
 
 public struct AtmosphericShaderCanvas: View {
+    @ObservedObject private var governor = GenieResourceGovernor.shared
     public let type: String
     public let intensity: CGFloat
     public let isPaused: Bool
@@ -16,9 +17,9 @@ public struct AtmosphericShaderCanvas: View {
     }
 
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: isPaused)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: isPaused || governor.isYieldingResources)) { timeline in
             Canvas { context, size in
-                guard !isPaused else { return }
+                guard !isPaused, !governor.isYieldingResources else { return }
                 let time = timeline.date.timeIntervalSinceReferenceDate
                 AtmosphericShaderEngine.draw(
                     context: context,
@@ -348,7 +349,7 @@ public struct AtmosphericShaderEngine {
                 context.fill(bioluminescentOrb, with: .color(Color.teal.opacity(Double(opacityAlpha * 0.40))))
             }
 
-        case "Fluid Ink Chromatography 🎨":
+        case "Fluid Ink Chromatography 🎨", "Fluid Ink Chromatography":
             for inkLayerIndex in 0..<3 {
                 let inkPhase = elapsedTime * 0.30 + Double(inkLayerIndex) * 1.6
                 var fluidInkPath = Path()
@@ -364,7 +365,7 @@ public struct AtmosphericShaderEngine {
                 context.fill(fluidInkPath, with: .linearGradient(Gradient(colors: [inkColor.opacity(Double(opacityAlpha * 0.32)), Color.clear]), startPoint: CGPoint(x: 0, y: canvasHeight * 0.35), endPoint: CGPoint(x: 0, y: canvasHeight)))
             }
 
-        case "Electric Plasma Lightning Storm ⚡️":
+        case "Electric Plasma Lightning Storm ⚡️", "Electric Plasma Lightning Storm":
             let lightningBoltCount = 3
             for boltIndex in 0..<lightningBoltCount {
                 let boltRandomSeed = Double(boltIndex) * 17.5 + floor(elapsedTime * 3.5)
@@ -381,7 +382,7 @@ public struct AtmosphericShaderEngine {
                 context.stroke(lightningBoltPath, with: .color(Color.white.opacity(Double(opacityAlpha * 0.95))), lineWidth: 0.8)
             }
 
-        case "Matrix Digital Rain Stream 🟢":
+        case "Matrix Digital Rain Stream 🟢", "Matrix Digital Rain Stream":
             let rainStreamColumns = 24
             for columnIndex in 0..<rainStreamColumns {
                 let streamOriginX = (canvasWidth / CGFloat(rainStreamColumns)) * CGFloat(columnIndex)
@@ -395,7 +396,7 @@ public struct AtmosphericShaderEngine {
                 }
             }
 
-        case "4K Sakura Petal Blizzard 🌸", "Sakura Petal Blizzard 🌸":
+        case "4K Sakura Petal Blizzard 🌸", "Sakura Petal Blizzard 🌸", "4K Sakura Petal Blizzard", "Sakura Petal Blizzard":
             for petalIndex in 0..<32 {
                 let petalRandomSeed = Double(petalIndex) * 23.45
                 let verticalVelocity = 35.0 + Double(petalIndex % 6) * 12.0
@@ -406,7 +407,7 @@ public struct AtmosphericShaderEngine {
                 context.fill(blossomPetalPath, with: .color(Color(red: 1.0, green: 0.72, blue: 0.82, opacity: Double(opacityAlpha * 0.65))))
             }
 
-        case "Retro CRT Vector Scanline Grid 🕹️", "Retro CRT Vector Grid 🕹️":
+        case "Retro CRT Vector Scanline Grid 🕹️", "Retro CRT Vector Grid 🕹️", "Retro CRT Vector Scanline Grid", "Retro CRT Vector Grid":
             let horizonLineY = canvasHeight * 0.62
             let vanishingPoint = CGPoint(x: canvasWidth * 0.5, y: horizonLineY)
             for columnIndex in 0...16 {
@@ -425,7 +426,7 @@ public struct AtmosphericShaderEngine {
                 context.stroke(horizontalGridLine, with: .color(Color.cyan.opacity(Double(opacityAlpha * 0.40 * depthOffsetFactor))), lineWidth: 1.2)
             }
 
-        case "Supermassive Black Hole Lens 🕳️":
+        case "Supermassive Black Hole Lens 🕳️", "Supermassive Black Hole Lens":
             let blackHoleCenter = CGPoint(x: canvasWidth * 0.5, y: canvasHeight * 0.5)
             let eventHorizonRadius: CGFloat = 85.0
 
@@ -444,7 +445,7 @@ public struct AtmosphericShaderEngine {
             context.fill(eventHorizonBoundary, with: .color(Color.black.opacity(Double(opacityAlpha * 0.95))))
             context.stroke(eventHorizonBoundary, with: .color(Color.orange.opacity(Double(opacityAlpha * 0.85))), lineWidth: 2.0)
 
-        case "4K Tokyo Neon Night Rain 🌧️":
+        case "4K Tokyo Neon Night Rain 🌧️", "4K Tokyo Neon Night Rain", "Tokyo Neon Night Rain":
             for dropletIndex in 0..<90 {
                 let dropletRandomSeed = Double(dropletIndex * 19)
                 let dropletCoordinateX = CGFloat((dropletRandomSeed * 73.0).truncatingRemainder(dividingBy: Double(canvasWidth)))

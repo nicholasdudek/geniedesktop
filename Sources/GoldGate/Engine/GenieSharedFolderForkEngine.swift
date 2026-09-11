@@ -16,10 +16,10 @@ public final class GenieSharedFolderForkEngine: ObservableObject {
     @Published public var bridgeAssetCount: Int = 0
     @Published public var lastSyncTimestamp: Date?
 
-    public static var defaultBridgePath: String {
+    nonisolated public static var defaultBridgePath: String {
         GenieCapabilities.sharedSupportDirectory.appendingPathComponent("Bridge").path
     }
-    public static var defaultSpacesPath: String {
+    nonisolated public static var defaultSpacesPath: String {
         GenieCapabilities.sharedSupportDirectory.appendingPathComponent("spaces").path
     }
 
@@ -180,6 +180,24 @@ public final class GenieSharedFolderForkEngine: ObservableObject {
         source.resume()
         self.bridgeWatcherSource = source
         self.isBridgeActive = true
+    }
+
+    // MARK: - Drop Worker Node onto Fork
+    @discardableResult
+    public func dropWorker(
+        sourceURL: URL,
+        spaceName: String? = nil,
+        workerName: String? = nil,
+        instructions: [GenieWorkerInstruction],
+        autoRun: Bool = true
+    ) throws -> GenieForkWorkerNode {
+        return try GenieWorkerNodeOrchestrator.shared.dropWorkerOnSharedFork(
+            sourceURL: sourceURL,
+            spaceName: spaceName,
+            workerName: workerName,
+            instructions: instructions,
+            autoRun: autoRun
+        )
     }
 
     deinit {

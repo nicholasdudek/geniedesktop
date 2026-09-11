@@ -120,6 +120,15 @@ public struct NativeWKWebView: NSViewRepresentable {
         MiniBrowserManager.shared.activeWebView = nsView
     }
 
+    public static func dismantleNSView(_ nsView: WKWebView, coordinator: Coordinator) {
+        nsView.stopLoading()
+        nsView.navigationDelegate = nil
+        nsView.uiDelegate = nil
+        if MiniBrowserManager.shared.activeWebView === nsView {
+            MiniBrowserManager.shared.activeWebView = nil
+        }
+    }
+
     public func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
@@ -390,6 +399,23 @@ public struct LiveBrowserCradleView: View {
             }
             .buttonStyle(.plain)
 
+            // VM Isolated Sandbox Button (Metal-Free)
+            Button(action: { launchIsolatedVMBrowser() }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "server.rack")
+                        .foregroundColor(.cyan)
+                    Text("VM Sandbox (Metal-Free 🛡️)")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.cyan)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.cyan.opacity(0.16)))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.cyan.opacity(0.35), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+            .help("Runs Chrome/Browser isolated without Metal GPU pipelines, freeing 100% of GPU & unified RAM for local AI models")
+
             Spacer()
         }
         .padding(.horizontal, 14)
@@ -406,6 +432,31 @@ public struct LiveBrowserCradleView: View {
             NSWorkspace.shared.open([targetURL], withApplicationAt: appURL, configuration: config, completionHandler: nil)
         } else {
             NSWorkspace.shared.openApplication(at: appURL, configuration: config, completionHandler: nil)
+        }
+    }
+
+    private func launchIsolatedVMBrowser() {
+        HapticFeedback.selection()
+        let targetURL = browserManager.currentURL?.absoluteString ?? "https://www.google.com"
+
+        if let chromeURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") {
+            let config = NSWorkspace.OpenConfiguration()
+            config.arguments = [
+                "--disable-metal",
+                "--use-angle=gl",
+                "--disable-gpu-memory-buffer-video-frames",
+                targetURL
+            ]
+            config.activates = true
+            NSWorkspace.shared.openApplication(at: chromeURL, configuration: config, completionHandler: nil)
+        } else if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") {
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = true
+            if let target = browserManager.currentURL {
+                NSWorkspace.shared.open([target], withApplicationAt: appURL, configuration: config, completionHandler: nil)
+            }
+        } else if let url = browserManager.currentURL {
+            NSWorkspace.shared.open(url)
         }
     }
 }

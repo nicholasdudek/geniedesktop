@@ -26,6 +26,7 @@ public struct RealMacOSMiniDockView: View {
     @AppStorage(PrefKey.dockAnimationIntensity) var dockAnimationIntensity: Double = 0.7
     @AppStorage(PrefKey.dockFormation) var dockFormationRaw: String = DockFormation.defaultFormation.rawValue
     @AppStorage(PrefKey.danceToMusicEnabled) var danceToMusicEnabled: Bool = false
+    @AppStorage("genie.dock.showBattery") var showBatteryInDock: Bool = false
     @ObservedObject var musicMonitor: MusicPlaybackMonitor = .shared
 
     public var dockFormation: DockFormation {
@@ -66,8 +67,8 @@ public struct RealMacOSMiniDockView: View {
 
     private var genieAppIcon: NSImage? {
         let candidatePaths = [
-            "/Users/nicholasdudek/Desktop/Genie/GoldGate/Sources/GoldGate/Assets.xcassets/AppIcon.appiconset/icon_512x512.png",
-            "/Users/nicholasdudek/Developer/GoldGate/Sources/GoldGate/Assets.xcassets/AppIcon.appiconset/icon_512x512.png"
+            "BUNDLE_ICON_PATH",
+            "BUNDLE_ICON_PATH"
         ]
         for path in candidatePaths {
             if FileManager.default.fileExists(atPath: path), let img = NSImage(contentsOfFile: path) {
@@ -148,7 +149,7 @@ public struct RealMacOSMiniDockView: View {
                             trashDockItemView
                         }
 
-                        batteryPillView
+                        optionalBatteryPillView
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 12)
@@ -184,8 +185,8 @@ public struct RealMacOSMiniDockView: View {
                             trashDockItemView
                         }
 
-                        // 5. Live Battery Pill
-                        batteryPillView
+                        // 5. Battery Pill (Completely removed from Menu Bar Mini Dock)
+                        optionalBatteryPillView
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
@@ -197,11 +198,20 @@ public struct RealMacOSMiniDockView: View {
             dockManager.setup()
             dockManager.refreshDockApps()
             trashMonitor.checkTrashNow()
-            batteryMonitor.refresh()
+            if !isDownwardMenuBarDock && showBatteryInDock {
+                batteryMonitor.refresh()
+            }
         }
     }
 
     // MARK: - Battery Pill View
+    @ViewBuilder
+    private var optionalBatteryPillView: some View {
+        if !isDownwardMenuBarDock && showBatteryInDock {
+            batteryPillView
+        }
+    }
+
     @ViewBuilder
     private var batteryPillView: some View {
         if let pct = batteryMonitor.batteryPct {
@@ -547,7 +557,19 @@ public struct RealMacOSMiniDockView: View {
         let isHovered = hoveredItemId == "com.nicholasdudek.genie"
         Button(action: {
             HapticFeedback.selection()
-            NotificationCenter.default.post(name: NSNotification.Name("NexusFocusGenieSearchBarWithMode"), object: "chat")
+            // 1. Toggle Lock & Unlock on the dock
+            let currentLock = UserDefaults.standard.bool(forKey: PrefKey.isChatLockedInPlace)
+            let newLock = !currentLock
+            UserDefaults.standard.set(newLock, forKey: PrefKey.isChatLockedInPlace)
+            NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockLock"), object: newLock)
+
+            // 2. Always activate the Genie chat main desktop view first!
+            DesktopWindowManager.shared.switchToStation(.desktop)
+            FinderChatWindowManager.shared.show(tab: .chat)
+            NSApp.activate(ignoringOtherApps: true)
+
+            // 3. Keep it open for a timer so we can activate the dock when we need to
+            NotificationCenter.default.post(name: NSNotification.Name("NexusRevealDockWithTimer"), object: 8.0)
         }) {
             VStack(spacing: 3) {
                 ZStack {

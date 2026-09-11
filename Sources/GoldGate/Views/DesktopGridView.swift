@@ -67,6 +67,7 @@ struct DesktopGridView: View {
     @State private var dragHoverTargetID: String? = nil
     @State private var lastScrollTime: TimeInterval = 0
     @State private var lastPageSwitchTime: TimeInterval = 0
+    @State private var lastAppsDismissTime: TimeInterval = 0
     @State private var scrollAccumulator: CGFloat = 0
     @State private var shockwaves: [Shockwave] = []
     @State private var petTreats: [PetTreat] = []
@@ -78,6 +79,7 @@ struct DesktopGridView: View {
     @State private var localKeyMonitor: Any? = nil
     @State private var globalKeyMonitor: Any? = nil
     @State private var mouseMonitor: Any? = nil
+    @State private var localMouseMonitor: Any? = nil
     @State private var stationDragOffsetY: CGFloat = 0.0
     @State private var isDraggingStationSlider: Bool = false
     @State private var isVerticalScrollBarHovered: Bool = false
@@ -108,6 +110,7 @@ struct DesktopGridView: View {
     @AppStorage(PrefKey.sameWallpaperMode) var sameWallpaperMode: Bool = true
     @AppStorage(PrefKey.wallpaperMatchingStyle) var wallpaperMatchingStyle: String = "Exact Mirror (1:1)"
     @AppStorage(PrefKey.wallpaperTreatment) var wallpaperTreatment: String = "Exact Mirror (1:1)"
+    @AppStorage(PrefKey.hideWallpaperBehindApps) var hideWallpaperBehindApps: Bool = false
     @AppStorage(PrefKey.appIconTheme) var appIconTheme: String = "Default"
     @AppStorage(PrefKey.alwaysOnDesktop) var alwaysOnDesktop: Bool = false
     @AppStorage(PrefKey.appIconTintColor) var appIconTintColor: String = "Emerald"
@@ -148,8 +151,24 @@ struct DesktopGridView: View {
     @AppStorage(PrefKey.isRightChatDockOpen) var isRightChatDockOpen: Bool = false
     @AppStorage(PrefKey.isRightAppsDockOpen) var isRightAppsDockOpen: Bool = false
     @AppStorage(PrefKey.rightDocksCoexistMode) var rightDocksCoexistMode: String = "Side-by-Side 📐"
-    @State private var isTopSearchBarPoppedDown: Bool = false
+    /// Top dock visibility. Backed by `DesktopWindowManager` rather than local
+    /// `@State` so the menu bar dropdown — which lives in a different window —
+    /// can close it, and vice versa. Only one chat surface is open at a time.
+    /// The ~30 assignment sites below are unchanged; `nonmutating set` keeps
+    /// them working against the shared store.
+    private var isTopSearchBarPoppedDown: Bool {
+        get { windowManager.isTopDockPresented }
+        nonmutating set { windowManager.isTopDockPresented = newValue }
+    }
+
+    private var isTopSearchBarPoppedDownBinding: Binding<Bool> {
+        Binding(
+            get: { DesktopWindowManager.shared.isTopDockPresented },
+            set: { DesktopWindowManager.shared.isTopDockPresented = $0 }
+        )
+    }
     @State private var isSearchBarTyping: Bool = false
+    @AppStorage("genieZenModeEnabled") var isZenModeEnabled: Bool = false
     @AppStorage(PrefKey.bottomEdgeCursorTrigger) var bottomEdgeCursorTrigger: Bool = false
     @AppStorage(PrefKey.topEdgeCursorTrigger) var topEdgeCursorTrigger: Bool = false
     @AppStorage(PrefKey.swipeSensitivity) var swipeSensitivity: String = "Deliberate (Firm Swipe)"
@@ -157,9 +176,20 @@ struct DesktopGridView: View {
     @AppStorage(PrefKey.dockAvoidanceEnabled) var dockAvoidanceEnabled: Bool = true
     @AppStorage(PrefKey.dockRestPeriod) var dockRestPeriod: Double = 0.65
 
+    // Mouse Wheel & Station Navigation (Optional, hidden by default)
+    @AppStorage(PrefKey.enableScrollWheelStationNavigation) var enableScrollWheelStationNavigation: Bool = false
+
     // Arcade Pinball Mode & Pin to Desktop
     @AppStorage(PrefKey.pinballModeEnabled) var pinballModeEnabled: Bool = false
     @AppStorage(PrefKey.pinToDesktopEnabled) var pinToDesktopEnabled: Bool = false
+    @AppStorage(PrefKey.attachWorldClockWidget) var attachWorldClockWidget: Bool = false
+    @AppStorage(PrefKey.worldClockWidgetPositionX) var clockWidgetPosX: Double = 160.0
+    @AppStorage(PrefKey.worldClockWidgetPositionY) var clockWidgetPosY: Double = 120.0
+    @State private var clockWidgetDragOffset: CGSize = .zero
+    @AppStorage(PrefKey.attachAnimatedChatWidget) var attachAnimatedChatWidget: Bool = false
+    @AppStorage(PrefKey.animatedChatWidgetPosX) var animatedChatPosX: Double = 260.0
+    @AppStorage(PrefKey.animatedChatWidgetPositionY) var animatedChatPosY: Double = 180.0
+    @State private var animatedChatDragOffset: CGSize = .zero
     @AppStorage(PrefKey.formationAppLimit) var formationAppLimit: Int = 0
     @AppStorage(PrefKey.customFormationColumns) var customFormationColumns: Int = 4
 
@@ -369,40 +399,50 @@ struct DesktopGridView: View {
                 let activeTreatment = (wallpaperTreatment != "Exact Mirror (1:1)" ? wallpaperTreatment : wallpaperMatchingStyle)
                 let isGenieMode = (wallpaperMode == "Genie" || wallpaperMode == "1:1 Camouflage" || sameWallpaperMode)
                 let isTranslucentMode = !isGenieMode && (wallpaperMode == "Translucent" || activeTreatment == "Translucent" || activeTreatment == "Translucent Frosted Glass" || activeTreatment == "100% Translucent Pass-Through")
+                let shouldHideWallpaper = hideWallpaperBehindApps || (wallpaperMode == "Genie" && (activeTreatment == "100% Translucent Pass-Through" || activeTreatment == "Exact Mirror (1:1)" && hideWallpaperBehindApps))
 
                 ZStack {
-                    let wallpaper = wallpaperManager.activeWallpaperImage ?? wallpaperSampler.wallpaperImage ?? WallpaperManager.shared.generateCuratedWallpaper(named: wallpaperMatchingStyle)
-                    Image(nsImage: wallpaper)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: screenSize.width, height: screenSize.height)
-                        .clipped()
+                    if !shouldHideWallpaper {
+                        if let htmlPath = wallpaperManager.activeHTMLWallpaperPath,
+                           FileManager.default.fileExists(atPath: htmlPath) {
+                            LiveHTMLWallpaperCanvasView(fileURL: URL(fileURLWithPath: htmlPath))
+                                .frame(width: screenSize.width, height: screenSize.height)
+                                .clipped()
+                        } else {
+                            let wallpaper = wallpaperManager.activeWallpaperImage ?? wallpaperSampler.wallpaperImage ?? WallpaperManager.shared.generateCuratedWallpaper(named: wallpaperMatchingStyle)
+                            Image(nsImage: wallpaper)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: screenSize.width, height: screenSize.height)
+                                .clipped()
+                        }
 
-                    if isTranslucentMode {
-                        VisualEffectBlur(material: .fullScreenUI, blendingMode: .behindWindow, state: .active)
-                            .opacity(0.88)
-                    }
+                        if isTranslucentMode {
+                            VisualEffectBlur(material: .fullScreenUI, blendingMode: .behindWindow, state: .active)
+                                .opacity(0.88)
+                        }
 
-                    switch activeTreatment {
-                    case "Clear Water Caustics", "Clear Water Glass":
-                        ClearWaterCausticsCanvas(screenSize: screenSize, isPaused: currentPage != 1)
-                    case "Cyber Vector Grid", "Cyber Grid":
-                        CyberVectorGridCanvas(screenSize: screenSize)
-                    case "Obsidian Velvet Tint":
-                        Color.black.opacity(0.35)
-                    case "Soft Frosted Glass", "Translucent Frosted Glass":
-                        VisualEffectBlur(material: .fullScreenUI, blendingMode: .behindWindow, state: .active)
-                            .opacity(0.65)
-                    case "Golden Gate Sunset":
-                        LinearGradient(
-                            colors: [Color.orange.opacity(0.25), Color.purple.opacity(0.20)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    case "Dimmed Focus (15% Darker)":
-                        Color.black.opacity(0.15)
-                    default:
-                        EmptyView()
+                        switch activeTreatment {
+                        case "Clear Water Caustics", "Clear Water Glass":
+                            ClearWaterCausticsCanvas(screenSize: screenSize, isPaused: currentPage != 1)
+                        case "Cyber Vector Grid", "Cyber Grid":
+                            CyberVectorGridCanvas(screenSize: screenSize)
+                        case "Obsidian Velvet Tint":
+                            Color.black.opacity(0.35)
+                        case "Soft Frosted Glass", "Translucent Frosted Glass":
+                            VisualEffectBlur(material: .fullScreenUI, blendingMode: .behindWindow, state: .active)
+                                .opacity(0.65)
+                        case "Golden Gate Sunset":
+                            LinearGradient(
+                                colors: [Color.orange.opacity(0.25), Color.purple.opacity(0.20)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        case "Dimmed Focus (15% Darker)":
+                            Color.black.opacity(0.15)
+                        default:
+                            EmptyView()
+                        }
                     }
                 }
                 .frame(width: screenSize.width, height: screenSize.height)
@@ -416,7 +456,7 @@ struct DesktopGridView: View {
                 .overlay(
                     Color.black.opacity(isTopSearchBarPoppedDown ? 0.22 : 0.0)
                 )
-                .opacity(currentPage == 1 ? 1.0 : 0.0)
+                .opacity(shouldHideWallpaper ? 0.0 : (currentPage == 1 ? 1.0 : 0.0))
                 .animation(.spring(response: 0.38, dampingFraction: 0.82), value: isTopSearchBarPoppedDown)
                 .animation(.easeInOut(duration: 0.22), value: currentPage)
                 .allowsHitTesting(false)
@@ -564,19 +604,24 @@ struct DesktopGridView: View {
                     sideMargin: sideMargin
                 )
                 .offset(x: wallpaperEngine.offset(for: .floatingHUD).width, y: wallpaperEngine.offset(for: .floatingHUD).height)
+                .zIndex(9999)
 
                 // 📱 Right-Edge Sliding Docks & Floating Trigger Tabs (Disabled for production: single window consolidated)
                 // rightEdgeDocksContainer(screenSize: screenSize, topClearance: topClearance, bottomClearance: bottomClearance)
                 //     .zIndex(60)
 
-                // Continuous Panoramic Vertical Scrollbar (Zenith Chat, Horizon Desktop, Nadir Apps)
-                continuousVerticalScrollBar(screenSize: screenSize)
-                    .zIndex(40)
+                // Continuous Panoramic Vertical Scrollbar (Zenith Chat, Horizon Desktop, Nadir Apps — Optional, hidden by default)
+                if enableScrollWheelStationNavigation {
+                    continuousVerticalScrollBar(screenSize: screenSize)
+                        .zIndex(40)
+                }
 
-                // 📱 iPhone Home Indicator Bar (Swipe Up for Apps, Swipe Down to Retrieve)
+                // 📱 iPhone Home Indicator Bar (Removed from dock per user instruction)
+                #if false
                 if !isEditing && appDisplayStage == .hidden {
                     iPhoneHomeIndicatorBar(screenSize: screenSize, bottomClearance: bottomClearance)
                 }
+                #endif
             }
             .coordinateSpace(name: "FullscreenCanvas")
             .frame(width: screenSize.width, height: screenSize.height)
@@ -602,20 +647,24 @@ struct DesktopGridView: View {
                             }
                             // 2. Mouse down to bottom edge: brings apps up! ("bottom dock normal is dock up")
                             else if (currentPage == 0 || appDisplayStage == .hidden) && location.y >= screenSize.height - 24 && bottomEdgeCursorTrigger {
-                                lastPageSwitchTime = now
-                                HapticFeedback.selection()
-                                withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                                    currentPage = 1
-                                    appDisplayStage = .fullScreen
-                                    isTopSearchBarPoppedDown = false
-                                    isRightChatDockOpen = false
-                                    isRightAppsDockOpen = false
+                                let customDelay = UserDefaults.standard.double(forKey: PrefKey.appsPopUpDelaySeconds)
+                                let requiredCooldown = customDelay > 0 ? customDelay : 10.0
+                                if now - lastAppsDismissTime >= requiredCooldown {
+                                    lastPageSwitchTime = now
+                                    HapticFeedback.selection()
+                                    withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
+                                        currentPage = 1
+                                        appDisplayStage = .fullScreen
+                                        isTopSearchBarPoppedDown = false
+                                        isRightChatDockOpen = false
+                                        isRightAppsDockOpen = false
+                                    }
+                                    DesktopWindowManager.shared.setPage(1)
+                                    NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 1)
                                 }
-                                DesktopWindowManager.shared.setPage(1)
-                                NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 1)
                             }
                             // 3. Top edge: optional top dock down from notch! ("and optional top dock down")
-                            else if (currentPage == 0 || appDisplayStage != .hidden || !isTopSearchBarPoppedDown) && location.y <= 6 && topEdgeCursorTrigger && !CustomMenuBarManager.shared.isEnabled {
+                            else if (currentPage == 0 || appDisplayStage != .hidden || !isTopSearchBarPoppedDown) && (location.y <= 6 || location.y <= 14) && topEdgeCursorTrigger {
                                 lastPageSwitchTime = now
                                 HapticFeedback.selection()
                                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
@@ -626,6 +675,8 @@ struct DesktopGridView: View {
                                     isRightAppsDockOpen = false
                                 }
                                 DesktopWindowManager.shared.setPage(1)
+                                DesktopWindowManager.shared.elevateForTopDashboard(isPopped: true)
+                                FinderChatWindowManager.shared.slideDownFullScreen()
                                 NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 1)
                                 NotificationCenter.default.post(name: NSNotification.Name("NexusFocusGenieSearchBar"), object: nil)
                             }
@@ -640,6 +691,7 @@ struct DesktopGridView: View {
                             // 4. Mouse up to hide: when apps are up, moving mouse up past the top boundary retrieves them down
                             else if currentPage == 1 && appDisplayStage == .fullScreen && location.y <= 4 && !isSearchBarTyping && !pinToDesktopEnabled && !alwaysOnDesktop && !CustomMenuBarManager.shared.isEnabled {
                                 lastPageSwitchTime = now
+                                lastAppsDismissTime = now
                                 HapticFeedback.tick()
                                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
                                     currentPage = 0
@@ -649,17 +701,7 @@ struct DesktopGridView: View {
                                 DesktopWindowManager.shared.setPage(0)
                                 NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 0)
                             }
-                            // 5. Mouse down to hide: when chat is up, moving mouse down towards bottom edge can hide
-                            else if currentPage == 1 && appDisplayStage == .hidden && isTopSearchBarPoppedDown && location.y >= screenSize.height - 12 && !isSearchBarTyping && !pinToDesktopEnabled && !alwaysOnDesktop {
-                                lastPageSwitchTime = now
-                                HapticFeedback.tick()
-                                withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                                    currentPage = 0
-                                    isTopSearchBarPoppedDown = false
-                                }
-                                DesktopWindowManager.shared.setPage(0)
-                                NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 0)
-                            }
+
                         }
                     }
                 case .ended:
@@ -831,7 +873,10 @@ struct DesktopGridView: View {
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusBottomEdgeHit"))) { _ in
                 guard !isEditing else { return }
                 let now = ProcessInfo.processInfo.systemUptime
-                guard now - lastPageSwitchTime > 0.20 else { return }
+                let customDelay = UserDefaults.standard.double(forKey: PrefKey.appsPopUpDelaySeconds)
+                let requiredCooldown = customDelay > 0 ? customDelay : 10.0
+                guard now - lastAppsDismissTime >= requiredCooldown else { return }
+                guard now - lastPageSwitchTime > 0.30 else { return }
                 lastPageSwitchTime = now
                 HapticFeedback.selection()
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
@@ -893,6 +938,7 @@ struct DesktopGridView: View {
             if newPage != 1 {
                 desktopScrollOffsetY = 0.0
                 isSearchBarTyping = false
+                lastAppsDismissTime = ProcessInfo.processInfo.systemUptime
                 // Clear transient pinballs, shockwaves, treats, and cursor trails on desktop dismissal
                 pinballs.removeAll()
                 shockwaves.removeAll()
@@ -903,7 +949,9 @@ struct DesktopGridView: View {
             DesktopWindowManager.shared.syncCurrentStation(fromPage: newPage, appDisplayStage: appDisplayStage, isTopSearchBarPoppedDown: isTopSearchBarPoppedDown)
         }
         .onChange(of: appDisplayStageRaw) { _, newRaw in
-            if newRaw != AppDisplayStage.hidden.rawValue {
+            if newRaw == AppDisplayStage.hidden.rawValue {
+                lastAppsDismissTime = ProcessInfo.processInfo.systemUptime
+            } else {
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
                     isRightChatDockOpen = false
                     isRightAppsDockOpen = false
@@ -914,13 +962,35 @@ struct DesktopGridView: View {
         }
         .onChange(of: isTopSearchBarPoppedDown) { _, isPopped in
             if isPopped {
+                if FinderChatWindowManager.shared.isVisible {
+                    FinderChatWindowManager.shared.hide()
+                }
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
                     isRightChatDockOpen = false
                     isRightAppsDockOpen = false
-                    appDisplayStage = .hidden
+                }
+            } else {
+                if appDisplayStage == .hidden && !pinToDesktopEnabled && !alwaysOnDesktop {
+                    currentPage = 0
+                    DesktopWindowManager.shared.setPage(0)
                 }
             }
+            DesktopWindowManager.shared.elevateForTopDashboard(isPopped: isPopped)
             DesktopWindowManager.shared.syncCurrentStation(fromPage: currentPage, appDisplayStage: appDisplayStage, isTopSearchBarPoppedDown: isTopSearchBarPoppedDown)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusDismissTopCeilingDashboard"))) { _ in
+            withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
+                isTopSearchBarPoppedDown = false
+            }
+            DesktopWindowManager.shared.elevateForTopDashboard(isPopped: false)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusToggleTopCeilingDashboard"))) { _ in
+            guard !isEditing else { return }
+            HapticFeedback.tick()
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                isTopSearchBarPoppedDown.toggle()
+            }
+            DesktopWindowManager.shared.elevateForTopDashboard(isPopped: isTopSearchBarPoppedDown)
         }
         .onChange(of: isRightChatDockOpen) { _, isOpen in
             if isOpen {
@@ -1029,6 +1099,15 @@ struct DesktopGridView: View {
                                 isEditing = false
                             }
                             return nil
+                        } else if isTopSearchBarPoppedDown {
+                            HapticFeedback.tick()
+                            withAnimation(.spring(response: 0.36, dampingFraction: 0.82)) {
+                                isTopSearchBarPoppedDown = false
+                                DesktopWindowManager.shared.switchToStation(.desktop)
+                            }
+                            DesktopWindowManager.shared.setPage(0)
+                            NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 0)
+                            return nil
                         } else if currentPage == 1 {
                             HapticFeedback.tick()
                             withAnimation(.interpolatingSpring(mass: 0.8, stiffness: 260, damping: 24)) {
@@ -1109,7 +1188,6 @@ struct DesktopGridView: View {
 
             if mouseMonitor == nil {
                 mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged]) { _ in
-                    guard self.currentPage == 1 else { return }
                     let mouseLoc = NSEvent.mouseLocation
                     let currentScreen = self.screen ?? NSScreen.main ?? (NSScreen.screens.first ?? NSScreen())
                     if NSPointInRect(mouseLoc, currentScreen.frame) {
@@ -1117,12 +1195,15 @@ struct DesktopGridView: View {
                         let localY = currentScreen.frame.maxY - mouseLoc.y
                         let loc = CGPoint(x: localX, y: localY)
                         Task { @MainActor in
-                            self.mouseLocation = loc
-                            if self.cursorFxType != "None" {
-                                self.updateCursorTrail(loc)
+                            if self.currentPage == 1 {
+                                self.mouseLocation = loc
+                                if self.cursorFxType != "None" {
+                                    self.updateCursorTrail(loc)
+                                }
                             }
-                            if localY <= 16.0 && !self.isTopSearchBarPoppedDown {
-                                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                            let topEdgeTrigger = UserDefaults.standard.object(forKey: PrefKey.topEdgeCursorTrigger) as? Bool ?? false
+                            if topEdgeTrigger && localY <= 14.0 && !self.isTopSearchBarPoppedDown && abs(loc.x - currentScreen.frame.width / 2.0) <= currentScreen.frame.width * 0.45 {
+                                withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
                                     self.isTopSearchBarPoppedDown = true
                                 }
                             }
@@ -1143,6 +1224,10 @@ struct DesktopGridView: View {
             if let m = mouseMonitor {
                 NSEvent.removeMonitor(m)
                 mouseMonitor = nil
+            }
+            if let lm = localMouseMonitor {
+                NSEvent.removeMonitor(lm)
+                localMouseMonitor = nil
             }
         }
         .onChange(of: isEditing) { _, editing in
@@ -1220,14 +1305,24 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
 
         // 3. Liquid Glass Top Pull-Down Dashboard Panel
         if isTopSearchBarPoppedDown && !isEditing {
-            LiquidGlassTopDashboardView(isPresented: $isTopSearchBarPoppedDown, screenSize: screenSize)
+            LiquidGlassTopDashboardView(isPresented: isTopSearchBarPoppedDownBinding, screenSize: screenSize)
                 .transition(.asymmetric(
                     insertion: .move(edge: .top).combined(with: .opacity),
                     removal: .move(edge: .top).combined(with: .opacity)
                 ))
-                .zIndex(99)
+                .zIndex(999)
         }
 
+
+        // 4. Attachable World Clock Widget Complication
+        if attachWorldClockWidget && !isEditing {
+            desktopAttachedWorldClockWidget(screenSize: screenSize)
+        }
+
+        // 4b. Attachable Animated Living Chat Widget Complication
+        if attachAnimatedChatWidget && !isEditing {
+            desktopAttachedAnimatedChatWidget(screenSize: screenSize)
+        }
 
         // 5. Genie Smoke Overlay Engine
         GenieSmokeOverlayView(style: smokeStyle, bounds: screenSize)
@@ -1245,6 +1340,254 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
 
         // 8. 📱 Right-Edge Sliding Docks & Trigger Tabs (Consolidated into Chat Bar Layer Views)
         // Disabled completely per user request ("the right side bar you have on the right near with the buttons get rid of them put them in the chat")
+    }
+
+    // MARK: - Attachable World Clock Widget Complication
+    @ViewBuilder
+    private func desktopAttachedWorldClockWidget(screenSize: CGSize) -> some View {
+        let currentX = clockWidgetPosX + clockWidgetDragOffset.width
+        let currentY = clockWidgetPosY + clockWidgetDragOffset.height
+
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Header bar
+                HStack {
+                    Image(systemName: "globe.americas.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.orange)
+                    Text("World Clock")
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Button(action: {
+                        HapticFeedback.selection()
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                            attachWorldClockWidget = false
+                        }
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                TimelineView(.periodic(from: .now, by: GenieWorldClockStore.shared.settings.showSeconds ? 1 : 60)) { context in
+                    VStack(spacing: 5) {
+                        ForEach(Array(GenieWorldClockStore.shared.settings.cities.prefix(3))) { city in
+                            HStack {
+                                Circle()
+                                    .fill(city.accent.color)
+                                    .frame(width: 5, height: 5)
+                                Text(city.name)
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Text(city.offsetDescription(from: .current, at: context.date))
+                                    .font(.system(size: 9.5, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.55))
+                                Text(clockTimeString(for: city, date: context.date))
+                                    .font(.system(size: 11.5, weight: .bold, design: .rounded).monospacedDigit())
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.white.opacity(0.06))
+                            )
+                        }
+                    }
+                }
+            }
+            .padding(10)
+            .frame(width: 220)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.black.opacity(0.85))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.08)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.55), radius: 16, y: 6)
+        }
+        .position(x: max(120, min(screenSize.width - 120, currentX)), y: max(60, min(screenSize.height - 100, currentY)))
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    clockWidgetDragOffset = value.translation
+                }
+                .onEnded { value in
+                    clockWidgetPosX = max(120, min(screenSize.width - 120, clockWidgetPosX + value.translation.width))
+                    clockWidgetPosY = max(60, min(screenSize.height - 100, clockWidgetPosY + value.translation.height))
+                    clockWidgetDragOffset = .zero
+                }
+        )
+    }
+
+    private func clockTimeString(for city: GenieWorldClockCity, date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = city.calendar
+        formatter.timeZone = city.timeZone
+        formatter.dateFormat = GenieWorldClockStore.shared.settings.use24Hour ? "HH:mm" : "h:mm a"
+        return formatter.string(from: date)
+    }
+
+    // MARK: - Attachable Animated Living Chat Widget Complication
+    @ViewBuilder
+    private func desktopAttachedAnimatedChatWidget(screenSize: CGSize) -> some View {
+        let currentX = animatedChatPosX + animatedChatDragOffset.width
+        let currentY = animatedChatPosY + animatedChatDragOffset.height
+
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 10) {
+                // Header Bar with Living AI Status
+                HStack(spacing: 8) {
+                    // Pulsing living orb
+                    TimelineView(.animation) { timelineContext in
+                        let time = timelineContext.date.timeIntervalSinceReferenceDate
+                        let pulse = sin(time * 2.5) * 0.2 + 0.8
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [Color.cyan.opacity(0.8), Color.purple.opacity(0.4), Color.clear],
+                                        center: .center,
+                                        startRadius: 2,
+                                        endRadius: 16
+                                    )
+                                )
+                                .scaleEffect(pulse)
+                                .frame(width: 22, height: 22)
+
+                            Circle()
+                                .fill(Color.cyan)
+                                .frame(width: 8, height: 8)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Genie Copilot")
+                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                        Text("Living AI • Online")
+                            .font(.system(size: 8.5, weight: .medium))
+                            .foregroundColor(.cyan.opacity(0.85))
+                    }
+
+                    Spacer()
+
+                    Button(action: {
+                        HapticFeedback.selection()
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                            attachAnimatedChatWidget = false
+                        }
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                // Dynamic Audio / Neural Equalizer Waveform
+                TimelineView(.animation) { timelineContext in
+                    let time = timelineContext.date.timeIntervalSinceReferenceDate
+                    HStack(spacing: 3) {
+                        ForEach(0..<12) { bar in
+                            let heightFactor = (sin(time * 3.5 + Double(bar) * 0.6) + 1.0) / 2.0
+                            RoundedRectangle(cornerRadius: 1.5)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.cyan, Color.purple],
+                                        startPoint: .bottom,
+                                        endPoint: .top
+                                    )
+                                )
+                                .frame(width: 3.5, height: CGFloat(6 + heightFactor * 14))
+                        }
+                        Spacer()
+                        // Typing indicator dots
+                        HStack(spacing: 3) {
+                            ForEach(0..<3) { dot in
+                                let dotAlpha = (sin(time * 4.0 + Double(dot) * 1.0) + 1.0) / 2.0
+                                Circle()
+                                    .fill(Color.white.opacity(0.3 + dotAlpha * 0.7))
+                                    .frame(width: 4, height: 4)
+                            }
+                        }
+                    }
+                    .frame(height: 20)
+                    .padding(.horizontal, 4)
+                }
+
+                // Interactive Summon Bar
+                Button(action: {
+                    HapticFeedback.selection()
+                    isRightChatDockOpen = true
+                }) {
+                    HStack {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.cyan)
+                        Text("Tap to Ask or Press ⌥Space")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.white.opacity(0.85))
+                        Spacer()
+                        Image(systemName: "arrow.up.right.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.cyan)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.white.opacity(0.08))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.12), lineWidth: 0.8))
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(12)
+            .frame(width: 250)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.black.opacity(0.85))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color.cyan.opacity(0.6), Color.purple.opacity(0.3), Color.white.opacity(0.1)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.2
+                            )
+                    )
+            )
+            .shadow(color: Color.cyan.opacity(0.2), radius: 18, y: 6)
+            .shadow(color: Color.black.opacity(0.6), radius: 20, y: 10)
+        }
+        .position(x: max(130, min(screenSize.width - 130, currentX)), y: max(80, min(screenSize.height - 100, currentY)))
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    animatedChatDragOffset = value.translation
+                }
+                .onEnded { value in
+                    animatedChatPosX = max(130, min(screenSize.width - 130, animatedChatPosX + value.translation.width))
+                    animatedChatPosY = max(80, min(screenSize.height - 100, animatedChatPosY + value.translation.height))
+                    animatedChatDragOffset = .zero
+                }
+        )
     }
 
     // MARK: - 📱 Right-Edge Sliding Unified Dock (Chat, Applications, Screen Matrix, Settings)
@@ -1404,9 +1747,10 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
         }
     }
 
-    // MARK: - 📱 iPhone Home Indicator & Fluid Gesture Bar
+    // MARK: - 📱 iPhone Home Indicator & Fluid Gesture Bar (Retired from dock)
     @ViewBuilder
     private func iPhoneHomeIndicatorBar(screenSize: CGSize, bottomClearance: CGFloat) -> some View {
+        #if false
         let isAppsUp = (appDisplayStage == .fullScreen)
         VStack(spacing: 0) {
             Spacer()
@@ -1456,38 +1800,61 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
             .padding(.bottom, max(8, bottomClearance - 48))
         }
         .frame(width: screenSize.width, height: screenSize.height, alignment: .bottom)
+        #else
+        EmptyView()
+        #endif
     }
 
     @ViewBuilder
     private func topRetractorDropZone(screenSize: CGSize) -> some View {
         VStack {
-            Color.clear
-                .frame(height: 28)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    HapticFeedback.tick()
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                        isTopSearchBarPoppedDown.toggle()
-                    }
-                }
-                .gesture(
-                    DragGesture(minimumDistance: 8)
-                        .onEnded { value in
-                            if value.translation.height > 10 {
-                                HapticFeedback.tick()
-                                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                                    isTopSearchBarPoppedDown = true
-                                }
-                            } else if value.translation.height < -10 {
-                                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                                    isTopSearchBarPoppedDown = false
-                                }
+            ZStack(alignment: .top) {
+                Color.clear
+                    .frame(height: 44)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        HapticFeedback.tick()
+                        if isTopSearchBarPoppedDown {
+                            FinderChatWindowManager.shared.hide()
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                                isTopSearchBarPoppedDown = false
+                            }
+                        } else {
+                            FinderChatWindowManager.shared.slideDownFullScreen()
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                                isTopSearchBarPoppedDown = true
                             }
                         }
-                )
+                    }
+                    .gesture(
+                        DragGesture(minimumDistance: 4)
+                            .onEnded { value in
+                                if value.translation.height > 6 {
+                                    HapticFeedback.tick()
+                                    FinderChatWindowManager.shared.slideDownFullScreen()
+                                    withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                                        isTopSearchBarPoppedDown = true
+                                    }
+                                } else if value.translation.height < -6 {
+                                    FinderChatWindowManager.shared.hide()
+                                    withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                                        isTopSearchBarPoppedDown = false
+                                    }
+                                }
+                            }
+                    )
+
+                // Ceiling grip capsule indicator
+                Capsule()
+                    .fill(isTopSearchBarPoppedDown ? Color.cyan.opacity(0.85) : Color.white.opacity(0.35))
+                    .frame(width: 54, height: 4)
+                    .padding(.top, 4)
+                    .allowsHitTesting(false)
+            }
             Spacer()
         }
         .frame(width: screenSize.width, height: screenSize.height, alignment: .top)
+        .zIndex(100)
     }
 
     @ViewBuilder
@@ -1692,6 +2059,9 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
         // Anti-jitter cooldown between page/station flips
         guard now - lastPageSwitchTime > 0.18 else { return }
 
+        // Check if scroll wheel station navigation is enabled by user preference (optional, defaults to false)
+        guard UserDefaults.standard.bool(forKey: PrefKey.enableScrollWheelStationNavigation) else { return }
+
         // Ignore inertial momentum coasting after fingers lift from trackpad
         guard event.momentumPhase.isEmpty else {
             scrollAccumulator = 0
@@ -1749,7 +2119,7 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
         if isSwipeUp {
             // Two-finger physical swipe UP:
             // If on Applications (Bottom) -> slide UP to Desktop (Center)
-            // If on Desktop (Center) -> slide UP to Chat Studio (Top)
+            // If on Desktop (Center) -> slide UP to Chat Studio / Zenith Dashboard (Top)
             if currentStation == .applications || appDisplayStage == .fullScreen {
                 scrollAccumulator = 0
                 lastPageSwitchTime = now
@@ -1757,31 +2127,38 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
                 withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
                     DesktopWindowManager.shared.switchToStation(.desktop)
                 }
-            } else if currentStation == .desktop || (currentPage == 0 && !isTopSearchBarPoppedDown) {
+            } else if currentStation == .desktop || !isTopSearchBarPoppedDown {
                 scrollAccumulator = 0
                 lastPageSwitchTime = now
                 HapticFeedback.selection()
                 withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
-                    DesktopWindowManager.shared.switchToStation(.chat)
+                    currentPage = 1
+                    appDisplayStage = .hidden
+                    isTopSearchBarPoppedDown = true
+                    isRightChatDockOpen = false
+                    isRightAppsDockOpen = false
+                    DesktopWindowManager.shared.currentStation = .chat
                 }
+                DesktopWindowManager.shared.setPage(1)
             }
         } else if isSwipeDown {
             // Two-finger physical swipe DOWN:
-            // If on Chat Studio (Top) -> slide DOWN to Desktop (Center)
+            // If on Chat Studio / Zenith Dashboard (Top) -> slide DOWN to Desktop (Center)
             // If on Desktop (Center) -> slide DOWN to Applications (Bottom)
-            if currentStation == .chat || isTopSearchBarPoppedDown {
+            if isTopSearchBarPoppedDown {
+                scrollAccumulator = 0
+                lastPageSwitchTime = now
+                HapticFeedback.selection()
+                withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
+                    isTopSearchBarPoppedDown = false
+                    DesktopWindowManager.shared.switchToStation(.desktop)
+                }
+            } else if currentStation == .chat {
                 scrollAccumulator = 0
                 lastPageSwitchTime = now
                 HapticFeedback.selection()
                 withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
                     DesktopWindowManager.shared.switchToStation(.desktop)
-                }
-            } else if currentStation == .desktop || (currentPage == 0 && appDisplayStage == .hidden) {
-                scrollAccumulator = 0
-                lastPageSwitchTime = now
-                HapticFeedback.selection()
-                withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
-                    DesktopWindowManager.shared.switchToStation(.applications)
                 }
             }
         }
@@ -1870,7 +2247,8 @@ struct ClearWaterCausticsCanvas: View {
 
 struct UnifiedAmbientMetalCanvas: View {
     @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
-let wallpaperEnabled: Bool
+    @ObservedObject private var governor = GenieResourceGovernor.shared
+    let wallpaperEnabled: Bool
     let wallpaperFxType: String
     let wallpaperIntensity: CGFloat
     let ambientEntity: String
@@ -1884,9 +2262,10 @@ let wallpaperEnabled: Bool
     let pinballs: [PinballBall]
     let screenSize: CGSize
 
-    /// True when at least one layer would actually draw; otherwise the 60 Hz loop is paused.
+    /// True when at least one layer would actually draw and foreground apps do not have priority; otherwise the 60 Hz loop is paused.
     private var hasActiveLayer: Bool {
-        (wallpaperEnabled && wallpaperFxType != "None")
+        guard !governor.isYieldingResources else { return false }
+        return (wallpaperEnabled && wallpaperFxType != "None")
             || ambientEntity != "None"
             || cursorFxType != "None"
             || (pinballEnabled && !pinballs.isEmpty)
@@ -1910,8 +2289,8 @@ let wallpaperEnabled: Bool
                     drawAmbientEntity(context: context, W: W, H: H, time: time, type: ambientEntity, mouse: targetPoint)
                 }
 
-                // 3. Interactive Cursor FX Trails Layer
-                if cursorFxType != "None", let mouse = mouseLocation {
+                // 3. Interactive Cursor FX Trails Layer (Handled globally via GenieGlobalCursorFXOverlayManager)
+                if !GenieGlobalCursorFXOverlayManager.shared.isEnabled, cursorFxType != "None", let mouse = mouseLocation {
                     drawCursorFX(context: context, W: W, H: H, time: time, type: cursorFxType, mouse: mouse, trail: cursorTrail)
                 }
 
@@ -2198,7 +2577,7 @@ let wallpaperEnabled: Bool
             let foxBody = Path(ellipseIn: CGRect(x: fx - 8, y: fy - 8, width: 16, height: 16))
             context.fill(foxBody, with: .color(Color.white.opacity(0.95)))
 
-        case "Cosmic Star Whale":
+        case "Cosmic Star Whale 🐋", "Cosmic Star Whale":
             let t = time * 0.25
             let wx = (W * 0.1) + (W * 0.8) * (0.5 + 0.5 * cos(t * 0.5))
             let wy = (H * 0.2) + (H * 0.6) * (0.5 + 0.5 * sin(t * 0.7))
@@ -2217,6 +2596,40 @@ let wallpaperEnabled: Bool
             fluke.addLine(to: CGPoint(x: wx - length * 0.5 - 16, y: finY + 10))
             fluke.closeSubpath()
             context.fill(fluke, with: .color(Color.cyan.opacity(0.6)))
+
+        case "Genie Portal 🌀", "Genie Portal":
+            let portalX = (W * 0.5) + (W * 0.15) * CGFloat(sin(time * 0.4))
+            var portalY = (H * 0.45) + (H * 0.12) * CGFloat(cos(time * 0.5))
+            if let mouse = mouse {
+                let dx = mouse.x - portalX, dy = mouse.y - portalY
+                let dist = hypot(dx, dy)
+                if dist < 450 {
+                    portalY += dy * 0.35 * (1.0 - dist / 450)
+                }
+            }
+            // Dimensional Vortex Accretion Rings
+            for r in 0..<5 {
+                let ringRadius: CGFloat = 28.0 + CGFloat(r) * 16.0 + CGFloat(sin(time * 2.5 + Double(r) * 0.8)) * 4.0
+                var ringPath = Path()
+                ringPath.addEllipse(in: CGRect(x: portalX - ringRadius, y: portalY - ringRadius * 0.45, width: ringRadius * 2, height: ringRadius * 0.90))
+                let ringColor: Color = (r % 3 == 0) ? .cyan : ((r % 3 == 1) ? .purple : Color(red: 1.0, green: 0.8, blue: 0.2))
+                context.stroke(ringPath, with: .color(ringColor.opacity(0.65 - Double(r) * 0.08)), lineWidth: 2.2)
+            }
+            // Swirling Event Horizon Core
+            let coreRadius: CGFloat = 20.0 + CGFloat(sin(time * 4.0)) * 3.0
+            var corePath = Path()
+            corePath.addEllipse(in: CGRect(x: portalX - coreRadius, y: portalY - coreRadius * 0.6, width: coreRadius * 2, height: coreRadius * 1.2))
+            context.fill(corePath, with: .linearGradient(Gradient(colors: [Color.white, Color.cyan, Color.purple]), startPoint: CGPoint(x: portalX - coreRadius, y: portalY), endPoint: CGPoint(x: portalX + coreRadius, y: portalY)))
+            // Orbiting Stardust Particles
+            for p in 0..<12 {
+                let pAngle = Double(p) * (.pi / 6.0) + (time * 2.2)
+                let pDist: CGFloat = 35.0 + CGFloat(sin(time * 3.0 + Double(p))) * 15.0
+                let px = portalX + CGFloat(cos(pAngle)) * pDist
+                let py = portalY + CGFloat(sin(pAngle)) * (pDist * 0.45)
+                var star = Path()
+                star.addEllipse(in: CGRect(x: px - 2, y: py - 2, width: 4, height: 4))
+                context.fill(star, with: .color(Color.white.opacity(0.9)))
+            }
 
         case "Pixel Cyber Neko":
             let t = time * 0.7
@@ -2249,7 +2662,7 @@ let wallpaperEnabled: Bool
             ear2.closeSubpath()
             context.fill(ear2, with: .color(Color.pink.opacity(0.85)))
 
-        case "Cyber Alpha Wolf 🐺":
+        case "Cyber Alpha Wolf 🐺", "Cyber Alpha Wolf":
             let t = time * 0.45
             var wx = (W * 0.15) + (W * 0.70) * (0.5 + 0.5 * cos(t * 0.8))
             var wy = (H * 0.25) + (H * 0.50) * (0.5 + 0.5 * sin(t * 1.2))
@@ -2277,7 +2690,7 @@ let wallpaperEnabled: Bool
             context.fill(eye1, with: .color(Color.yellow))
             context.fill(eye2, with: .color(Color.yellow))
 
-        case "Cherry Blossom 9-Tail Kitsune 🦊":
+        case "Cherry Blossom 9-Tail Kitsune 🦊", "Cherry Blossom 9-Tail Kitsune":
             let t = time * 0.38
             var fx = (W * 0.20) + (W * 0.60) * (0.5 + 0.5 * sin(t * 0.7))
             var fy = (H * 0.25) + (H * 0.50) * (0.5 + 0.5 * cos(t * 0.9))
@@ -2304,7 +2717,7 @@ let wallpaperEnabled: Bool
             context.fill(foxBody, with: .color(Color.white))
             context.stroke(foxBody, with: .color(Color.pink.opacity(0.8)), lineWidth: 1.5)
 
-        case "Japanese Koi Sanctuary 🎏":
+        case "Japanese Koi Sanctuary 🎏", "Japanese Koi Sanctuary":
             let t = time * 0.40
             // Two graceful koi swimming in harmony
             for koiIdx in 0..<2 {
@@ -2348,7 +2761,7 @@ let wallpaperEnabled: Bool
                 context.fill(fin, with: .color(Color.orange.opacity(0.7)))
             }
 
-        case "Pixel Yoshi Companion 🦖":
+        case "Pixel Yoshi Companion 🦖", "Pixel Yoshi Companion":
             let t = time * 0.90
             var yx = (W * 0.15) + (W * 0.70) * (0.5 + 0.5 * sin(t * 0.8))
             var yy = (H * 0.25) + (H * 0.50) * (0.5 + 0.5 * cos(t * 0.6))
@@ -2387,7 +2800,7 @@ let wallpaperEnabled: Bool
             let pupil = Path(ellipseIn: CGRect(x: yx + 4, y: yy - 8, width: 3, height: 4))
             context.fill(pupil, with: .color(Color.black))
 
-        case "Deep Void Star Kraken 🦑":
+        case "Deep Void Star Kraken 🦑", "Deep Void Star Kraken":
             let t = time * 0.28
             var kx = (W * 0.15) + (W * 0.70) * (0.5 + 0.5 * cos(t * 0.6))
             var ky = (H * 0.20) + (H * 0.60) * (0.5 + 0.5 * sin(t * 0.8))
@@ -2417,7 +2830,7 @@ let wallpaperEnabled: Bool
                 context.stroke(tentPath, with: .color(Color.cyan.opacity(0.75)), lineWidth: 2.0)
             }
 
-        case "8-Bit Arcade Ghost 👻":
+        case "8-Bit Arcade Ghost 👻", "8-Bit Arcade Ghost":
             let t = time * 0.85
             var gx = (W * 0.15) + (W * 0.70) * (0.5 + 0.5 * sin(t * 0.9))
             var gy = (H * 0.25) + (H * 0.50) * (0.5 + 0.5 * cos(t * 0.7))
@@ -3380,311 +3793,17 @@ let wallpaperEnabled: Bool
     }
 
 
-    // --- CURSOR FX TRAILS ---
+    // --- CURSOR FX TRAILS (Build 12 Themes via GenieGlobalCursorFXOverlayManager) ---
     private func drawCursorFX(context: GraphicsContext, W: CGFloat, H: CGFloat, time: Double, type: String, mouse: CGPoint, trail: [CursorTrailPoint]) {
-        switch type {
-        case "Ice Cream Cone & Sprinkles 🍦":
-            // 1. Waffle Cone Cursor Pointer
-            var cone = Path()
-            cone.move(to: CGPoint(x: mouse.x, y: mouse.y + 14))
-            cone.addLine(to: CGPoint(x: mouse.x - 7, y: mouse.y + 2))
-            cone.addLine(to: CGPoint(x: mouse.x + 7, y: mouse.y + 2))
-            cone.closeSubpath()
-            context.fill(cone, with: .color(Color(red: 0.88, green: 0.65, blue: 0.35)))
-            context.stroke(cone, with: .color(Color(red: 0.68, green: 0.45, blue: 0.20)), lineWidth: 1.0)
-
-            // Strawberry scoop on top
-            let scoop = Path(ellipseIn: CGRect(x: mouse.x - 8, y: mouse.y - 7, width: 16, height: 12))
-            context.fill(scoop, with: .color(Color(red: 1.0, green: 0.50, blue: 0.65)))
-
-            // 2. Falling Rainbow Sprinkles Trail
-            let sprinkleColors: [Color] = [
-                Color.red, Color.yellow, Color.cyan, Color.green, Color.orange, Color.purple, Color.white
-            ]
-            for (idx, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.48)
-                if progress > 0 {
-                    // Gravity fall and flutter
-                    let fallY = CGFloat(age * age * 120.0 + age * 20.0)
-                    let swayX = CGFloat(sin(time * 6.0 + Double(idx * 3))) * 5.0
-                    let p = CGPoint(x: pt.point.x + swayX, y: pt.point.y + fallY)
-                    let col = sprinkleColors[idx % sprinkleColors.count]
-
-                    // Pill-shaped sprinkle capsule
-                    var sprinkle = Path()
-                    let angle = Double(idx * 45) * .pi / 180.0
-                    let len: CGFloat = 6.0 * CGFloat(progress)
-                    sprinkle.move(to: CGPoint(x: p.x - CGFloat(cos(angle)) * len, y: p.y - CGFloat(sin(angle)) * len))
-                    sprinkle.addLine(to: CGPoint(x: p.x + CGFloat(cos(angle)) * len, y: p.y + CGFloat(sin(angle)) * len))
-                    context.stroke(sprinkle, with: .color(col.opacity(Double(progress * 0.95))), style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
-                }
-            }
-
-        case "Cotton Candy Clouds 🍭":
-            for (idx, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.50)
-                if progress > 0 {
-                    let p = pt.point
-                    let rad = CGFloat((Double(idx % 3) * 4.0 + 8.0) * progress)
-                    let col = (idx % 2 == 0)
-                        ? Color(red: 1.0, green: 0.60, blue: 0.80, opacity: progress * 0.55)
-                        : Color(red: 0.50, green: 0.85, blue: 1.0, opacity: progress * 0.55)
-                    let cloud = Path(ellipseIn: CGRect(x: p.x - rad, y: p.y - rad, width: rad * 2, height: rad * 2))
-                    context.fill(cloud, with: .color(col))
-                }
-            }
-
-        case "Stardust Sparkles ✨", "Stardust Tail":
-            for (_, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.40)
-                if progress > 0 {
-                    let p = pt.point
-                    let radius = CGFloat(progress * 6.0 + 1.2)
-                    
-                    // 4-point diamond star burst
-                    var starPath = Path()
-                    starPath.move(to: CGPoint(x: p.x, y: p.y - radius * 1.5))
-                    starPath.addLine(to: CGPoint(x: p.x + radius * 0.4, y: p.y - radius * 0.4))
-                    starPath.addLine(to: CGPoint(x: p.x + radius * 1.5, y: p.y))
-                    starPath.addLine(to: CGPoint(x: p.x + radius * 0.4, y: p.y + radius * 0.4))
-                    starPath.move(to: CGPoint(x: p.x, y: p.y + radius * 1.5))
-                    starPath.addLine(to: CGPoint(x: p.x - radius * 0.4, y: p.y + radius * 0.4))
-                    starPath.addLine(to: CGPoint(x: p.x - radius * 1.5, y: p.y))
-                    starPath.addLine(to: CGPoint(x: p.x - radius * 0.4, y: p.y - radius * 0.4))
-                    starPath.closeSubpath()
-                    
-                    let goldColor = Color(red: 1.0, green: 0.88, blue: 0.35, opacity: progress * 0.85)
-                    context.fill(starPath, with: .color(goldColor))
-                    
-                    let core = Path(ellipseIn: CGRect(x: p.x - radius * 0.6, y: p.y - radius * 0.6, width: radius * 1.2, height: radius * 1.2))
-                    context.fill(core, with: .color(Color.white.opacity(progress * 0.90)))
-                }
-            }
-
-        case "Rainbow Nebula Comet 🌈":
-            guard !trail.isEmpty else { return }
-            var ribbon = Path()
-            if let first = trail.first {
-                ribbon.move(to: first.point)
-                for pt in trail.dropFirst() { ribbon.addLine(to: pt.point) }
-                ribbon.addLine(to: mouse)
-            }
-            context.stroke(
-                ribbon,
-                with: .linearGradient(
-                    Gradient(colors: [
-                        Color.red.opacity(0.1),
-                        Color.orange.opacity(0.4),
-                        Color.yellow.opacity(0.7),
-                        Color.green.opacity(0.85),
-                        Color.cyan,
-                        Color.purple,
-                        Color.white
-                    ]),
-                    startPoint: trail.first?.point ?? mouse,
-                    endPoint: mouse
-                ),
-                style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round)
-            )
-            // Glowing comet head
-            let headGlow = Path(ellipseIn: CGRect(x: mouse.x - 9, y: mouse.y - 9, width: 18, height: 18))
-            context.fill(headGlow, with: .color(Color.white.opacity(0.95)))
-
-        case "Cyber Neon Ribbon ⚡️", "Plasma Ribbon":
-            guard !trail.isEmpty else { return }
-            var ribbon = Path()
-            if let first = trail.first {
-                ribbon.move(to: first.point)
-                for pt in trail.dropFirst() { ribbon.addLine(to: pt.point) }
-                ribbon.addLine(to: mouse)
-            }
-            // Outer magenta aura
-            context.stroke(
-                ribbon,
-                with: .linearGradient(Gradient(colors: [Color.purple.opacity(0.1), Color.pink.opacity(0.6), Color.cyan]), startPoint: trail.first?.point ?? mouse, endPoint: mouse),
-                style: StrokeStyle(lineWidth: 6.0, lineCap: .round, lineJoin: .round)
-            )
-            // Inner crisp laser core
-            context.stroke(
-                ribbon,
-                with: .linearGradient(Gradient(colors: [Color.clear, Color.cyan, Color.white]), startPoint: trail.first?.point ?? mouse, endPoint: mouse),
-                style: StrokeStyle(lineWidth: 2.0, lineCap: .round, lineJoin: .round)
-            )
-
-        case "Fire Ember Sparks 🔥":
-            for (idx, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.45)
-                if progress > 0 {
-                    let driftY = CGFloat(age * 55.0)
-                    let jitterX = CGFloat(sin(time * 12.0 + Double(idx) * 2.1)) * 6.0
-                    let p = CGPoint(x: pt.point.x + jitterX, y: pt.point.y - driftY)
-                    let rad = CGFloat(progress * 4.5 + 1.0)
-                    
-                    let sparkColor = (idx % 3 == 0)
-                        ? Color(red: 1.0, green: 0.3, blue: 0.05, opacity: progress * 0.9)
-                        : ((idx % 3 == 1)
-                            ? Color(red: 1.0, green: 0.7, blue: 0.1, opacity: progress * 0.85)
-                            : Color(red: 1.0, green: 0.95, blue: 0.3, opacity: progress * 0.75))
-                    
-                    let spark = Path(ellipseIn: CGRect(x: p.x - rad, y: p.y - rad, width: rad * 2, height: rad * 2))
-                    context.fill(spark, with: .color(sparkColor))
-                }
-            }
-
-        case "Deep Ocean Bubble Wake 🫧":
-            for (idx, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.50)
-                if progress > 0 {
-                    let floatY = CGFloat(age * 30.0)
-                    let p = CGPoint(x: pt.point.x + CGFloat(sin(Double(idx) + time * 3.0)) * 4.0, y: pt.point.y - floatY)
-                    let rad = CGFloat((Double(idx % 4) + 2.5) * progress)
-                    
-                    // Translucent bubble body
-                    let bubble = Path(ellipseIn: CGRect(x: p.x - rad, y: p.y - rad, width: rad * 2, height: rad * 2))
-                    context.fill(bubble, with: .color(Color.cyan.opacity(progress * 0.30)))
-                    context.stroke(bubble, with: .color(Color.white.opacity(progress * 0.80)), lineWidth: 1.0)
-                    
-                    // Specular glint
-                    let glint = Path(ellipseIn: CGRect(x: p.x - rad * 0.4, y: p.y - rad * 0.5, width: rad * 0.5, height: rad * 0.3))
-                    context.fill(glint, with: .color(Color.white.opacity(progress * 0.95)))
-                }
-            }
-
-        case "Electric Lightning Arc ⚡":
-            if trail.count >= 2 {
-                var lightning = Path()
-                lightning.move(to: mouse)
-                for (i, pt) in trail.enumerated() {
-                    let midJitterX = CGFloat(sin(time * 30.0 + Double(i) * 5.0)) * 7.0
-                    let midJitterY = CGFloat(cos(time * 30.0 + Double(i) * 5.0)) * 7.0
-                    let midPt = CGPoint(x: (pt.point.x + mouse.x) / 2.0 + midJitterX, y: (pt.point.y + mouse.y) / 2.0 + midJitterY)
-                    lightning.addLine(to: midPt)
-                    lightning.addLine(to: pt.point)
-                }
-                context.stroke(lightning, with: .color(Color(red: 0.4, green: 0.8, blue: 1.0, opacity: 0.85)), lineWidth: 2.2)
-                context.stroke(lightning, with: .color(Color.white.opacity(0.95)), lineWidth: 0.8)
-            }
-
-        case "Matrix Green Binary Stream 🟢":
-            for (idx, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.45)
-                if progress > 0 {
-                    let char = ((idx + Int(time * 10)) % 2 == 0) ? "1" : "0"
-                    let p = pt.point
-                    context.draw(
-                        Text(char)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundColor(Color(red: 0.0, green: 1.0, blue: 0.35, opacity: progress * 0.90)),
-                        at: p
-                    )
-                }
-            }
-
-        case "Golden Gate Bridge Shimmer 🌉":
-            for (idx, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.45)
-                if progress > 0 {
-                    let p = pt.point
-                    let rad = CGFloat(progress * 5.0 + 1.5)
-                    let color = (idx % 2 == 0)
-                        ? Color(red: 0.95, green: 0.40, blue: 0.15, opacity: progress * 0.90) // International Orange
-                        : Color(red: 1.00, green: 0.85, blue: 0.30, opacity: progress * 0.85) // Sunset Gold
-                    
-                    let diamond = Path(ellipseIn: CGRect(x: p.x - rad, y: p.y - rad, width: rad * 2, height: rad * 2))
-                    context.fill(diamond, with: .color(color))
-                    
-                    // Ray lines
-                    var ray = Path()
-                    ray.move(to: CGPoint(x: p.x - rad * 2, y: p.y))
-                    ray.addLine(to: CGPoint(x: p.x + rad * 2, y: p.y))
-                    context.stroke(ray, with: .color(Color.white.opacity(progress * 0.70)), lineWidth: 0.8)
-                }
-            }
-
-        case "Hyperdrive Warp Beams 🌌":
-            for pt in trail {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.35)
-                if progress > 0 {
-                    var beam = Path()
-                    beam.move(to: pt.point)
-                    beam.addLine(to: mouse)
-                    context.stroke(
-                        beam,
-                        with: .color(Color(red: 0.6, green: 0.4, blue: 1.0, opacity: progress * 0.65)),
-                        style: StrokeStyle(lineWidth: CGFloat(progress * 3.5), lineCap: .round)
-                    )
-                }
-            }
-
-        case "Heart Petal Drift 🌸":
-            for (idx, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.50)
-                if progress > 0 {
-                    let driftX = CGFloat(sin(time * 3.0 + Double(idx))) * 10.0
-                    let p = CGPoint(x: pt.point.x + driftX, y: pt.point.y + CGFloat(age * 25.0))
-                    let petalRad: CGFloat = 5.0 * CGFloat(progress)
-                    let petal = Path(ellipseIn: CGRect(x: p.x - petalRad, y: p.y - petalRad * 0.6, width: petalRad * 2, height: petalRad * 1.2))
-                    context.fill(petal, with: .color(Color(red: 1.0, green: 0.65, blue: 0.80, opacity: progress * 0.85)))
-                }
-            }
-
-        case "Pixel 8-Bit Arcade Blast 👾":
-            for (idx, pt) in trail.enumerated() {
-                let age = time - pt.timestamp
-                let progress = 1.0 - (age / 0.40)
-                if progress > 0 {
-                    let p = pt.point
-                    let size = CGFloat(progress * 6.0 + 2.0)
-                    let colors: [Color] = [.yellow, .green, .cyan, .pink, .orange]
-                    let col = colors[idx % colors.count]
-                    let square = Path(CGRect(x: p.x - size / 2, y: p.y - size / 2, width: size, height: size))
-                    context.fill(square, with: .color(col.opacity(progress * 0.90)))
-                }
-            }
-
-        case "Cyber Ring & Target 🎯", "Cyber Ring":
-            let ringRadius: CGFloat = 16.0 + 3.0 * CGFloat(sin(time * 6.0))
-            let ring = Path(ellipseIn: CGRect(x: mouse.x - ringRadius, y: mouse.y - ringRadius, width: ringRadius * 2, height: ringRadius * 2))
-            context.stroke(ring, with: .color(Color.cyan.opacity(0.85)), lineWidth: 1.5)
-            
-            // Crosshairs
-            var cross = Path()
-            cross.move(to: CGPoint(x: mouse.x - ringRadius - 4, y: mouse.y))
-            cross.addLine(to: CGPoint(x: mouse.x - ringRadius + 3, y: mouse.y))
-            cross.move(to: CGPoint(x: mouse.x + ringRadius - 3, y: mouse.y))
-            cross.addLine(to: CGPoint(x: mouse.x + ringRadius + 4, y: mouse.y))
-            cross.move(to: CGPoint(x: mouse.x, y: mouse.y - ringRadius - 4))
-            cross.addLine(to: CGPoint(x: mouse.x, y: mouse.y - ringRadius + 3))
-            cross.move(to: CGPoint(x: mouse.x, y: mouse.y + ringRadius - 3))
-            cross.addLine(to: CGPoint(x: mouse.x, y: mouse.y + ringRadius + 4))
-            context.stroke(cross, with: .color(Color.white.opacity(0.9)), lineWidth: 1.2)
-
-        case "Quantum Vortex 🌪️", "Quantum Vortex":
-            for i in 0..<4 {
-                let angle = time * 5.0 + (Double(i) * .pi / 2.0)
-                let px = mouse.x + CGFloat(cos(angle)) * 20.0
-                let py = mouse.y + CGFloat(sin(angle)) * 20.0
-                let dot = Path(ellipseIn: CGRect(x: px - 3, y: py - 3, width: 6, height: 6))
-                context.fill(dot, with: .color(Color.mint.opacity(0.85)))
-                
-                var fluxLine = Path()
-                fluxLine.move(to: mouse)
-                fluxLine.addLine(to: CGPoint(x: px, y: py))
-                context.stroke(fluxLine, with: .color(Color.cyan.opacity(0.35)), lineWidth: 0.8)
-            }
-
-        default:
-            break
-        }
+        GenieGlobalCursorFXOverlayManager.drawCursorFX(
+            context: context,
+            W: W,
+            H: H,
+            time: time,
+            type: type,
+            mouse: mouse,
+            trail: trail
+        )
     }
 }
 
@@ -6281,7 +6400,7 @@ let icon: NSImage
                     .shadow(color: Color.orange.opacity(isHovered ? 0.95 : 0.65), radius: isHovered ? 12 : 6)
             }
 
-        case "Sakura Wreath 🌸":
+        case "Sakura Wreath 🌸", "Sakura Wreath":
             ZStack {
                 RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
                     .stroke(Color(red: 1.0, green: 0.65, blue: 0.80).opacity(0.85), lineWidth: 2.2)
@@ -6295,7 +6414,7 @@ let icon: NSImage
                 }
             }
 
-        case "Dragon Scales 🐉":
+        case "Dragon Scales 🐉", "Dragon Scales":
             ZStack {
                 RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
                     .stroke(
@@ -6319,7 +6438,7 @@ let icon: NSImage
                 .fill(Color.yellow)
             }
 
-        case "Astronaut Visor 👨‍🚀":
+        case "Astronaut Visor 👨‍🚀", "Astronaut Visor":
             ZStack {
                 RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
                     .stroke(Color.white.opacity(0.9), lineWidth: 3.0)
@@ -6330,7 +6449,7 @@ let icon: NSImage
                     .offset(y: -size * 0.36)
             }
 
-        case "Sprout Leaf 🌱":
+        case "Sprout Leaf 🌱", "Sprout Leaf":
             ZStack {
                 Path { p in
                     p.move(to: CGPoint(x: 0, y: -size * 0.44))
@@ -6347,7 +6466,7 @@ let icon: NSImage
                     .offset(x: 4, y: -size * 0.60)
             }
 
-        case "Imperial Crown 👑":
+        case "Crown Jewel 👑", "Imperial Crown 👑", "Crown Jewel", "Imperial Crown":
             ZStack {
                 Path { p in
                     p.move(to: CGPoint(x: -size * 0.35, y: -size * 0.44))
@@ -6365,7 +6484,7 @@ let icon: NSImage
                 .shadow(color: Color.orange.opacity(0.6), radius: 3)
             }
 
-        case "Cyber Samurai Mask 🥷":
+        case "Cyber Samurai Mask 🥷", "Cyber Samurai Mask":
             ZStack {
                 RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
                     .stroke(
@@ -6390,7 +6509,7 @@ let icon: NSImage
                 .fill(Color.red)
             }
 
-        case "Sakura Shinto Gate ⛩️":
+        case "Sakura Shinto Gate ⛩️", "Sakura Shinto Gate":
             ZStack(alignment: .top) {
                 // Vermillion Torii Top Beam
                 RoundedRectangle(cornerRadius: 3, style: .continuous)
@@ -6405,7 +6524,7 @@ let icon: NSImage
                     .offset(y: -size * 0.38)
             }
 
-        case "Pixel Heart Armor ❤️":
+        case "Pixel Heart Armor ❤️", "Pixel Heart Armor":
             ZStack {
                 // Outer 8-Bit Pixelated Border
                 RoundedRectangle(cornerRadius: 6, style: .continuous)

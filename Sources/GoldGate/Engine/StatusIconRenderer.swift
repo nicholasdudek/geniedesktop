@@ -20,7 +20,7 @@ final class StatusIconRenderer {
         let numberTheme = UserDefaults.standard.string(forKey: PrefKey.batteryNumberTheme) ?? "Dynamic Match"
         let glyph = UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
             ?? UserDefaults.standard.string(forKey: PrefKey.statusIconStyle)
-            ?? "Genie Lamp 🪔"
+            ?? "Genie Person 🧞‍♂️"
         let iconEnabled = UserDefaults.standard.object(forKey: PrefKey.iconEnabled) == nil
             ? true : UserDefaults.standard.bool(forKey: PrefKey.iconEnabled)
         let batteryEnabled = UserDefaults.standard.object(forKey: PrefKey.batteryEnabled) == nil
@@ -74,8 +74,8 @@ final class StatusIconRenderer {
         let rawGlyph = glyph
             ?? UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
             ?? UserDefaults.standard.string(forKey: PrefKey.statusIconStyle)
-            ?? "Genie Lamp 🪔"
-        let selectedGlyph = rawGlyph.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Genie Lamp 🪔" : rawGlyph
+            ?? "Genie Person 🧞‍♂️"
+        let selectedGlyph = rawGlyph.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Genie Person 🧞‍♂️" : rawGlyph
 
         let isMonochrome = selectedGlyph.hasPrefix("Simple") || selectedGlyph.contains("Modern") || selectedGlyph == "Monochrome"
         let img = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in

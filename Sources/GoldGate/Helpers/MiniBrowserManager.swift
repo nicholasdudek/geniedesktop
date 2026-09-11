@@ -110,6 +110,7 @@ public final class MiniBrowserManager: ObservableObject {
     /// Waits briefly for the current navigation to finish, then reads back the rendered
     /// page's text via `document.body.innerText` — closes the loop so a caller (the AI
     /// model) actually gets what rendered, instead of only a "loaded" acknowledgement.
+    @MainActor
     public func extractPageText(maxChars: Int = 6000, loadTimeout: TimeInterval = 12) async -> String {
         let deadline = Date().addingTimeInterval(loadTimeout)
         while isLoading && Date() < deadline {

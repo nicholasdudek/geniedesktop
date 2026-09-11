@@ -15,6 +15,20 @@ public struct ExpansionPackItem: Identifiable {
     public let badge: String
 }
 
+// MARK: - Subscription Plan Model
+
+public struct GenieSubscriptionPlan: Identifiable {
+    public let id: String
+    public let name: String
+    public let priceDisplay: String
+    public let billingCadence: String
+    public let badge: String?
+    public let trialText: String?
+    public let effectiveMonthlyRate: String
+    public let features: [String]
+    public let isPopular: Bool
+}
+
 // MARK: - StoreKit 2 Expansion Store Manager
 
 @MainActor
@@ -26,6 +40,12 @@ public final class ExpansionStoreManager: ObservableObject {
     public static let cosmosID = "com.nicholasdudek.genie.pack.cosmos"
     public static let retroID = "com.nicholasdudek.genie.pack.retro"
     public static let ultimateID = "com.nicholasdudek.genie.pack.ultimate"
+    public static let cursorsAndPetsID = "com.nicholasdudek.genie.pack.cursorsandpets"
+
+    // Subscription Plan IDs
+    public static let planOneYearID = "com.nicholasdudek.genie.sub.oneyear"
+    public static let planMonthlyID = "com.nicholasdudek.genie.sub.monthly"
+    public static let planTwoYearFounderID = "com.nicholasdudek.genie.sub.twoyearfounder"
 
     // Legacy GoldGate IDs
     public static let legacyCyberpunkID = "com.nicholasdudek.goldgate.pack.cyberpunk"
@@ -34,10 +54,76 @@ public final class ExpansionStoreManager: ObservableObject {
     public static let legacyRetroID = "com.nicholasdudek.goldgate.pack.retro"
     public static let legacyUltimateID = "com.nicholasdudek.goldgate.pack.ultimate"
 
+    @Published public var activePlanName: String = UserDefaults.standard.string(forKey: PrefKey.activeSubscriptionPlan) ?? "Genie Annual Pass"
     @Published public var unlockedPacks: Set<String> = []
     @Published public var isPurchasing: Bool = false
     @Published public var purchaseSuccessMessage: String? = nil
     @Published public var errorMessage: String? = nil
+
+    public let subscriptionPlans: [GenieSubscriptionPlan] = [
+        GenieSubscriptionPlan(
+            id: planOneYearID,
+            name: "Genie Annual Pass",
+            priceDisplay: "$120.00",
+            billingCadence: "Billed annually at $120.00/year",
+            badge: "RECOMMENDED · SAVE 50%",
+            trialText: "30-Day Free Trial included",
+            effectiveMonthlyRate: "$10.00 / mo",
+            features: [
+                "Full access to 81-Screen Spatial Canvas Matrix",
+                "Save 50% vs. Monthly ($10.00/mo vs $19.99/mo)",
+                "30-Day Free Trial included — cancel anytime",
+                "Neural Bloom shaders & living 4K Metal backdrops",
+                "The Brick Wall Context Firewall & AST code synthesis",
+                "Autonomous Local (Ollama) & Cloud AI Routing (BYOK)",
+                "Sovereign Linux Hypervisor & Virtualization Engine",
+                "All 4 Expansion Packs (Cyberpunk, Zen, Cosmos, Retro)",
+                "Continuous updates & priority developer support"
+            ],
+            isPopular: true
+        ),
+        GenieSubscriptionPlan(
+            id: planMonthlyID,
+            name: "Genie Pro Monthly",
+            priceDisplay: "$19.99",
+            billingCadence: "Billed monthly ($239.88/yr)",
+            badge: "FLEXIBLE",
+            trialText: "30-Day Free Trial included",
+            effectiveMonthlyRate: "$19.99 / mo",
+            features: [
+                "30-Day Free Trial included — zero risk",
+                "Month-to-month cancel anytime flexibility",
+                "Full access to AI Chat, Code Studio, and Widgets",
+                "Active continuous cloud & local model routing",
+                "Switch to Annual anytime to save $119.88/yr"
+            ],
+            isPopular: false
+        ),
+        GenieSubscriptionPlan(
+            id: planTwoYearFounderID,
+            name: "Founder's 2-Year Pass",
+            priceDisplay: "$199.00",
+            billingCadence: "Billed once every 2 years ($99.50/yr)",
+            badge: "FOUNDER SPECIAL · 58% SAVINGS",
+            trialText: "30-Day Free Trial included",
+            effectiveMonthlyRate: "$8.29 / mo",
+            features: [
+                "All 4 Expansion Packs & Living Companions included",
+                "Locked-in $8.29/mo founder rate for 24 continuous months",
+                "30-Day Free Trial included",
+                "Genie Editor with Xcode Pro themes & AI Copilot",
+                "Desktop World Clock & Animated Chat Complications",
+                "Direct developer line with Nicholas M. Dudek"
+            ],
+            isPopular: false
+        )
+    ]
+
+    public func selectPlan(_ plan: GenieSubscriptionPlan) {
+        activePlanName = plan.name
+        UserDefaults.standard.set(plan.name, forKey: PrefKey.activeSubscriptionPlan)
+        purchaseSuccessMessage = "Subscribed to \(plan.name) successfully! ✨"
+    }
 
     public let availablePacks: [ExpansionPackItem] = [
         ExpansionPackItem(
@@ -123,6 +209,22 @@ public final class ExpansionStoreManager: ObservableObject {
                 "Style: 8-Bit Arcade Battery Gauge"
             ],
             badge: "INCLUDED"
+        ),
+        ExpansionPackItem(
+            id: cursorsAndPetsID,
+            title: "Fancy Cursors & Living Dock Pets Collection",
+            subtitle: "Interactive living companions that dwell on the Mac Dock & hardware-accelerated cursor trails",
+            priceString: "$4.99",
+            icon: "sparkles.rectangle.stack.fill",
+            gradient: [Color.pink, Color.purple, Color.cyan],
+            includes: [
+                "10+ Interactive Dock Pets (Kitsune, Cyber Wolf, Quantum Cat, Shiba Inu...)",
+                "Living Mac Dock Perch & Reactive Pet Touch Gestures",
+                "12+ Hardware-Accelerated Metal Cursor FX (Heart Petals, Matrix, Starlight)",
+                "Always-On System-Wide Cursor Glow across Safari, Xcode & Finder",
+                "Reactive Pet Sounds & Speech Bubble Companionship"
+            ],
+            badge: "POPULAR ✨"
         )
     ]
 

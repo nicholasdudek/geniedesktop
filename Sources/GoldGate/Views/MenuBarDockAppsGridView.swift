@@ -9,6 +9,7 @@ public struct MenuBarDockAppsGridView: View {
     @AppStorage(PrefKey.appLanguage) var appLanguage: String = "English (US)"
     @AppStorage(PrefKey.miniDockBackgroundStyle) var miniDockBackgroundStyle: String = "Clear (Transparent)"
     @AppStorage(PrefKey.dockActiveAppsOnly) var dockActiveAppsOnly: Bool = false
+    @AppStorage(PrefKey.menuBarDockInactiveAppsOnly) var menuBarDockInactiveAppsOnly: Bool = true
     @AppStorage(PrefKey.dockAlwaysShowFinder) var dockAlwaysShowFinder: Bool = true
     @AppStorage(PrefKey.dockAlwaysShowSettings) var dockAlwaysShowSettings: Bool = true
     @AppStorage(PrefKey.dockAlwaysShowTrash) var dockAlwaysShowTrash: Bool = true
@@ -25,7 +26,11 @@ public struct MenuBarDockAppsGridView: View {
     @State private var timer: Timer?
     @ObservedObject private var desktopWindowManager = DesktopWindowManager.shared
 
-    public init() {}
+    public var showAllApps: Bool = false
+
+    public init(showAllApps: Bool = false) {
+        self.showAllApps = showAllApps
+    }
 
     public var body: some View {
         HStack(alignment: .center, spacing: 5) {
@@ -191,13 +196,15 @@ public struct MenuBarDockAppsGridView: View {
                         Menu(LocalizedStrings.translateText("App Display Filter", lang: appLanguage)) {
                             Button(action: {
                                 dockActiveAppsOnly = false
+                                menuBarDockInactiveAppsOnly = false
                                 UserDefaults.standard.set(false, forKey: PrefKey.dockActiveAppsOnly)
+                                UserDefaults.standard.set(false, forKey: PrefKey.menuBarDockInactiveAppsOnly)
                                 NotificationCenter.default.post(name: NSNotification.Name("NexusDockActiveAppsOnlyChanged"), object: false)
                                 refreshApps()
                             }) {
                                 HStack {
                                     Text(LocalizedStrings.translateText("Show All (Running & Pinned)", lang: appLanguage))
-                                    if !dockActiveAppsOnly { Text("✓") }
+                                    if !dockActiveAppsOnly && !menuBarDockInactiveAppsOnly { Text("✓") }
                                 }
                             }
                             Button(action: {
@@ -409,7 +416,7 @@ public struct MenuBarDockAppsGridView: View {
         // 0. Genie Premier Anchor (Executive AI & System Anchor)
         if dockAlwaysShowGenie {
             let genieIcon: NSImage? = {
-                let devIconURL = URL(fileURLWithPath: "/Users/nicholasdudek/Developer/GoldGate/Sources/GoldGate/Assets.xcassets/AppIcon.appiconset/icon_512x512.png")
+                let devIconURL = URL(fileURLWithPath: "BUNDLE_ICON_PATH")
                 if FileManager.default.fileExists(atPath: devIconURL.path), let img = NSImage(contentsOf: devIconURL) {
                     img.size = NSSize(width: 32, height: 32)
                     return img
@@ -551,8 +558,16 @@ public struct MenuBarDockAppsGridView: View {
             deduplicated.append(item)
         }
 
-        if dockActiveAppsOnly {
-            deduplicated = deduplicated.filter { $0.isRunning }
+        if !showAllApps {
+            if menuBarDockInactiveAppsOnly {
+                deduplicated = deduplicated.filter { item in
+                    guard item.isRunning, let app = item.runningApp, !app.isTerminated else { return false }
+                    let isFrontmost = (item.processIdentifier == activePid || app.processIdentifier == activePid || app.isActive)
+                    return !isFrontmost && item.id != "com.nicholasdudek.genie" && item.bundleIdentifier != "com.nicholasdudek.genie"
+                }
+            } else if dockActiveAppsOnly {
+                deduplicated = deduplicated.filter { $0.isRunning }
+            }
         }
 
         self.dockItems = deduplicated

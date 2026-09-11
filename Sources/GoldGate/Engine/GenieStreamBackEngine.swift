@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import CoreVideo
 import CoreGraphics
 import Darwin
 
@@ -52,20 +51,24 @@ public final class GenieStreamBackEngine: ObservableObject {
     }
 
     private let frameStore = FrameStore()
-    private var serverSocket: Int32 = -1
-    private var isRunningServer = false
+    /// Raw socket fd shared with the background server loop.
+    nonisolated(unsafe) private var serverSocket: Int32 = -1
+    /// Signals the background server loop to stop; written on main actor, read nonisolated.
+    nonisolated(unsafe) private var isRunningServer = false
     private let serverQueue = DispatchQueue(label: "com.genie.streamback.server", qos: .userInteractive)
 
     private init() {
-        self.streamPort = UserDefaults.standard.integer(forKey: PrefKey.streamBackPort)
-        if self.streamPort == 0 { self.streamPort = 9099 }
+        let savedPort = UserDefaults.standard.integer(forKey: PrefKey.streamBackPort)
+        let preferred = savedPort > 0 ? UInt16(savedPort) : GeniePortGovernor.defaultStreamBackPort
+        self.streamPort = Int(GeniePortGovernor.allocateSafePort(preferred: preferred))
     }
 
     // MARK: - Server Lifecycle
 
     public func startStreamServer(port: Int? = nil) {
         guard !isRunningServer else { return }
-        let targetPort = port ?? self.streamPort
+        let preferred = port != nil ? UInt16(port!) : UInt16(self.streamPort)
+        let targetPort = Int(GeniePortGovernor.allocateSafePort(preferred: preferred))
         self.streamPort = targetPort
 
         isRunningServer = true
@@ -178,7 +181,7 @@ public final class GenieStreamBackEngine: ObservableObject {
 
     // MARK: - Native Darwin Non-blocking POSIX Socket HTTP/MJPEG Server
 
-    private func runHttpServer(port: UInt16) {
+    private nonisolated func runHttpServer(port: UInt16) {
         let sock = socket(AF_INET, SOCK_STREAM, 0)
         guard sock >= 0 else {
             print("GENIE [STREAM-BACK]: Failed to create socket")
@@ -245,7 +248,7 @@ public final class GenieStreamBackEngine: ObservableObject {
         }
     }
 
-    private func handleClient(clientSock: Int32) {
+    private nonisolated func handleClient(clientSock: Int32) {
         var buffer = [UInt8](repeating: 0, count: 2048)
         let bytesRead = recv(clientSock, &buffer, buffer.count - 1, 0)
         guard bytesRead > 0 else { return }

@@ -7,6 +7,8 @@ import WebKit
 public enum CreationPreviewTab: String, CaseIterable, Identifiable {
     case visual = "Visual Output"
     case rawHtml = "Raw HTML"
+    case fileViewer = "Universal Viewer"
+    case browser = "Live Web & Stream"
 
     public var id: String { rawValue }
 
@@ -14,6 +16,8 @@ public enum CreationPreviewTab: String, CaseIterable, Identifiable {
         switch self {
         case .visual: return "eye.fill"
         case .rawHtml: return "chevron.left.forwardslash.chevron.right"
+        case .fileViewer: return "doc.text.magnifyingglass"
+        case .browser: return "play.tv.fill"
         }
     }
 }
@@ -25,6 +29,7 @@ public struct GenieCreationDualTabPreviewView: View {
     public let fileURL: URL?
     public let emotion: AIEmotionType
     public var onClose: (() -> Void)? = nil
+    public var onCollapse: (() -> Void)? = nil
 
     @State private var selectedTab: CreationPreviewTab = .visual
     @State private var isCopied: Bool = false
@@ -34,18 +39,28 @@ public struct GenieCreationDualTabPreviewView: View {
     /// so edits in the source tab show up in Visual Output.
     @State private var editedHtml: String? = nil
 
+    // Live Web & Streaming Browser State
+    @State private var streamURLString: String = "https://www.netflix.com"
+    @State private var activeStreamURL: URL? = URL(string: "https://www.netflix.com")
+    @State private var isStreamLoading: Bool = false
+    @State private var canStreamGoBack: Bool = false
+    @State private var canStreamGoForward: Bool = false
+    @State private var streamPageTitle: String = "Netflix"
+
     public init(
         title: String,
         rawHtml: String,
         fileURL: URL? = nil,
         emotion: AIEmotionType = .calm,
-        onClose: (() -> Void)? = nil
+        onClose: (() -> Void)? = nil,
+        onCollapse: (() -> Void)? = nil
     ) {
         self.title = title
         self.rawHtml = rawHtml
         self.fileURL = fileURL
         self.emotion = emotion
         self.onClose = onClose
+        self.onCollapse = onCollapse
     }
 
     // Ensures file exists on Desktop and returns its URL
@@ -61,19 +76,124 @@ public struct GenieCreationDualTabPreviewView: View {
         let baseName = safeTitle.isEmpty ? "AI Creation" : safeTitle
         let desktop = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
         let url = desktop.appendingPathComponent("\(baseName).html")
-        try? self.effectiveHtml.write(to: url, atomically: true, encoding: .utf8)
+        saveToDisk()
         return url
+    }
+
+    public func saveToDisk(content: String? = nil) {
+        // Do not overwrite image or binary files with HTML text
+        if let ext = fileURL?.pathExtension.lowercased(), !["html", "htm", "txt", "md", ""].contains(ext) {
+            return
+        }
+
+        let textToSave = content ?? effectiveHtml
+        let targetFileURL = fileURL
+        let safeTitle = title
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseName = safeTitle.isEmpty ? "AI Creation" : safeTitle
+        let desktop = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
+        let desktopURL = desktop.appendingPathComponent("\(baseName).html")
+        Task.detached(priority: .background) {
+            if let fileURL = targetFileURL {
+                try? textToSave.write(to: fileURL, atomically: true, encoding: .utf8)
+            }
+            try? textToSave.write(to: desktopURL, atomically: true, encoding: .utf8)
+        }
+    }
+
+    private var fileExtension: String {
+        fileURL?.pathExtension.lowercased() ?? ""
+    }
+
+    private var isImageFile: Bool {
+        ["png", "jpg", "jpeg", "gif", "webp", "heic", "svg", "tiff", "bmp"].contains(fileExtension)
+    }
+
+    private var isMediaFile: Bool {
+        ["mp4", "mov", "m4v", "mp3", "wav", "m4a", "aac"].contains(fileExtension)
+    }
+
+    private var isPdfFile: Bool {
+        fileExtension == "pdf"
+    }
+
+    private var isHtmlFile: Bool {
+        if !fileExtension.isEmpty {
+            return ["html", "htm"].contains(fileExtension)
+        }
+        let code = rawHtml.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return code.contains("<!doctype html") || code.contains("<html") || code.contains("<div") || code.contains("<svg")
+    }
+
+    private var isTextOrCodeFile: Bool {
+        let codeExts: Set<String> = [
+            "swift", "py", "js", "ts", "jsx", "tsx", "html", "htm", "css", "scss",
+            "json", "xml", "yaml", "yml", "sh", "zsh", "bash", "md", "markdown",
+            "txt", "c", "h", "cpp", "hpp", "m", "mm", "rs", "go", "rb", "sql", "plist", "toml"
+        ]
+        return codeExts.contains(fileExtension)
+    }
+
+    public var detectedLanguage: String {
+        switch fileExtension {
+        case "swift": return "Swift Source"
+        case "py": return "Python Script"
+        case "js", "jsx": return "JavaScript"
+        case "ts", "tsx": return "TypeScript"
+        case "json": return "JSON Data"
+        case "md", "markdown": return "Markdown Notes"
+        case "html", "htm": return "HTML5 Document"
+        case "css", "scss": return "CSS Stylesheet"
+        case "sh", "zsh", "bash": return "Shell Script"
+        case "rs": return "Rust Source"
+        case "go": return "Go Source"
+        case "sql": return "SQL Database Query"
+        case "yaml", "yml": return "YAML Config"
+        case "jpg", "jpeg": return "JPEG Photo"
+        case "gif": return "Animated GIF"
+        case "png": return "PNG Image"
+        case "pdf": return "PDF Document"
+        case "mp4", "mov": return "Video Media"
+        default: return isHtmlFile ? "HTML5 Document" : "Source Code Document"
+        }
+    }
+
+    private func determineInitialTab() {
+        if isImageFile || isPdfFile || isMediaFile {
+            selectedTab = .fileViewer
+        } else if isHtmlFile {
+            selectedTab = .visual
+        } else if isTextOrCodeFile {
+            selectedTab = .rawHtml
+        } else {
+            selectedTab = .fileViewer
+        }
     }
 
     // Guarantee self-contained, high-fidelity HTML boilerplate
     /// What the rest of the view renders, copies and writes: the user's edits when
     /// there are any, otherwise the model's original output.
     private var effectiveHtml: String {
-        editedHtml ?? formattedSelfContainedHtml
+        if let edited = editedHtml { return edited }
+        if !rawHtml.isEmpty { return formattedSelfContainedHtml }
+        if let url = fileURL, let diskContent = try? String(contentsOf: url, encoding: .utf8) {
+            return isHtmlFile ? formattedSelfContainedHtml(from: diskContent) : diskContent
+        }
+        return ""
     }
 
     private var formattedSelfContainedHtml: String {
-        let code = rawHtml.trimmingCharacters(in: .whitespacesAndNewlines)
+        formattedSelfContainedHtml(from: rawHtml)
+    }
+
+    private func formattedSelfContainedHtml(from input: String) -> String {
+        let code = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !isHtmlFile {
+            return code
+        }
         if code.contains("<!DOCTYPE html") || code.contains("<html") {
             return code
         }
@@ -126,8 +246,12 @@ public struct GenieCreationDualTabPreviewView: View {
                 if selectedTab == .visual {
                     visualOutputTab
                         .id(reloadToken)
-                } else {
+                } else if selectedTab == .rawHtml {
                     rawHtmlTab
+                } else if selectedTab == .fileViewer {
+                    GenieUniversalFileViewer(url: resolvedFileURL, onClose: nil, showHeader: false)
+                } else if selectedTab == .browser {
+                    liveBrowserStreamTab
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -137,6 +261,26 @@ public struct GenieCreationDualTabPreviewView: View {
         .onChange(of: selectedTab) { _, tab in
             if tab == .visual { reloadToken = UUID() }
         }
+        .onKeyPress(.return) {
+            postHtmlToChat()
+            return .handled
+        }
+        .onAppear {
+            determineInitialTab()
+            saveToDisk()
+        }
+        .onChange(of: fileURL) { _, _ in
+            editedHtml = nil
+            determineInitialTab()
+            reloadToken = UUID()
+        }
+        .onKeyPress(.escape) {
+            if let close = onClose {
+                close()
+                return .handled
+            }
+            return .ignored
+        }
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(red: 0.08, green: 0.09, blue: 0.12))
@@ -145,151 +289,228 @@ public struct GenieCreationDualTabPreviewView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
         )
+        .overlay(alignment: .topTrailing) {
+            if let close = onClose {
+                Button(action: {
+                    close()
+                    HapticFeedback.selection()
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.red.opacity(0.85))
+                            .frame(width: 22, height: 22)
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(.white)
+                    }
+                    .shadow(color: Color.black.opacity(0.4), radius: 3, y: 1)
+                }
+                .buttonStyle(.plain)
+                .padding(8)
+                .help("Close Preview (Esc)")
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - 🎛️ Header Bar
     private var headerBar: some View {
-        HStack(spacing: 8) {
-            // Left: Title
-            HStack(spacing: 6) {
-                Image(systemName: "paintpalette.fill")
-                    .foregroundColor(.yellow)
-                    .font(.system(size: 11))
+        HStack(spacing: 6) {
+            // Close Button (Prominent & Always Visible on Left)
+            if let close = onClose {
+                Button(action: {
+                    close()
+                    HapticFeedback.selection()
+                }) {
+                    HStack(spacing: 3.5) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("Close")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3.5)
+                    .background(Capsule().fill(Color.red.opacity(0.85)))
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 0.6))
+                }
+                .buttonStyle(.plain)
+                .fixedSize()
+                .help("Close Preview (Esc)")
+            }
+
+            // Title with Sparkles Badge
+            HStack(spacing: 4) {
+                Image(systemName: "sparkles")
+                    .foregroundColor(.cyan)
+                    .font(.system(size: 9.5, weight: .semibold))
 
                 Text(title)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
-            .frame(minWidth: 100, alignment: .leading)
+            .layoutPriority(0)
 
-            Spacer()
+            Spacer(minLength: 4)
 
-            // Center: Segmented Two-Tab Selector
+            // Center: Compact Liquid Glass Tab Selector
             tabSelector
+                .layoutPriority(2)
 
-            Spacer()
+            Spacer(minLength: 4)
 
-            // Right: Actions (Safari, Finder, Copy, Close)
-            HStack(spacing: 6) {
-                if selectedTab == .visual {
-                    // Open in Safari
-                    Button(action: {
-                        openInSafari()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "safari")
-                                .font(.system(size: 10))
-                            Text("Safari")
-                                .font(.system(size: 9.5, weight: .semibold))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.cyan.opacity(0.22)))
-                        .foregroundColor(.cyan)
+            // Right: Enter into Chat + More Actions Menu + Collapse
+            HStack(spacing: 5) {
+                Button(action: {
+                    postHtmlToChat()
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 8.5, weight: .bold))
+                        Text("In Chat")
+                            .font(.system(size: 9.5, weight: .bold))
                     }
-                    .buttonStyle(.plain)
-                    .help("Open and run this creation in Safari")
-
-                    // Reload
-                    Button(action: {
-                        reloadToken = UUID()
-                        HapticFeedback.selection()
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 10))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.white.opacity(0.10)))
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Reload WebKit Preview")
-
-                    // Reveal on Desktop
-                    Button(action: {
-                        revealInFinder()
-                    }) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 10))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.white.opacity(0.10)))
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Reveal file on Desktop")
-                } else {
-                    // Copy Raw HTML
-                    Button(action: {
-                        copyRawHtml()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                                .font(.system(size: 9.5, weight: .bold))
-                                .foregroundColor(isCopied ? .green : .white.opacity(0.9))
-                            Text(isCopied ? "Copied!" : "Copy HTML")
-                                .font(.system(size: 9.5, weight: .semibold))
-                                .foregroundColor(isCopied ? .green : .white.opacity(0.9))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(isCopied ? Color.green.opacity(0.20) : Color.white.opacity(0.12)))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Copy complete raw HTML to clipboard")
-
-                    // Open in TextEdit
-                    Button(action: {
-                        openInTextEdit()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "text.alignleft")
-                                .font(.system(size: 9.5))
-                            Text("TextEdit")
-                                .font(.system(size: 9.5, weight: .semibold))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.white.opacity(0.10)))
-                        .foregroundColor(.white.opacity(0.85))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Open source code in TextEdit")
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3.5)
+                    .background(
+                        Capsule().fill(Color.purple.opacity(0.45))
+                    )
+                    .overlay(
+                        Capsule().strokeBorder(Color.cyan.opacity(0.50), lineWidth: 0.6)
+                    )
+                    .foregroundColor(.white)
                 }
+                .buttonStyle(.plain)
+                .fixedSize()
+                .help("Post this creation directly into Genie Chat (⏎ Enter)")
 
-                if let close = onClose {
+                // More Actions Menu (Safari, TextEdit, Reload, Finder)
+                Menu {
+                    Button(action: { openInSafari() }) {
+                        Label("Open in Safari", systemImage: "safari")
+                    }
+                    Button(action: { reloadToken = UUID(); HapticFeedback.selection() }) {
+                        Label("Reload WebKit", systemImage: "arrow.clockwise")
+                    }
+                    Button(action: { revealInFinder() }) {
+                        Label("Reveal on Desktop", systemImage: "folder")
+                    }
+                    Button(action: { copyRawHtml() }) {
+                        Label(isCopied ? "Copied!" : "Copy Code", systemImage: "doc.on.doc")
+                    }
+                    Button(action: { openInTextEdit() }) {
+                        Label("Open in TextEdit", systemImage: "text.alignleft")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.80))
+                        .frame(width: 22, height: 22)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Actions (Safari, TextEdit, Reload, Finder)")
+
+                if let collapse = onCollapse {
                     Button(action: {
-                        close()
+                        collapse()
                     }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                            .foregroundColor(.white.opacity(0.6))
+                        Image(systemName: "chevron.left.to.line")
+                            .font(.system(size: 9.5, weight: .bold))
+                            .foregroundColor(.white.opacity(0.80))
+                            .frame(width: 22, height: 22)
+                            .background(Circle().fill(Color.white.opacity(0.08)))
                     }
                     .buttonStyle(.plain)
-                    .help("Close Preview")
+                    .help("Hide Editor Pane (⌘\\)")
                 }
             }
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.black.opacity(0.40))
+        .frame(height: 36)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
+        .background(Color.black.opacity(0.60))
     }
 
-    // MARK: - 📑 Tab Selector Capsule
-    /// A stock segmented control rather than a custom capsule row. The hand-rolled
-    /// version had no intrinsic width, so in a narrow pane its labels wrapped mid-word
-    /// ("Visu al Outp ut"). AppKit's own control never does that, and it picks up
-    /// keyboard focus, accessibility and the platform's selection behaviour for free.
+    private var availableTabs: [CreationPreviewTab] {
+        if isImageFile {
+            return [.fileViewer, .browser]
+        } else if isPdfFile || isMediaFile {
+            return [.fileViewer, .browser]
+        } else if isHtmlFile {
+            return [.visual, .rawHtml, .fileViewer, .browser]
+        } else if isTextOrCodeFile {
+            return [.rawHtml, .fileViewer, .browser]
+        } else {
+            return CreationPreviewTab.allCases
+        }
+    }
+
+    private func tabTitle(for tab: CreationPreviewTab) -> String {
+        switch tab {
+        case .visual:
+            return isImageFile ? "Image" : "Visual"
+        case .rawHtml:
+            return isHtmlFile ? "HTML" : "Code"
+        case .fileViewer:
+            return isImageFile ? "Inspector" : (isPdfFile ? "PDF" : "Files")
+        case .browser:
+            return "Web"
+        }
+    }
+
+    private func tabIcon(for tab: CreationPreviewTab) -> String {
+        switch tab {
+        case .visual:
+            return isImageFile ? "photo.fill" : "eye.fill"
+        case .rawHtml:
+            return isHtmlFile ? "chevron.left.forwardslash.chevron.right" : "curlybraces"
+        case .fileViewer:
+            return isImageFile ? "magnifyingglass" : (isPdfFile ? "doc.richtext.fill" : "doc.text.magnifyingglass")
+        case .browser:
+            return "play.tv.fill"
+        }
+    }
+
+    // MARK: - 📑 Tab Selector Capsule (Genie Liquid Glass Capsule)
     private var tabSelector: some View {
-        Picker("View", selection: $selectedTab) {
-            ForEach(CreationPreviewTab.allCases) { tab in
-                Label(tab.rawValue, systemImage: tab.icon).tag(tab)
+        HStack(spacing: 2) {
+            ForEach(availableTabs) { tab in
+                Button(action: {
+                    HapticFeedback.tick()
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        selectedTab = tab
+                    }
+                }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: tabIcon(for: tab))
+                            .font(.system(size: 9.5, weight: .semibold))
+                        Text(tabTitle(for: tab))
+                            .font(.system(size: 11, weight: selectedTab == tab ? .semibold : .medium))
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.75))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4.5)
+                    .background(
+                        Capsule()
+                            .fill(selectedTab == tab ? Color.white : Color.clear)
+                    )
+                }
+                .buttonStyle(.plain)
             }
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
+        .padding(2.5)
+        .background(Capsule().fill(Color.white.opacity(0.08)))
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+        )
         .fixedSize()
         .accessibilityLabel("Preview mode")
     }
@@ -303,19 +524,20 @@ public struct GenieCreationDualTabPreviewView: View {
 
             InteractiveHtmlWebView(
                 htmlString: effectiveHtml,
-                emotionColorHex: emotion.accentColor.toHex()
+                emotionColorHex: emotion.accentColor.toHex(),
+                customBaseURL: resolvedFileURL.deletingLastPathComponent()
             )
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .padding(4)
         }
     }
 
-    // MARK: - 💻 Raw HTML Tab
+    // MARK: - 💻 Raw HTML & Source Code Tab
     private var rawHtmlTab: some View {
         VStack(spacing: 0) {
             // Code metadata bar
             HStack(spacing: 12) {
-                Label("HTML5 Document", systemImage: "chevron.left.forwardslash.chevron.right")
+                Label(detectedLanguage, systemImage: isHtmlFile ? "chevron.left.forwardslash.chevron.right" : "curlybraces")
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .foregroundColor(.cyan)
 
@@ -345,40 +567,180 @@ public struct GenieCreationDualTabPreviewView: View {
 
             Divider().opacity(0.2)
 
-            // Monospaced Code Text with Line Numbers
-            ScrollView([.horizontal, .vertical], showsIndicators: true) {
-                HStack(alignment: .top, spacing: 0) {
-                    // Line numbers gutter
-                    VStack(alignment: .trailing, spacing: 3) {
-                        ForEach(1...max(1, lineCount), id: \.self) { idx in
-                            Text("\(idx)")
-                                .font(.system(size: 10, weight: .regular, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.25))
-                                .frame(minWidth: 28, alignment: .trailing)
+            // Editable source. Typing here immediately saves to disk after every
+            // character and live-updates Visual Output, Safari and Finder.
+            //
+            // TextEditor scrolls itself. It used to sit inside a
+            // ScrollView([.horizontal, .vertical]) next to a line-number gutter,
+            // which proposed unbounded height to a view that sizes itself from
+            // the height it is offered — so it collapsed and the pane rendered
+            // blank while the metadata bar above still reported the real line
+            // and byte count. The gutter went with it: keeping numbers aligned
+            // to a TextEditor's internal layout needs an NSTextView-backed
+            // editor, not a VStack guessing at line height.
+            TextEditor(text: Binding(
+                get: { effectiveHtml },
+                set: { newCode in
+                    editedHtml = newCode
+                    saveToDisk(content: newCode)
+                    reloadToken = UUID()
+                }
+            ))
+            .font(.system(size: 10.5, weight: .regular, design: .monospaced))
+            .foregroundColor(Color(red: 0.88, green: 0.92, blue: 0.98))
+            .scrollContentBackground(.hidden)
+            .background(Color(red: 0.06, green: 0.07, blue: 0.10))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityLabel("HTML source")
+        }
+    }
+
+    // MARK: - 🍿 Live Browser & Streaming Tab
+    private var liveBrowserStreamTab: some View {
+        VStack(spacing: 0) {
+            // Streaming & URL Control Bar
+            HStack(spacing: 8) {
+                // Navigation controls
+                HStack(spacing: 4) {
+                    Button(action: {
+                        if canStreamGoBack {
+                            MiniBrowserManager.shared.activeWebView?.goBack()
                         }
+                    }) {
+                        Image(systemName: "chevron.backward")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(canStreamGoBack ? .white : .white.opacity(0.3))
+                            .frame(width: 24, height: 24)
+                            .background(Circle().fill(Color.white.opacity(0.08)))
                     }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 6)
-                    .background(Color(red: 0.04, green: 0.05, blue: 0.07))
+                    .buttonStyle(.plain)
+                    .disabled(!canStreamGoBack)
 
-                    Divider().opacity(0.15)
+                    Button(action: {
+                        if canStreamGoForward {
+                            MiniBrowserManager.shared.activeWebView?.goForward()
+                        }
+                    }) {
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(canStreamGoForward ? .white : .white.opacity(0.3))
+                            .frame(width: 24, height: 24)
+                            .background(Circle().fill(Color.white.opacity(0.08)))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canStreamGoForward)
 
-                    // Editable source. Typing here re-renders Visual Output and is what
-                    // Copy, Save and Open in Safari all act on.
-                    TextEditor(text: Binding(
-                        get: { effectiveHtml },
-                        set: { editedHtml = $0 }
-                    ))
-                    .font(.system(size: 10.5, weight: .regular, design: .monospaced))
-                    .foregroundColor(Color(red: 0.88, green: 0.92, blue: 0.98))
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
-                    .padding(4)
-                    .frame(maxWidth: .infinity, minHeight: 220, alignment: .leading)
-                    .accessibilityLabel("HTML source")
+                    Button(action: {
+                        if let url = activeStreamURL {
+                            MiniBrowserManager.shared.activeWebView?.load(URLRequest(url: url))
+                        }
+                    }) {
+                        Image(systemName: isStreamLoading ? "xmark" : "arrow.clockwise")
+                            .font(.system(size: 10.5, weight: .bold))
+                            .foregroundColor(.white.opacity(0.8))
+                            .frame(width: 24, height: 24)
+                            .background(Circle().fill(Color.white.opacity(0.08)))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // URL Input Bar
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(.green.opacity(0.85))
+
+                    TextField("Enter URL or search...", text: $streamURLString, onCommit: {
+                        navigateToStreamURL(streamURLString)
+                    })
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.white)
+
+                    if isStreamLoading {
+                        ProgressView()
+                            .scaleEffect(0.5)
+                            .frame(width: 16, height: 16)
+                    }
+
+                    Button(action: {
+                        navigateToStreamURL(streamURLString)
+                    }) {
+                        Text("Go")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(Capsule().fill(Color.cyan))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4.5)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.08)))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.12), lineWidth: 0.6))
+
+                // Streaming Quick Presets
+                HStack(spacing: 5) {
+                    streamPresetChip(label: "🍿 Netflix", url: "https://www.netflix.com")
+                    streamPresetChip(label: "▶️ YouTube", url: "https://www.youtube.com")
+                    streamPresetChip(label: "📺 Twitch", url: "https://www.twitch.tv")
+                    streamPresetChip(label: "🎬 Apple TV", url: "https://tv.apple.com")
                 }
             }
-            .background(Color(red: 0.06, green: 0.07, blue: 0.10))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color(red: 0.07, green: 0.08, blue: 0.11))
+
+            // Main Web & Streaming View
+            ZStack {
+                Color.black
+
+                NativeWKWebView(
+                    url: activeStreamURL,
+                    isLoading: $isStreamLoading,
+                    canGoBack: $canStreamGoBack,
+                    canGoForward: $canStreamGoForward,
+                    title: $streamPageTitle
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(2)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func streamPresetChip(label: String, url: String) -> some View {
+        Button(action: {
+            HapticFeedback.selection()
+            streamURLString = url
+            navigateToStreamURL(url)
+        }) {
+            Text(label)
+                .font(.system(size: 9.5, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3.5)
+                .background(Capsule().fill(Color.white.opacity(0.12)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func navigateToStreamURL(_ text: String) {
+        var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.lowercased().hasPrefix("http://") && !trimmed.lowercased().hasPrefix("https://") {
+            if trimmed.contains(".") && !trimmed.contains(" ") {
+                trimmed = "https://" + trimmed
+            } else {
+                trimmed = "https://www.google.com/search?q=" + (trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed)
+            }
+        }
+        if let target = URL(string: trimmed) {
+            activeStreamURL = target
+            MiniBrowserManager.shared.activeWebView?.load(URLRequest(url: target))
         }
     }
 
@@ -419,6 +781,22 @@ public struct GenieCreationDualTabPreviewView: View {
         let url = resolvedFileURL
         NSWorkspace.shared.activateFileViewerSelecting([url])
         HapticFeedback.selection()
+    }
+
+    private func postHtmlToChat() {
+        let code = effectiveHtml
+        let msg = ChatMessage(
+            role: "user",
+            content: "Rendered HTML Creation: **\(title)**\n\n```html\n\(code)\n```",
+            mediaType: "html"
+        )
+        LocalModelManager.shared.chatHistory.append(msg)
+        LocalModelManager.shared.saveChatHistory()
+        HapticFeedback.selection()
+        statusFeedback = "Rendered HTML entered into Genie ✨"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            statusFeedback = nil
+        }
     }
 
     private func formatBytes(_ bytes: Int) -> String {

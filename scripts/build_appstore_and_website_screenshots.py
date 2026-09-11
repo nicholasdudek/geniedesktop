@@ -49,7 +49,28 @@ FEATURES = [
 # 10 Flagship App Store Showcase Sets
 APP_STORE_SLIDES = [
     {
-        "filename": "01_AppStore_2880x1800_Spatial_Desktop_Canvas.png",
+        "filename": "01_AppStore_2880x1800_The_Ambient_Awakening_Neural_Bloom.png",
+        "title": "THE AMBIENT AWAKENING",
+        "subtitle": "Neural Bloom living shaders, spring-animated dropdowns & vitreous frosted glass",
+        "capture": "02_wallpapers.png",
+        "is_fullscreen": True
+    },
+    {
+        "filename": "02_AppStore_2880x1800_Genie_Editor_Brick_Wall.png",
+        "title": "GENIE EDITOR & BRICK WALL",
+        "subtitle": "Absolute context isolation firewall & real-time typing convergence meeting at next layer",
+        "capture": "20_chat_and_preview.png",
+        "is_fullscreen": True
+    },
+    {
+        "filename": "03_AppStore_2880x1800_Living_Animated_Chat_Widget.png",
+        "title": "FIRST-EVER ANIMATED CHAT WIDGET",
+        "subtitle": "Bioluminescent breathing aura, 5-bar live equalizer waveform & OLED World Clock Pillows",
+        "capture": "13_pets_pinball.png",
+        "is_fullscreen": False
+    },
+    {
+        "filename": "04_AppStore_2880x1800_Spatial_Desktop_Canvas.png",
         "title": "SPATIAL DESKTOP CANVAS",
         "subtitle": "Reimagine your macOS workspace with continuous 3x3 spatial navigation",
         "capture": "33_desktop_grid.png",

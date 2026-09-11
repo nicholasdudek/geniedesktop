@@ -25,7 +25,7 @@ public enum WorkspaceTabType: String, CaseIterable, Identifiable {
         case .terminal: return "Terminal"
         case .evolver: return "Codebase Evolver"
         case .editor: return "Editor"
-        case .vsCodeStudio: return "VS Code Studio"
+        case .vsCodeStudio: return "Genio Studio"
         case .browser: return "Browser"
         case .macTrainer: return "Mac Knowledge"
         case .matrix3x3: return "3×3 Program Matrix"
@@ -96,7 +96,7 @@ public struct WorkspaceTab: Identifiable, Equatable {
         ],
         terminalInput: String = "",
         browserURLString: String = "https://www.google.com",
-        repoPath: String = "/Users/nicholasdudek/Developer/GoldGate",
+        repoPath: String = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Developer/GoldGate").path,
         gitBranch: String = "main",
         selectedFilePath: String? = nil,
         selectedGitHubSubTab: String = "code"
@@ -130,13 +130,14 @@ public final class WorkspaceTabManager: ObservableObject {
     @Published public var activeTabId: UUID
 
     private init() {
-        let chatTab = WorkspaceTab(title: "Claude & Gemma 💬", type: .chat)
+        let chatTab = WorkspaceTab(title: "Genie Chat 💬", type: .chat)
+        let editorTab = WorkspaceTab(title: "Editor & Preview 📝", type: .editor)
+        let appsTab = WorkspaceTab(title: "Applications 🗂️", type: .matrix3x3)
         let githubTab = WorkspaceTab(title: "GitHub 🐙", type: .github)
         let terminalTab = WorkspaceTab(title: "Terminal 💻", type: .terminal)
-        let editorTab = WorkspaceTab(title: "Editor 📝", type: .editor)
         let browserTab = WorkspaceTab(title: "Browser 🌐", type: .browser)
 
-        self.tabs = [chatTab, githubTab, terminalTab, editorTab, browserTab]
+        self.tabs = [chatTab, editorTab, appsTab, githubTab, terminalTab, browserTab]
         self.activeTabId = chatTab.id
     }
 
@@ -168,7 +169,7 @@ public final class WorkspaceTabManager: ObservableObject {
             if let custom = title { return custom }
             switch type {
             case .chat:
-                return countOfType == 0 ? "Claude & Gemma" : "Chat \(countOfType + 1)"
+                return countOfType == 0 ? "Genie Chat" : "Chat \(countOfType + 1)"
             case .huggingface:
                 return countOfType == 0 ? "Hugging Face" : "HF \(countOfType + 1)"
             case .github:
@@ -180,7 +181,7 @@ public final class WorkspaceTabManager: ObservableObject {
             case .editor:
                 return countOfType == 0 ? "Editor" : "Editor \(countOfType + 1)"
             case .vsCodeStudio:
-                return countOfType == 0 ? "VS Code Studio" : "Studio \(countOfType + 1)"
+                return countOfType == 0 ? "Genio Studio" : "Genio Studio \(countOfType + 1)"
             case .browser:
                 return countOfType == 0 ? "Browser" : "Browser \(countOfType + 1)"
             case .macTrainer:

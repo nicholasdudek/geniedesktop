@@ -35,7 +35,7 @@ final class GenieEnvironmentController: ObservableObject {
     }
     private func manager() throws -> EnvironmentManager {
         if let managerInstance { return managerInstance }
-        let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Genie/Environments")
+        let directory = GenieStandardDirectories.environmentsURL
         let instance = try EnvironmentManager(directory: directory, transport: transport())
         managerInstance = instance
         return instance
@@ -112,6 +112,23 @@ final class GenieEnvironmentController: ObservableObject {
             let spec = try await manager().create(EnvironmentSpec(name: trimmed, vmID: guestIdentifier(), tools: tools))
             UserDefaults.standard.set(spec.id.uuidString, forKey: PrefKey.utmEnvironmentID)
             status = "Workspace \(trimmed) ready"
+            await loadWorkspaces()
+            await refresh()
+        } catch { status = error.localizedDescription }
+    }
+    /// Copies an existing workspace's files and the browser profile beside them
+    /// into a new workspace, so the clone keeps the sessions the original had
+    /// signed in. Guest job history stays with the source; the clone starts with
+    /// an empty log.
+    func cloneWorkspace(_ id: UUID, named name: String) async {
+        guard !busy, GenieCapabilities.canSpawnSubprocesses else { return }
+        busy = true; defer { busy = false }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { status = "Name the clone first."; return }
+        do {
+            let spec = try await manager().clone(environment: id, name: trimmed)
+            UserDefaults.standard.set(spec.id.uuidString, forKey: PrefKey.utmEnvironmentID)
+            status = "Cloned into \(trimmed)"
             await loadWorkspaces()
             await refresh()
         } catch { status = error.localizedDescription }

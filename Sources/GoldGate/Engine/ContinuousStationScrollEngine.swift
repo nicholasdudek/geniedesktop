@@ -377,6 +377,7 @@ public final class ContinuousStationScrollEngine: ObservableObject {
 
         // Handle Discrete Mouse Wheel (Traditional Mouse)
         if !event.hasPreciseScrollingDeltas || event.momentumPhase.contains(.began) || (event.phase.isEmpty && event.momentumPhase.isEmpty) {
+            guard UserDefaults.standard.bool(forKey: PrefKey.enableScrollWheelStationNavigation) else { return }
             handleDiscreteMouseWheel(event, timestamp: now)
             return
         }

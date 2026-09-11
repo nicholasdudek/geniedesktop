@@ -57,6 +57,10 @@ final class DesktopPlaneWindow: NSWindow {
             return true
         }
         if event.keyCode == 53 { // Escape key
+            if DesktopWindowManager.shared.isTopDashboardElevated {
+                NotificationCenter.default.post(name: NSNotification.Name("NexusToggleTopCeilingDashboard"), object: nil)
+                return true
+            }
             NotificationCenter.default.post(name: NSNotification.Name("NexusClose"), object: nil)
             NotificationCenter.default.post(name: NSNotification.Name("NexusDismissDesktopGrid"), object: nil)
             DesktopWindowManager.shared.setPage(0)
@@ -77,6 +81,10 @@ final class DesktopPlaneWindow: NSWindow {
             return
         }
         if event.keyCode == 53 { // Escape key
+            if DesktopWindowManager.shared.isTopDashboardElevated {
+                NotificationCenter.default.post(name: NSNotification.Name("NexusToggleTopCeilingDashboard"), object: nil)
+                return
+            }
             NotificationCenter.default.post(name: NSNotification.Name("NexusClose"), object: nil)
             NotificationCenter.default.post(name: NSNotification.Name("NexusDismissDesktopGrid"), object: nil)
             DesktopWindowManager.shared.setPage(0)
@@ -89,6 +97,10 @@ final class DesktopPlaneWindow: NSWindow {
     }
 
     override func mouseDown(with event: NSEvent) {
+        guard !DesktopWindowManager.shared.isTopDashboardElevated else {
+            super.mouseDown(with: event)
+            return
+        }
         guard DesktopWindowManager.shared.currentPage == 1 else {
             super.mouseDown(with: event)
             return
@@ -102,6 +114,10 @@ final class DesktopPlaneWindow: NSWindow {
     }
 
     override func rightMouseDown(with event: NSEvent) {
+        guard !DesktopWindowManager.shared.isTopDashboardElevated else {
+            super.rightMouseDown(with: event)
+            return
+        }
         if !UserDefaults.standard.bool(forKey: PrefKey.isChatLockedInPlace) {
             NotificationCenter.default.post(name: NSNotification.Name("NexusClose"), object: nil)
         }
@@ -183,10 +199,12 @@ final class DesktopWindowManager: ObservableObject {
     private var localScrollMonitor: Any?
     private var swipeMonitor: Any?
     private var mouseClickMonitor: Any?
+    private var ceilingClickMonitor: Any?
     private var flagsMonitor: Any?
     private var magnifyMonitor: Any?
     private var cursorPollingTimer: Timer?
     private var notificationObservers: [NSObjectProtocol] = []
+    public var isTopDashboardElevated: Bool = false
     private var isAtBottomEdge: Bool = false
     private var isAtTopEdge: Bool = false
     private var isAtBottomRightCorner: Bool = false
@@ -197,11 +215,64 @@ final class DesktopWindowManager: ObservableObject {
     private var dockHoverStartTime: TimeInterval = 0.0
     private var topHoverStartTime: TimeInterval = 0.0
     private var rightHoverStartTime: TimeInterval = 0.0
+    public var lastAppsDismissTime: TimeInterval = 0.0
     private var hasBumpedRightEdge: Bool = false
     /// How far back from the edge the cursor is nudged when it hits the right-edge island.
     static let rightEdgeBumpDistance: CGFloat = 14.0
     @Published public var currentPage: Int = 1
     @Published public var currentStation: WorkspaceStation = .applications
+    // Notification name is declared at the bottom of this file.
+
+    /// Whether the top dock (the slide-down dashboard) is showing.
+    ///
+    /// This lives here rather than in `DesktopGridView`'s local `@State`
+    /// because the top dock and the menu bar dropdown are two presentations of
+    /// the same chat, in two different windows — a SwiftUI overlay and an
+    /// NSPanel. Nothing used to coordinate them, so both could be open at once
+    /// with separate conversations. Only one may be open now, and the owner of
+    /// that rule has to be somewhere both sides can see.
+    @Published public var isTopDockPresented: Bool = false {
+        didSet {
+            guard isTopDockPresented, oldValue != isTopDockPresented else { return }
+            NotificationCenter.default.post(name: .genieDismissMenuBarDropdown, object: nil)
+        }
+    }
+
+    /// Shows the top dock, closing the menu bar dropdown on the way in.
+    public func presentTopDock() {
+        isTopDockPresented = true
+    }
+
+    /// Hides the top dock. Safe to call when it is already hidden.
+    public func dismissTopDock() {
+        isTopDockPresented = false
+    }
+
+    /// Toggles the Active Desktop (Application Matrix & Formation Canvas) directly from the Top Dock
+    /// while remaining in the exact same window and presentation state.
+    public func toggleActiveDesktopFromTopDock() {
+        let isNowActive = (currentPage == 1 && UserDefaults.standard.integer(forKey: PrefKey.appDisplayStage) == 2)
+        if isNowActive {
+            setPage(0)
+            UserDefaults.standard.set(0, forKey: PrefKey.appDisplayStage)
+        } else {
+            setPage(1)
+            UserDefaults.standard.set(2, forKey: PrefKey.appDisplayStage)
+            UserDefaults.standard.set(true, forKey: PrefKey.desktopPlaneEnabled)
+        }
+        elevateForTopDashboard(isPopped: isTopDockPresented)
+        syncCurrentStation(fromPage: currentPage, appDisplayStage: isNowActive ? .hidden : .fullScreen, isTopSearchBarPoppedDown: isTopDockPresented)
+    }
+
+    /// Shows the Top Dock with the Active Desktop underlying canvas activated in the same state.
+    public func showTopDockWithActiveDesktop() {
+        setPage(1)
+        UserDefaults.standard.set(2, forKey: PrefKey.appDisplayStage)
+        UserDefaults.standard.set(true, forKey: PrefKey.desktopPlaneEnabled)
+        isTopDockPresented = true
+        elevateForTopDashboard(isPopped: true)
+        syncCurrentStation(fromPage: 1, appDisplayStage: .fullScreen, isTopSearchBarPoppedDown: true)
+    }
 
     public func toggleStationBetweenDesktopAndApplications() {
         HapticFeedback.selection()
@@ -277,8 +348,16 @@ final class DesktopWindowManager: ObservableObject {
     public func executeHotCornerAction(named action: String) {
         HapticFeedback.heavy()
         switch action {
+        case "applications":
+            FinderChatWindowManager.shared.show(tab: .applications)
+        case "hide_apps_show_desktop", "hide_apps", "show_desktop":
+            MacDesktopsManager.postKeyComboDirect(keyCode: 103, flags: [])
+            NotificationCenter.default.post(name: NSNotification.Name("NexusHideAppsShowDesktop"), object: nil)
+        case "widgets_notifications", "widgets", "notifications":
+            FinderChatWindowManager.shared.show(tab: .chat)
+            NotificationCenter.default.post(name: NSNotification.Name("NexusOpenWidgets"), object: nil)
         case "desktop_grid":
-            break // Disabled: No applications pop up
+            SpatialPlaneManager.shared.toggleZoomOutPlane()
         case "chat_bar":
             FinderChatWindowManager.shared.toggle()
         case "control_center":
@@ -287,8 +366,6 @@ final class DesktopWindowManager: ObservableObject {
             MacDesktopsManager.postKeyComboDirect(keyCode: 126, flags: .maskControl)
         case "app_expose":
             MacDesktopsManager.postKeyComboDirect(keyCode: 125, flags: .maskControl)
-        case "show_desktop":
-            MacDesktopsManager.postKeyComboDirect(keyCode: 103, flags: [])
         case "lock_screen":
             MacDesktopsManager.postKeyComboDirect(keyCode: 12, flags: [.maskControl, .maskCommand])
         default:
@@ -303,7 +380,10 @@ final class DesktopWindowManager: ObservableObject {
         return UserDefaults.standard.bool(forKey: PrefKey.desktopPlaneEnabled)
     }
 
-    func setPage(_ page: Int) {
+    public func setPage(_ page: Int) {
+        if page == 0 && self.currentPage != 0 {
+            self.lastAppsDismissTime = ProcessInfo.processInfo.systemUptime
+        }
         self.currentPage = page
         if desktopWindows.isEmpty, let model = self.appModel {
             if !isEnabled {
@@ -322,7 +402,14 @@ final class DesktopWindowManager: ObservableObject {
 
     public func updateWindowsForPage(_ page: Int) {
         for win in self.desktopWindows {
-            if page == 1 {
+            if isTopDashboardElevated {
+                win.level = NSWindow.Level(Int(CGWindowLevelForKey(.popUpMenuWindow)) + 25)
+                win.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
+                win.isExcludedFromWindowsMenu = true
+                win.sharingType = .readOnly
+                win.ignoresMouseEvents = false
+                win.orderFrontRegardless()
+            } else if page == 1 {
                 // Summoned: Elevate window above open applications and activate for note input
                 win.level = .floating
                 win.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
@@ -378,6 +465,47 @@ final class DesktopWindowManager: ObservableObject {
         }
     }
 
+    /// Elevates desktop windows to floating level so the top ceiling dashboard (Zenith / LiquidGlassTopDashboardView)
+    /// pulls down cleanly over desktop apps, accepts clicks, and is brought directly to front.
+    public func elevateForTopDashboard(isPopped: Bool) {
+        self.isTopDashboardElevated = isPopped
+        if isPopped && desktopWindows.isEmpty, let model = self.appModel {
+            if !isEnabled {
+                UserDefaults.standard.set(true, forKey: PrefKey.desktopPlaneEnabled)
+            }
+            rebuildWindows(appModel: model)
+        }
+        for win in self.desktopWindows {
+            if isPopped {
+                win.level = NSWindow.Level(Int(CGWindowLevelForKey(.popUpMenuWindow)) + 25)
+                win.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
+                win.ignoresMouseEvents = false
+                win.orderFrontRegardless()
+            } else {
+                if currentPage == 0 {
+                    let desktopLevel = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)) - 1)
+                    win.level = desktopLevel
+                    win.ignoresMouseEvents = true
+                    win.resignKey()
+                    win.orderFrontRegardless()
+                } else {
+                    win.level = .floating
+                    win.ignoresMouseEvents = false
+                }
+            }
+        }
+        updateDesktopClickThrough()
+        if isPopped {
+            NSApp.activate(ignoringOtherApps: true)
+            for win in self.desktopWindows {
+                win.orderFrontRegardless()
+            }
+            if let targetWin = self.desktopWindows.first(where: { $0.screen == NSScreen.main }) ?? self.desktopWindows.first {
+                targetWin.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+
     func setup(appModel: AppModel) {
         logDesktop("setup(appModel:) called")
         self.appModel = appModel
@@ -404,6 +532,7 @@ final class DesktopWindowManager: ObservableObject {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self = self, self.currentPage != 0 else { return }
+                guard !self.isTopDashboardElevated else { return }
                 let alwaysOn = UserDefaults.standard.bool(forKey: PrefKey.alwaysOnDesktop)
                 let pinned = UserDefaults.standard.bool(forKey: PrefKey.pinToDesktopEnabled)
                 guard !alwaysOn && !pinned else { return }
@@ -421,6 +550,7 @@ final class DesktopWindowManager: ObservableObject {
                 guard let self = self else { return }
                 if let activatedApp = notif.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                    activatedApp.bundleIdentifier != Bundle.main.bundleIdentifier {
+                    guard !self.isTopDashboardElevated else { return }
                     let alwaysOn = UserDefaults.standard.bool(forKey: PrefKey.alwaysOnDesktop)
                     let pinned = UserDefaults.standard.bool(forKey: PrefKey.pinToDesktopEnabled)
                     if !alwaysOn && !pinned && self.currentPage == 1 {
@@ -526,7 +656,9 @@ final class DesktopWindowManager: ObservableObject {
             } else {
                 pageInt = 1
             }
-            self?.setPage(pageInt)
+            MainActor.assumeIsolated {
+                self?.setPage(pageInt)
+            }
             NotificationCenter.default.post(name: NSNotification.Name("NexusSetDesktopPage"), object: pageInt)
         }
         notificationObservers.append(o9)
@@ -549,10 +681,10 @@ final class DesktopWindowManager: ObservableObject {
                 MainActor.assumeIsolated {
                     guard let self = self, self.isEnabled else { return }
 
-                    let brEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomRightHotCorner)
-                    let trEnabled = UserDefaults.standard.bool(forKey: PrefKey.topRightHotCorner)
-                    let tlEnabled = UserDefaults.standard.bool(forKey: PrefKey.topLeftHotCorner)
-                    let blEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomLeftHotCorner)
+                    let brEnabled = UserDefaults.standard.object(forKey: PrefKey.bottomRightHotCorner) == nil ? true : UserDefaults.standard.bool(forKey: PrefKey.bottomRightHotCorner)
+                    let trEnabled = UserDefaults.standard.object(forKey: PrefKey.topRightHotCorner) == nil ? true : UserDefaults.standard.bool(forKey: PrefKey.topRightHotCorner)
+                    let tlEnabled = UserDefaults.standard.object(forKey: PrefKey.topLeftHotCorner) == nil ? true : UserDefaults.standard.bool(forKey: PrefKey.topLeftHotCorner)
+                    let blEnabled = UserDefaults.standard.object(forKey: PrefKey.bottomLeftHotCorner) == nil ? true : UserDefaults.standard.bool(forKey: PrefKey.bottomLeftHotCorner)
                     let bottomEdgeEnabled = UserDefaults.standard.bool(forKey: PrefKey.bottomEdgeCursorTrigger)
                     let topEdgeEnabled = UserDefaults.standard.object(forKey: PrefKey.topEdgeCursorTrigger) as? Bool ?? false
                     let rightEdgeEnabled = UserDefaults.standard.bool(forKey: PrefKey.rightEdgeCursorTrigger)
@@ -570,9 +702,9 @@ final class DesktopWindowManager: ObservableObject {
                     let cornerTriggerThreshold: CGFloat = 12.0
                     let cornerExitThreshold: CGFloat = 45.0
 
-                    // 1. Bottom-Right Hot Corner
+                    // 1. Bottom-Right Hot Corner (Right Side: Hide Apps to see Desktop)
                     if brEnabled {
-                        let brAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerBottomRightAction) ?? "none"
+                        let brAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerBottomRightAction) ?? "hide_apps_show_desktop"
                         if brAction != "none" {
                             let inBR = mouseLoc.x >= screen.frame.maxX - cornerTriggerThreshold && mouseLoc.y <= screen.frame.minY + cornerTriggerThreshold
                             if inBR {
@@ -586,9 +718,9 @@ final class DesktopWindowManager: ObservableObject {
                         }
                     }
 
-                    // 2. Top-Right Hot Corner
+                    // 2. Top-Right Hot Corner (Top Right: Widgets and Notifications)
                     if trEnabled {
-                        let trAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerTopRightAction) ?? "chat_bar"
+                        let trAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerTopRightAction) ?? "widgets_notifications"
                         if trAction != "none" {
                             let inTR = mouseLoc.x >= screen.frame.maxX - cornerTriggerThreshold && mouseLoc.y >= screen.frame.maxY - cornerTriggerThreshold
                             if inTR {
@@ -602,9 +734,9 @@ final class DesktopWindowManager: ObservableObject {
                         }
                     }
 
-                    // 3. Top-Left Hot Corner
+                    // 3. Top-Left Hot Corner (Left Corner: Application Launcher)
                     if tlEnabled {
-                        let tlAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerTopLeftAction) ?? "none"
+                        let tlAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerTopLeftAction) ?? "applications"
                         if tlAction != "none" {
                             let inTL = mouseLoc.x <= screen.frame.minX + cornerTriggerThreshold && mouseLoc.y >= screen.frame.maxY - cornerTriggerThreshold
                             if inTL {
@@ -618,9 +750,9 @@ final class DesktopWindowManager: ObservableObject {
                         }
                     }
 
-                    // 4. Bottom-Left Hot Corner
+                    // 4. Bottom-Left Hot Corner (Left Corner: Application Launcher)
                     if blEnabled {
-                        let blAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerBottomLeftAction) ?? "none"
+                        let blAction = UserDefaults.standard.string(forKey: PrefKey.hotCornerBottomLeftAction) ?? "applications"
                         if blAction != "none" {
                             let inBL = mouseLoc.x <= screen.frame.minX + cornerTriggerThreshold && mouseLoc.y <= screen.frame.minY + cornerTriggerThreshold
                             if inBL {
@@ -656,9 +788,14 @@ final class DesktopWindowManager: ObservableObject {
                     if bottomEdgeEnabled && isHorizontallyCentered {
                         let isNearBottom = mouseLoc.y <= screen.frame.minY + 4
                         if isNearBottom {
+                            let now = ProcessInfo.processInfo.systemUptime
+                            let customDelay = UserDefaults.standard.double(forKey: PrefKey.appsPopUpDelaySeconds)
+                            let requiredCooldown = customDelay > 0 ? customDelay : 10.0
+                            let elapsedSinceDismiss = now - self.lastAppsDismissTime
+
                             if self.dockHoverStartTime == 0.0 {
-                                self.dockHoverStartTime = ProcessInfo.processInfo.systemUptime
-                            } else if ProcessInfo.processInfo.systemUptime - self.dockHoverStartTime >= 0.20 {
+                                self.dockHoverStartTime = now
+                            } else if (now - self.dockHoverStartTime >= 0.75) && (elapsedSinceDismiss >= requiredCooldown) {
                                 if !self.isAtBottomEdge {
                                     self.isAtBottomEdge = true
                                     NotificationCenter.default.post(name: NSNotification.Name("NexusBottomEdgeHit"), object: nil)
@@ -744,7 +881,7 @@ final class DesktopWindowManager: ObservableObject {
 
                     // Strict Active Application Isolation:
                     // If another application window is directly under the cursor, never intercept or forward scroll wheel events.
-                    if self.currentPage == 1 || self.isOverDesktopOrEmptySpace() {
+                    if UserDefaults.standard.bool(forKey: PrefKey.enableScrollWheelStationNavigation), (self.currentPage == 1 || self.isOverDesktopOrEmptySpace()) {
                         NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopScrollWheel"), object: event)
                     }
                 }
@@ -762,7 +899,9 @@ final class DesktopWindowManager: ObservableObject {
                     NotificationCenter.default.post(name: NSNotification.Name("NexusRightDockScrollWheel"), object: CGFloat(event.scrollingDeltaY))
                 }
                 guard event.momentumPhase.isEmpty else { return event }
-                NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopScrollWheel"), object: event)
+                if UserDefaults.standard.bool(forKey: PrefKey.enableScrollWheelStationNavigation) {
+                    NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopScrollWheel"), object: event)
+                }
                 return event
             }
         }
@@ -819,6 +958,27 @@ final class DesktopWindowManager: ObservableObject {
             }
         }
 
+        // Ceiling Click Monitor — Brings down top dashboard on click near top ceiling of any screen
+        if ceilingClickMonitor == nil {
+            ceilingClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] event in
+                Task { @MainActor [weak self] in
+                    guard let self = self, self.isEnabled else { return }
+                    let mouseLoc = NSEvent.mouseLocation
+                    for screen in NSScreen.screens {
+                        if NSPointInRect(mouseLoc, screen.frame) {
+                            let topCeilingHeight: CGFloat = 36.0
+                            let isNearCeiling = mouseLoc.y >= screen.frame.maxY - topCeilingHeight
+                            let isHorizontallyCentered = abs(mouseLoc.x - screen.frame.midX) <= (screen.frame.width * 0.45)
+                            if isNearCeiling && isHorizontallyCentered {
+                                NotificationCenter.default.post(name: NSNotification.Name("NexusToggleTopCeilingDashboard"), object: nil)
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // 3-Finger Trackpad Swipe Monitor (Desktop <-> Applications Cycle)
         if swipeMonitor == nil {
             swipeMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.swipe]) { [weak self] event in
@@ -841,6 +1001,7 @@ final class DesktopWindowManager: ObservableObject {
         notificationObservers.removeAll()
 
         if let m = mouseClickMonitor { NSEvent.removeMonitor(m); mouseClickMonitor = nil }
+        if let c = ceilingClickMonitor { NSEvent.removeMonitor(c); ceilingClickMonitor = nil }
         if let g = globalScrollMonitor { NSEvent.removeMonitor(g); globalScrollMonitor = nil }
         if let l = localScrollMonitor { NSEvent.removeMonitor(l); localScrollMonitor = nil }
         if let s = swipeMonitor { NSEvent.removeMonitor(s); swipeMonitor = nil }
@@ -857,13 +1018,16 @@ final class DesktopWindowManager: ObservableObject {
     /// hit-test has to fall through to whatever is underneath, normally the Finder desktop.
     public func updateDesktopClickThrough() {
         for win in desktopWindows {
-            if currentPage == 0 {
+            if currentPage == 0 && !isTopDashboardElevated {
                 if !win.ignoresMouseEvents { win.ignoresMouseEvents = true }
             } else {
                 if win.ignoresMouseEvents { win.ignoresMouseEvents = false }
             }
         }
     }
+
+    private var lastEmptySpaceCheckTime: TimeInterval = 0
+    private var lastEmptySpaceResult: Bool = true
 
     func isOverDesktopOrEmptySpace() -> Bool {
         if self.currentPage == 1 {
@@ -876,9 +1040,17 @@ final class DesktopWindowManager: ObservableObject {
             return true
         }
 
+        // Throttle CGWindowListCopyWindowInfo queries to at most once every 150ms to prevent WindowServer watchdog stalls
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - lastEmptySpaceCheckTime < 0.15 {
+            return lastEmptySpaceResult
+        }
+        lastEmptySpaceCheckTime = now
+
         // 2. Check if mouse is directly hovering over an active visible application window
         let mouseLoc = NSEvent.mouseLocation
         guard let winList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            lastEmptySpaceResult = true
             return true
         }
 
@@ -895,12 +1067,14 @@ final class DesktopWindowManager: ObservableObject {
                     let cocoaY = primaryHeight - winBounds.origin.y - winBounds.height
                     let winRect = CGRect(x: winBounds.origin.x, y: cocoaY, width: winBounds.width, height: winBounds.height)
                     if winRect.contains(mouseLoc) {
+                        lastEmptySpaceResult = false
                         return false // Mouse is inside an active application window
                     }
                 }
             }
         }
 
+        lastEmptySpaceResult = true
         return true
     }
 
@@ -1011,9 +1185,17 @@ final class DesktopWindowManager: ObservableObject {
         }
         notificationObservers.removeAll()
         if let m = mouseClickMonitor { NSEvent.removeMonitor(m) }
+        if let c = ceilingClickMonitor { NSEvent.removeMonitor(c) }
         if let g = globalScrollMonitor { NSEvent.removeMonitor(g) }
         if let l = localScrollMonitor { NSEvent.removeMonitor(l) }
         if let f = flagsMonitor { NSEvent.removeMonitor(f) }
         cursorPollingTimer?.invalidate()
     }
+}
+
+public extension Notification.Name {
+    /// Posted when the top dock opens, so the menu bar dropdown closes itself.
+    /// The two are alternative presentations of the same chat and only one may
+    /// be open at a time; AppDelegate owns the panel and observes this.
+    static let genieDismissMenuBarDropdown = Notification.Name("GenieDismissMenuBarDropdown")
 }

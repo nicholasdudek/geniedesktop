@@ -4,7 +4,7 @@ import Foundation
 
 // MARK: - 💬 Genie Dedicated Apple Messages Extension & Bridge Manager
 /// Manages Genie's dedicated Apple Messages extension, contact identity, two-way conversational bridge,
-/// and smart action dispatcher between Nicholas's iPhone and macOS desktop.
+/// and smart action dispatcher between iPhone and macOS desktop.
 @MainActor
 public final class GenieiMessageExtensionManager: ObservableObject {
     public static let shared = GenieiMessageExtensionManager()
@@ -17,16 +17,23 @@ public final class GenieiMessageExtensionManager: ObservableObject {
     @Published public private(set) var lastReplySent: String = "None"
     @Published public private(set) var lastActiveDate: Date? = nil
 
-    // Nicholas's Verified Identities
-    @Published public var nicholasAppleID: String = "nicholas.dudek@icloud.com"
-    @Published public var nicholasPhone: String = "+821020520225"
+    // User Verified Identities
+    @Published public var userAppleID: String = ""
+    @Published public var userPhone: String = ""
+
+    public var nicholasAppleID: String {
+        get { userAppleID.isEmpty ? (GenieAppleAuth.shared.email.isEmpty ? "user@icloud.com" : GenieAppleAuth.shared.email) : userAppleID }
+        set { userAppleID = newValue }
+    }
+    public var nicholasPhone: String {
+        get { userPhone }
+        set { userPhone = newValue }
+    }
 
     // Known Contact Shortcuts
     public var knownContacts: [String: String] = [
-        "markie": "+821075252038",
-        "💜markie💜": "+821075252038",
-        "me": "nicholas.dudek@icloud.com",
-        "self": "nicholas.dudek@icloud.com"
+        "me": "me",
+        "self": "self"
     ]
 
     private var watcherTimer: Timer?
@@ -49,8 +56,12 @@ public final class GenieiMessageExtensionManager: ObservableObject {
         knownContacts["me"] = self.nicholasAppleID
         knownContacts["self"] = self.nicholasAppleID
 
-        self.lastObservedRowID = Self.queryMaxChatDBRowID()
-        Task.detached(priority: .utility) { [weak self] in
+        self.lastObservedRowID = 0
+        Task { @MainActor [weak self] in
+            let initialMax = await Task.detached(priority: .utility) {
+                Self.queryMaxChatDBRowID()
+            }.value
+            self?.lastObservedRowID = initialMax
             await self?.installExtensionFilesAsync()
         }
         startWatcher()
@@ -103,7 +114,7 @@ public final class GenieiMessageExtensionManager: ObservableObject {
                 try
                     set encodedMsg to do shell script "python3 -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))' " & quoted form of msgContent
                     set encodedSender to do shell script "python3 -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))' " & quoted form of senderID
-                    do shell script "curl -s -m 2 'http://127.0.0.1:8765/api/imessage/received?sender=' & encodedSender & '&message=' & encodedMsg > /dev/null 2>&1 &"
+                    do shell script "curl -s -m 2 'http://127.0.0.1:\(GeniePortGovernor.defaultPhoneBridgePort)/api/imessage/received?sender=' & encodedSender & '&message=' & encodedMsg > /dev/null 2>&1 &"
                 end try
             end message received
         end using terms from
@@ -113,7 +124,7 @@ public final class GenieiMessageExtensionManager: ObservableObject {
         let destinations = [
             "\(homeDir)/Library/Application Scripts/com.apple.iChat",
             "\(homeDir)/Library/Scripts/Messages",
-            "\(homeDir)/Library/Application Support/Genie/Extensions"
+            GenieStandardDirectories.extensionsURL.path
         ]
 
         for dir in destinations {
@@ -123,31 +134,28 @@ public final class GenieiMessageExtensionManager: ObservableObject {
         }
     }
 
-    /// Generates a dedicated vCard (Genie AI.vcf) so Nicholas can add Genie as a standalone contact
+    /// Generates a dedicated vCard (Genie AI.vcf) so the user can add Genie as a standalone contact
     @discardableResult
     public func exportGenieContactCard(toDesktop: Bool = true) -> URL? {
         let vcard = """
         BEGIN:VCARD
         VERSION:3.0
-        PRODID:-//Nicholas Dudek//Genie macOS Extension//EN
+        PRODID:-//Genie//Genie macOS Extension//EN
         N:AI;Genie;;;
         FN:Genie AI
         ORG:Genie Desktop Intelligence;
-        EMAIL;type=INTERNET;type=WORK;type=pref:nicholas.dudek@icloud.com
-        EMAIL;type=INTERNET;type=HOME:nicholas.m.dudek+genie@icloud.com
-        TEL;type=CELL;type=VOICE;type=pref:\(nicholasPhone)
         NOTE:Genie macOS Desktop Assistant & iMessage Extension. Text anytime to check Mac status, control anti-sleep, capture screenshots, or run tasks.
         CATEGORIES:AI,Assistant,Genie
         END:VCARD
         """
 
-        let appSupportDir = "\(NSHomeDirectory())/Library/Application Support/Genie"
+        let appSupportDir = GenieStandardDirectories.rootURL.path
         try? FileManager.default.createDirectory(atPath: appSupportDir, withIntermediateDirectories: true)
-        let appSupportURL = URL(fileURLWithPath: "\(appSupportDir)/Genie AI.vcf")
+        let appSupportURL = GenieStandardDirectories.rootURL.appendingPathComponent("Genie AI.vcf")
         try? vcard.write(to: appSupportURL, atomically: false, encoding: .utf8)
 
         if toDesktop {
-            let desktopURL = URL(fileURLWithPath: "\(NSHomeDirectory())/Desktop/Genie AI.vcf")
+            let desktopURL = URL(fileURLWithPath: AppDefaultsManager.defaultBarFolderPath).appendingPathComponent("Genie AI.vcf")
             try? vcard.write(to: desktopURL, atomically: false, encoding: .utf8)
             return desktopURL
         }
@@ -229,15 +237,15 @@ public final class GenieiMessageExtensionManager: ObservableObject {
                     let isFromMe = parts[2] == "1"
                     let handleID = parts[3].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-                    // STRICT FILTER: Only interact if message is from Nicholas's Apple ID or Phone
+                    // STRICT FILTER: Only interact if message is from user's Apple ID or Phone
                     // This prevents Genie from intercepting third-party contacts or friends!
-                    let isNicholas = handleID.contains(myAppleID) || handleID.contains(myPhone) || (handleID.isEmpty && isFromMe)
+                    let isTargetUser = handleID.contains(myAppleID) || (!myPhone.isEmpty && handleID.contains(myPhone)) || (handleID.isEmpty && isFromMe)
                     let explicitlyForGenie = rawText.lowercased().hasPrefix("genie") ||
                                             rawText.lowercased().hasPrefix("@genie") ||
                                             rawText.hasPrefix("!") ||
                                             rawText.hasPrefix("/")
 
-                    guard isNicholas || explicitlyForGenie else { continue }
+                    guard isTargetUser || explicitlyForGenie else { continue }
 
                     Task { @MainActor [weak self] in
                         self?.processIncomingMessage(rowID: rowID, text: rawText, sender: handleID.isEmpty ? myAppleID : handleID)
@@ -316,15 +324,15 @@ public final class GenieiMessageExtensionManager: ObservableObject {
     private func handleSmartDispatch(prompt: String, sender: String) async -> String {
         let lower = prompt.lowercased()
 
-        // ── Command 1: Sleep Prevention / Anti-Sleep ─────────────────────────────
-        if lower.contains("turn off sleep") || lower.contains("anti-sleep on") || lower == "/sleep on" || lower == "keep awake" || lower == "nosleep" {
+        // ── Command 1: Clamshell Awake / Sleep Prevention ───────────────────────
+        if lower.contains("clamshell on") || lower.contains("turn off sleep") || lower.contains("anti-sleep on") || lower == "/sleep on" || lower == "keep awake" || lower == "nosleep" || lower == "clamshell" {
             GenieSleepPreventionManager.shared.enableSleepPrevention()
-            return "☕ Anti-Sleep Active!\nGenie has disabled display and system sleep. The Mac display will stay on and will not lock."
+            return "🖥️ Clamshell Awake Active!\nGenie keeps your Mac desktop awake when closed to connect to a monitor."
         }
 
-        if lower.contains("allow sleep") || lower.contains("sleep off") || lower == "/sleep off" || lower == "restore sleep" {
+        if lower.contains("clamshell off") || lower.contains("allow sleep") || lower.contains("sleep off") || lower == "/sleep off" || lower == "restore sleep" {
             GenieSleepPreventionManager.shared.disableSleepPrevention()
-            return "🌙 Anti-Sleep Released!\nNormal macOS sleep and screen lock timers have been restored."
+            return "🌙 Clamshell Awake Released!\nNormal macOS sleep and screen lock timers have been restored."
         }
 
         // ── Command 2: System Status ─────────────────────────────────────────────
@@ -430,50 +438,75 @@ public final class GenieiMessageExtensionManager: ObservableObject {
     @discardableResult
     public func sendiMessageDirect(to recipient: String, message: String) -> Bool {
         let cleanRecipient = recipient.trimmingCharacters(in: .whitespacesAndNewlines)
-        let target: String
-        if cleanRecipient.isEmpty || cleanRecipient.lowercased() == "me" || cleanRecipient.lowercased() == "self" || cleanRecipient.lowercased() == "ichat" || cleanRecipient.lowercased() == "imessage" {
-            target = self.nicholasAppleID
+        var primaryTarget: String
+        var secondaryTarget: String? = nil
+
+        if cleanRecipient.isEmpty || cleanRecipient.lowercased() == "me" || cleanRecipient.lowercased() == "self" || cleanRecipient.lowercased() == "phone" || cleanRecipient.lowercased() == "my phone" {
+            // Prioritize phone number so message actually rings on user's iPhone
+            primaryTarget = self.nicholasPhone
+            secondaryTarget = self.nicholasAppleID
+        } else if cleanRecipient.lowercased() == "ichat" || cleanRecipient.lowercased() == "imessage" || cleanRecipient.lowercased() == "mac" {
+            primaryTarget = self.nicholasAppleID
+            secondaryTarget = self.nicholasPhone
         } else if let match = knownContacts[cleanRecipient.lowercased()] {
-            target = match
+            primaryTarget = match
         } else {
-            target = cleanRecipient
+            primaryTarget = cleanRecipient
         }
 
-        let escapedMsg = message
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\r", with: " ")
+        func dispatchViaAppleScript(targetHandle: String) -> Bool {
+            let escapedMsg = message
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\r", with: " ")
 
-        let script = """
-        tell application "Messages"
-            try
-                set targetService to first account whose service type is iMessage
-                set targetBuddyObj to participant "\(target)" of targetService
-                send "\(escapedMsg)" to targetBuddyObj
-                return "OK"
-            on error errMsg
+            let script = """
+            tell application "Messages"
                 try
-                    set targetService to first service whose service type is iMessage
-                    set theBuddy to buddy "\(target)" of targetService
-                    send "\(escapedMsg)" to theBuddy
+                    set targetParticipant to participant "\(targetHandle)"
+                    send "\(escapedMsg)" to targetParticipant
                     return "OK"
-                on error err2
-                    return "ERROR: " & err2
+                on error err1
+                    try
+                        set targetBuddy to buddy "\(targetHandle)"
+                        send "\(escapedMsg)" to targetBuddy
+                        return "OK"
+                    on error err2
+                        try
+                            repeat with c in chats
+                                repeat with p in participants of c
+                                    if handle of p contains "\(targetHandle)" then
+                                        send "\(escapedMsg)" to c
+                                        return "OK"
+                                    end if
+                                end repeat
+                            end repeat
+                            return "ERROR: " & err2
+                        on error err3
+                            return "ERROR: " & err3
+                        end try
+                    end try
                 end try
-            end try
-        end tell
-        """
+            end tell
+            """
 
-        var errorDict: NSDictionary?
-        if let appleScript = NSAppleScript(source: script) {
-            let res = appleScript.executeAndReturnError(&errorDict)
-            let out = res.stringValue ?? ""
-            if out.contains("OK") {
-                // Record in cache to prevent echo
-                sentRepliesCache.insert(message)
-                if sentRepliesCache.count > 200 { sentRepliesCache.removeFirst() }
-                return true
+            var errorDict: NSDictionary?
+            if let appleScript = NSAppleScript(source: script) {
+                let res = appleScript.executeAndReturnError(&errorDict)
+                let out = res.stringValue ?? ""
+                if out.contains("OK") {
+                    sentRepliesCache.insert(message)
+                    if sentRepliesCache.count > 200 { sentRepliesCache.removeFirst() }
+                    return true
+                }
             }
+            return false
+        }
+
+        let sentPrimary = dispatchViaAppleScript(targetHandle: primaryTarget)
+        if sentPrimary { return true }
+        if let sec = secondaryTarget, !sec.isEmpty, sec != primaryTarget {
+            return dispatchViaAppleScript(targetHandle: sec)
         }
         return false
     }
@@ -518,15 +551,15 @@ public final class GenieiMessageExtensionManager: ObservableObject {
         let sleepState = GenieSleepPreventionManager.shared.statusDescription
 
         let system = """
-        You are Genie, Nicholas Dudek's intelligent personal macOS companion running directly on his Apple Silicon Mac.
-        Nicholas is messaging you via the Genie iMessage Extension on his iPhone.
+        You are Genie, an intelligent personal macOS companion running directly on Apple Silicon.
+        The user is messaging you via the Genie iMessage Extension on their iPhone.
         Respond helpfully, concisely, and cleanly for mobile screen reading.
         Current Time: \(timeStr). Battery: \(battery). Power state: \(sleepState).
         """
 
         let payload: [String: Any] = [
             "model": "genie:latest",
-            "prompt": "\(system)\n\nNicholas: \(prompt)\n\nGenie:",
+            "prompt": "\(system)\n\nUser: \(prompt)\n\nGenie:",
             "stream": false,
             "options": [
                 "temperature": 0.7,

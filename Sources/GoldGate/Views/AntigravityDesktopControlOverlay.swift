@@ -135,25 +135,6 @@ public struct AntigravityDesktopControlHUDView: View {
             .buttonStyle(.plain)
             .help("Activate iPhone Mirroring")
 
-            // Clear Command Deck Overlay Toggle
-            Button(action: {
-                HapticFeedback.selection()
-                NotificationCenter.default.post(name: NSNotification.Name("GenieToggleClearHTMLOverlay"), object: nil)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 11, weight: .bold))
-                    Text("Deck")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                }
-                .foregroundColor(.cyan)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(Color.cyan.opacity(0.18)))
-            }
-            .buttonStyle(.plain)
-            .help("Toggle Autonomous Command Deck Overlay")
-
             // Intervene / Stop Execution Button
             Button(action: {
                 agent.stopExecution()

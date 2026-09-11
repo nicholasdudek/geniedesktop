@@ -72,9 +72,12 @@ public enum GenieHTMLSolutionGenerator {
     </script>
     """
 
-    /// Translucent Apple-glass theme styling
+    /// Translucent Apple-glass theme styling with Apple 2028 Themes bridge
     public static let baseCSS: String = """
+    <link rel="stylesheet" href="assets/css/genie-apple-2028-themes.css">
     <style>
+        \(GenieWebAssetResolver.embeddedThemeCSS)
+
         * {
             box-sizing: border-box;
             margin: 0;

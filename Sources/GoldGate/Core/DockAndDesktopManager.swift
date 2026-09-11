@@ -362,7 +362,7 @@ public final class DockAndDesktopManager: ObservableObject {
         if dockAlwaysShowGenie && !result.contains(where: { $0.bundleIdentifier == "com.nicholasdudek.genie" || $0.id == "com.nicholasdudek.genie" || $0.name.lowercased() == "genie" }) {
             let genieIcon: NSImage? = {
                 // Prefer the large 512×512 PNG asset from the dev build for maximum quality
-                let devIconURL = URL(fileURLWithPath: "/Users/nicholasdudek/Developer/GoldGate/Sources/GoldGate/Assets.xcassets/AppIcon.appiconset/icon_512x512.png")
+                let devIconURL = URL(fileURLWithPath: "BUNDLE_ICON_PATH")
                 if FileManager.default.fileExists(atPath: devIconURL.path), let img = NSImage(contentsOf: devIconURL) {
                     return img  // keep at native 512×512 — SwiftUI frame will scale it
                 }
@@ -489,12 +489,40 @@ public final class DockAndDesktopManager: ObservableObject {
         saveCustomDockOrder()
     }
 
+    public var hiddenBundleIDs: [String] {
+        UserDefaults.standard.stringArray(forKey: PrefKey.hiddenDockBundleIDs) ?? []
+    }
+
+    public func isItemHidden(id: String) -> Bool {
+        hiddenBundleIDs.contains(id)
+    }
+
     public func removeDockItem(_ item: DockAppItem) {
-        var hidden = UserDefaults.standard.stringArray(forKey: PrefKey.hiddenDockBundleIDs) ?? []
+        var hidden = hiddenBundleIDs
         let key = item.bundleIdentifier ?? item.id
         if !hidden.contains(key) {
             hidden.append(key)
         }
+        UserDefaults.standard.set(hidden, forKey: PrefKey.hiddenDockBundleIDs)
+        UserDefaults.standard.synchronize()
+        NotificationCenter.default.post(name: NSNotification.Name("NexusDockHiddenAppsChanged"), object: nil)
+        refreshDockApps()
+    }
+
+    public func hideDockItem(id: String) {
+        var hidden = hiddenBundleIDs
+        if !hidden.contains(id) {
+            hidden.append(id)
+        }
+        UserDefaults.standard.set(hidden, forKey: PrefKey.hiddenDockBundleIDs)
+        UserDefaults.standard.synchronize()
+        NotificationCenter.default.post(name: NSNotification.Name("NexusDockHiddenAppsChanged"), object: nil)
+        refreshDockApps()
+    }
+
+    public func unhideDockItem(id: String) {
+        var hidden = hiddenBundleIDs
+        hidden.removeAll { $0 == id }
         UserDefaults.standard.set(hidden, forKey: PrefKey.hiddenDockBundleIDs)
         UserDefaults.standard.synchronize()
         NotificationCenter.default.post(name: NSNotification.Name("NexusDockHiddenAppsChanged"), object: nil)
@@ -506,6 +534,23 @@ public final class DockAndDesktopManager: ObservableObject {
         UserDefaults.standard.synchronize()
         NotificationCenter.default.post(name: NSNotification.Name("NexusDockHiddenAppsChanged"), object: nil)
         refreshDockApps()
+    }
+
+    /// Returns list of all applications currently hidden/closed from the mini dock pill.
+    public func getHiddenDockItems() -> [DockAppItem] {
+        let hidden = hiddenBundleIDs
+        guard !hidden.isEmpty else { return [] }
+        let allApps = Self.loadSystemDockApps()
+        var results: [DockAppItem] = []
+        for id in hidden {
+            if let matched = allApps.first(where: { ($0.bundleIdentifier ?? $0.id) == id }) {
+                results.append(matched)
+            } else {
+                let name = id.components(separatedBy: ".").last?.capitalized ?? id
+                results.append(DockAppItem(id: id, name: name, bundleURL: nil, bundleIdentifier: id, icon: nil, runningApp: nil))
+            }
+        }
+        return results
     }
 
     public func saveCustomDockOrder() {
@@ -551,7 +596,7 @@ public final class DockAndDesktopManager: ObservableObject {
     }
 
     /// Lowercased label + URL + bundle id of a Dock tile, for name matching.
-    private static func dockEntryHaystack(_ entry: [String: Any]) -> String {
+    nonisolated private static func dockEntryHaystack(_ entry: [String: Any]) -> String {
         guard let tile = entry["tile-data"] as? [String: Any] else { return "" }
         let label = (tile["file-label"] as? String) ?? ""
         let bundleID = (tile["bundle-identifier"] as? String) ?? ""

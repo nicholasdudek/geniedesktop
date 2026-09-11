@@ -16,13 +16,33 @@ public struct LiquidGlassTopDashboardView: View {
     @AppStorage(PrefKey.showInDock) var showInDock: Bool = true
     @AppStorage(PrefKey.soundEnabled) var soundEnabled: Bool = false
     @AppStorage(PrefKey.agentSandboxEnabled) var agentSandboxEnabled: Bool = true
-    @AppStorage(PrefKey.showMiniDockInTopDashboard) var showMiniDockInTopDashboard: Bool = false
-    @AppStorage("genieZenModeEnabled") var isZenModeEnabled: Bool = false
-    @AppStorage("topDashboardUnlocked") var isUnlockedFromTopDock: Bool = false
+    @AppStorage(PrefKey.showMiniDockInTopDashboard) var showMiniDockInTopDashboard: Bool = true
+    @AppStorage("genieZenModeEnabled") var isZenModeEnabled: Bool = true
+    @AppStorage("topDashboardUnlocked") var isUnlockedFromTopDock: Bool = true
+    @AppStorage("genieTopDockPosX") var savedPosX: Double = 0.0
+    @AppStorage("genieTopDockPosY") var savedPosY: Double = 0.0
+    @AppStorage(PrefKey.topEdgeCursorTrigger) var topEdgeCursorTrigger: Bool = false
     @AppStorage("neuralBloomLightningEnabled") var lightningEffectsEnabled: Bool = true
     @ObservedObject private var dockManager = DockAndDesktopManager.shared
 
-    @State private var selectedTab: Int = 0 // 0: Quick Chat, 1: Mini Settings, 2: System Telemetry
+    private enum PipCompanionMode: String, CaseIterable, Identifiable {
+        case browser = "PiP Browser"
+        case finder = "Mini Finder"
+        case hub = "Studio Hub"
+
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .browser: return "globe"
+            case .finder: return "folder.fill"
+            case .hub: return "slider.horizontal.3"
+            }
+        }
+    }
+
+    @State private var selectedTab: Int = 0 // 0: Genie Studio, 1: PiP Browser, 2: Mini Finder, 3: Mini Settings, 4: System Status
+    @State private var pipCompanionMode: PipCompanionMode = .browser
     @State private var promptText: String = ""
     @State private var previewAppPid: pid_t? = nil
     @State private var currentTime = Date()
@@ -30,6 +50,7 @@ public struct LiquidGlassTopDashboardView: View {
     @State private var accumulatedOffset: CGSize = .zero
     @State private var isHovered: Bool = false
     @State private var autoHideWorkItem: DispatchWorkItem? = nil
+    @State private var desktopSortFeedback: String? = nil
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     public init(isPresented: Binding<Bool>, screenSize: CGSize) {
@@ -49,34 +70,18 @@ public struct LiquidGlassTopDashboardView: View {
     }
 
     private func scheduleAutoHide(delay: Double = 0.35) {
-        // Don't auto-hide a dock the user has dragged away from the top edge.
-        // This used to key off isUnlockedFromTopDock, but pinning now leaves the
-        // dock unlocked-but-parked, so that flag no longer means "floating" —
-        // the offset does.
-        guard !isZenModeEnabled && accumulatedOffset == .zero else { return }
-        guard promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        guard !LocalModelManager.shared.isGenerating else { return }
-
+        // Disabled: Dock stays firmly down until explicitly closed by user
         cancelAutoHide()
-        let binding = _isPresented
-        let work = DispatchWorkItem {
-            guard !LocalModelManager.shared.isGenerating else { return }
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-                binding.wrappedValue = false
-                DesktopWindowManager.shared.switchToStation(.desktop)
-            }
-            DesktopWindowManager.shared.setPage(0)
-            NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 0)
-        }
-        autoHideWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     private func dismissDashboard() {
         cancelAutoHide()
         HapticFeedback.tick()
+        savedPosX = accumulatedOffset.width
+        savedPosY = accumulatedOffset.height
         withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
             isPresented = false
+            dragOffset = .zero
             DesktopWindowManager.shared.switchToStation(.desktop)
         }
         DesktopWindowManager.shared.setPage(0)
@@ -89,12 +94,6 @@ public struct LiquidGlassTopDashboardView: View {
             HStack(spacing: 0) {
                 if !isZenModeEnabled {
                     Spacer()
-                        .contentShape(Rectangle())
-                        .onHover { isOver in
-                            if isOver {
-                                scheduleAutoHide(delay: 0.15)
-                            }
-                        }
                 }
 
                 VStack(spacing: isZenModeEnabled ? 12 : 14) {
@@ -108,7 +107,7 @@ public struct LiquidGlassTopDashboardView: View {
                     } else {
                         // 2. Integrated Liquid Glass Mini Dock (Clock & Chat Suite)
                         if showMiniDockInTopDashboard {
-                            LiquidGlassMiniDockView(isPresented: $isPresented)
+                            LiquidGlassMiniDockView(isPresented: $isPresented, selectedTab: $selectedTab)
                                 .transition(.move(edge: .top).combined(with: .opacity))
                         }
 
@@ -120,6 +119,20 @@ public struct LiquidGlassTopDashboardView: View {
                             if selectedTab == 0 {
                                 quickChatPane
                             } else if selectedTab == 1 {
+                                LiveBrowserCradleView()
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+                                    )
+                            } else if selectedTab == 2 {
+                                FinderFileBrowserPaneView()
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+                                    )
+                            } else if selectedTab == 3 {
                                 miniSettingsPane
                             } else {
                                 systemTelemetryPane
@@ -131,17 +144,17 @@ public struct LiquidGlassTopDashboardView: View {
                         retractHandle
                     }
                 }
-                .padding(.horizontal, isZenModeEnabled ? 20 : 24)
-                .padding(.top, isZenModeEnabled ? 14 : 18)
-                .padding(.bottom, isZenModeEnabled ? 14 : 12)
+                .padding(.horizontal, isZenModeEnabled ? 12 : 24)
+                .padding(.top, isZenModeEnabled ? 10 : 18)
+                .padding(.bottom, isZenModeEnabled ? 10 : 12)
                 .frame(
-                    width: isZenModeEnabled ? (screenSize.width - 24) : min(860, screenSize.width - 48),
-                    height: isZenModeEnabled ? (screenSize.height - 24) : min(620, screenSize.height * 0.78)
+                    width: isZenModeEnabled ? (screenSize.width - 12) : min(860, screenSize.width - 48),
+                    height: isZenModeEnabled ? (screenSize.height - 12) : min(620, screenSize.height * 0.78)
                 )
                 // Frosted Deep Glass Background (less transparent / more frosted) + Living Neural Bloom Canvas
                 .background(
                     ZStack {
-                        if let bloomURL = WallpaperManager.shared.resolvedNeuralBloomURL() {
+                        if isZenModeEnabled && isPresented, let bloomURL = WallpaperManager.shared.resolvedNeuralBloomURL() {
                             LiveHTMLWallpaperCanvasView(
                                 fileURL: bloomURL,
                                 isBackdrop: true,
@@ -152,7 +165,7 @@ public struct LiquidGlassTopDashboardView: View {
                                 )
                             )
                             .clipShape(RoundedRectangle(cornerRadius: isZenModeEnabled ? 22 : 28, style: .continuous))
-                            .opacity(isZenModeEnabled ? 0.90 : 0.65)
+                            .opacity(0.90)
                         }
                         VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow, state: .active)
                         Color.black.opacity(isZenModeEnabled ? 0.40 : 0.62)
@@ -198,67 +211,50 @@ public struct LiquidGlassTopDashboardView: View {
                             if isUnlockedFromTopDock {
                                 accumulatedOffset.width += val.translation.width
                                 accumulatedOffset.height += val.translation.height
+                                savedPosX = accumulatedOffset.width
+                                savedPosY = accumulatedOffset.height
                                 dragOffset = .zero
                             }
                         }
                 )
                 .onHover { hovering in
                     isHovered = hovering
-                    if hovering {
-                        cancelAutoHide()
-                    } else if !isZenModeEnabled {
-                        scheduleAutoHide(delay: 0.35)
-                    }
                 }
 
                 if !isZenModeEnabled {
                     Spacer()
-                        .contentShape(Rectangle())
-                        .onHover { isOver in
-                            if isOver {
-                                scheduleAutoHide(delay: 0.15)
-                            }
-                        }
                 }
             }
 
             if !isZenModeEnabled {
                 Spacer()
-                    .contentShape(Rectangle())
-                    .onHover { isOver in
-                        if isOver {
-                            scheduleAutoHide(delay: 0.15)
-                        }
-                    }
-                    .onTapGesture {
-                        dismissDashboard()
-                    }
             }
         }
         .frame(width: screenSize.width, height: screenSize.height, alignment: .top)
         .padding(.top, isZenModeEnabled ? 12 : 10)
         .onAppear {
             DesktopWindowManager.shared.elevateForTopDashboard(isPopped: true)
-            // Come up pinned to the top edge, then release after a beat so the
-            // dock is draggable from there. Without this the persisted
-            // "topDashboardUnlocked" (false by default) would leave it stuck.
             dragOffset = .zero
-            accumulatedOffset = .zero
-            isUnlockedFromTopDock = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                isUnlockedFromTopDock = true
-            }
+            accumulatedOffset = CGSize(width: savedPosX, height: savedPosY)
+            isUnlockedFromTopDock = true
         }
         .onDisappear {
             cancelAutoHide()
+            savedPosX = accumulatedOffset.width
+            savedPosY = accumulatedOffset.height
+            dragOffset = .zero
             DesktopWindowManager.shared.elevateForTopDashboard(isPopped: false)
         }
         .onChange(of: isPresented) { _, presented in
             if !presented {
                 cancelAutoHide()
+                savedPosX = accumulatedOffset.width
+                savedPosY = accumulatedOffset.height
+                dragOffset = .zero
             }
         }
         .onReceive(timer) { input in
+            guard isPresented else { return }
             currentTime = input
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSpeechTranscriptUpdated"))) { notif in
@@ -277,63 +273,181 @@ public struct LiquidGlassTopDashboardView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSpeechClearChat"))) { _ in
             self.promptText = ""
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSelectTopDockChat"))) { _ in
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                self.selectedTab = 0
+            }
+        }
     }
 
-    // MARK: - 1. Header Clock & Date Widget
+    // MARK: - 1. Header Clock & Date Widget (Window Chrome & Controls)
     private var headerClockWidget: some View {
-        HStack(alignment: .center) {
-            // Left: Digital Clock & Date
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(timeString(from: currentTime))
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+        HStack(alignment: .center, spacing: 14) {
+            // 🔴🟡🟢 Authentic macOS Window Traffic Lights & Time
+            HStack(spacing: 12) {
+                HStack(spacing: 7) {
+                    // Close / Slide Up to Top Edge (Red)
+                    Button(action: {
+                        dismissDashboard()
+                    }) {
+                        Circle()
+                            .fill(Color(red: 1.0, green: 0.36, blue: 0.34))
+                            .frame(width: 12, height: 12)
+                            .overlay(
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 7, weight: .bold))
+                                    .foregroundColor(.black.opacity(0.65))
+                                    .opacity(isHovered ? 1 : 0)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help("Close / Slide up to top ceiling")
 
-                    Text(periodString(from: currentTime))
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundColor(.cyan)
+                    // Minimize / Compact Mode (Yellow)
+                    Button(action: {
+                        HapticFeedback.tick()
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                            isZenModeEnabled = false
+                            dragOffset = .zero
+                            accumulatedOffset = .zero
+                            savedPosX = 0
+                            savedPosY = 0
+                        }
+                    }) {
+                        Circle()
+                            .fill(Color(red: 1.0, green: 0.76, blue: 0.20))
+                            .frame(width: 12, height: 12)
+                            .overlay(
+                                Image(systemName: "minus")
+                                    .font(.system(size: 7, weight: .bold))
+                                    .foregroundColor(.black.opacity(0.65))
+                                    .opacity(isHovered ? 1 : 0)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help("Minimize / Snap to compact top dock")
+
+                    // Zoom / Fullscreen Toggle (Green)
+                    Button(action: {
+                        HapticFeedback.selection()
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                            isZenModeEnabled.toggle()
+                        }
+                    }) {
+                        Circle()
+                            .fill(Color(red: 0.16, green: 0.80, blue: 0.25))
+                            .frame(width: 12, height: 12)
+                            .overlay(
+                                Image(systemName: isZenModeEnabled ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 6, weight: .bold))
+                                    .foregroundColor(.black.opacity(0.65))
+                                    .opacity(isHovered ? 1 : 0)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help(isZenModeEnabled ? "Exit Fullscreen (Windowed Mode)" : "Expand to Fullscreen")
                 }
+                .padding(.trailing, 4)
 
-                Text(dateString(from: currentTime))
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundColor(.white.opacity(0.70))
+                // Digital Clock & Date
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(timeString(from: currentTime))
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+
+                        Text(periodString(from: currentTime))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(.cyan)
+                    }
+
+                    Text(dateString(from: currentTime))
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundColor(.white.opacity(0.70))
+                }
             }
 
             Spacer()
 
-            // Center: Telemetry Pills
+            // 🪟 Center: Draggable Window Handle & Window Title
             HStack(spacing: 8) {
-                // Battery
-                HStack(spacing: 5) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.green)
-                    Text("Ready")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(Color.white.opacity(0.10)))
+                Image(systemName: "macwindow")
+                    .font(.system(size: 11))
+                    .foregroundColor(.cyan)
 
-                // Sandbox & Confinement Indicator (Restricted by default)
-                HStack(spacing: 5) {
-                    Image(systemName: agentSandboxEnabled ? "shield.lefthalf.filled" : "lock.shield.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(agentSandboxEnabled ? .cyan : .green)
-                    Text(agentSandboxEnabled ? "Restricted 🛡️" : "Custom Confinement 🔒")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(Color.white.opacity(0.10)))
+                Text(isZenModeEnabled ? "GENIE FULLSCREEN STUDIO" : "GENIE STUDIO WINDOW")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.90))
+
+                Text("•")
+                    .foregroundColor(.white.opacity(0.3))
+
+                Text(isMovedFromTop ? "MOVED (CLICK 2X TO CENTER)" : "DRAGGABLE")
+                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                    .foregroundColor(isMovedFromTop ? .yellow : .white.opacity(0.50))
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(Color.white.opacity(0.08)))
+            .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 0.8))
+            .help("Window Chrome: Drag anywhere on header to reposition • Double-click to snap back to top-center")
 
             Spacer()
 
-            // Right: Quick Actions (Zen, Dock/Unlock, Close)
+            // Right: Quick Actions (Active Desktop, Zen Toggle, Snap to Top, Close)
             HStack(spacing: 8) {
+                // Clean & Sort Desktop Button
+                Button(action: {
+                    HapticFeedback.selection()
+                    let res = GenieDesktopOrganizerEngine.shared.organize()
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        desktopSortFeedback = res.totalItemsMoved > 0 ? "Sorted \(res.totalItemsMoved) items!" : "Desktop is clean!"
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                        withAnimation {
+                            desktopSortFeedback = nil
+                        }
+                    }
+                }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.orange)
+                        Text(desktopSortFeedback ?? "Sort Desktop 🧹")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(.white.opacity(0.90))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Color.orange.opacity(0.18)))
+                    .overlay(Capsule().stroke(Color.orange.opacity(0.35), lineWidth: 0.8))
+                }
+                .buttonStyle(.plain)
+                .help("Instantly categorize loose desktop files into clean folders (Screenshots, Media, Code, Documents, Archives)")
+
+                // Active Desktop Toggle
+                Button(action: {
+                    HapticFeedback.selection()
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        DesktopWindowManager.shared.toggleActiveDesktopFromTopDock()
+                    }
+                }) {
+                    let isActiveDesktop = (DesktopWindowManager.shared.currentPage == 1 && UserDefaults.standard.integer(forKey: PrefKey.appDisplayStage) == 2)
+                    HStack(spacing: 5) {
+                        Image(systemName: isActiveDesktop ? "sparkles.rectangle.stack.fill" : "square.grid.3x3.fill")
+                            .font(.system(size: 11, weight: .bold))
+                        Text(isActiveDesktop ? "Hide Apps Grid" : "Active Desktop 🖥️")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(isActiveDesktop ? .yellow : .white.opacity(0.90))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(isActiveDesktop ? Color.yellow.opacity(0.25) : Color.white.opacity(0.12)))
+                    .overlay(Capsule().stroke(isActiveDesktop ? Color.yellow.opacity(0.50) : Color.white.opacity(0.18), lineWidth: 0.8))
+                }
+                .buttonStyle(.plain)
+                .help(DesktopWindowManager.shared.currentPage == 1 ? "Hide applications grid and return to clean wallpaper" : "Expand underlying canvas into Active Desktop application matrix in same state")
+
                 // Fullscreen Zen Dashboard Toggle
                 Button(action: {
                     HapticFeedback.selection()
@@ -347,7 +461,7 @@ public struct LiquidGlassTopDashboardView: View {
                     HStack(spacing: 5) {
                         Image(systemName: isZenModeEnabled ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                             .font(.system(size: 11, weight: .bold))
-                        Text(isZenModeEnabled ? "Compact Dock" : "Fullscreen Dashboard")
+                        Text(isZenModeEnabled ? "Window Mode" : "Fullscreen")
                             .font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundColor(isZenModeEnabled ? .cyan : .white.opacity(0.90))
@@ -357,43 +471,33 @@ public struct LiquidGlassTopDashboardView: View {
                     .overlay(Capsule().stroke(isZenModeEnabled ? Color.cyan.opacity(0.50) : Color.white.opacity(0.18), lineWidth: 0.8))
                 }
                 .buttonStyle(.plain)
-                .help(isZenModeEnabled ? "Switch to compact slide-down top dock" : "Expand to beautiful fullscreen unified dashboard")
+                .help(isZenModeEnabled ? "Switch to windowed floating mode" : "Expand to beautiful fullscreen unified dashboard")
 
-                // Dock / Unlock Toggle
-                //
-                // Pinning is a snap-to-top, not a lock: the dock springs back to
-                // the top edge and then hands control straight back, so it stays
-                // draggable from wherever it lands.
-                Button(action: {
-                    HapticFeedback.selection()
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                        isUnlockedFromTopDock = false
-                        dragOffset = .zero
-                        accumulatedOffset = .zero
+                if isMovedFromTop {
+                    Button(action: {
+                        HapticFeedback.selection()
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                            dragOffset = .zero
+                            accumulatedOffset = .zero
+                            savedPosX = 0
+                            savedPosY = 0
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.up.to.line")
+                                .font(.system(size: 11))
+                            Text("Center Top")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundColor(.white.opacity(0.80))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Color.white.opacity(0.10)))
+                        .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 0.8))
                     }
-                    // One beat after the snap starts, re-enable dragging. The
-                    // spring keeps running — only the gate on DragGesture moves.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                        isUnlockedFromTopDock = true
-                    }
-                }) {
-                    // The dock is always draggable now, so this reads as the
-                    // action it performs rather than a lock state that no
-                    // longer has an "off" position.
-                    HStack(spacing: 4) {
-                        Image(systemName: isMovedFromTop ? "pin.fill" : "pin")
-                            .font(.system(size: 11))
-                        Text("Pin to Top")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundColor(isMovedFromTop ? .cyan : .white.opacity(0.80))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill(isMovedFromTop ? Color.cyan.opacity(0.22) : Color.white.opacity(0.10)))
-                    .overlay(Capsule().stroke(isMovedFromTop ? Color.cyan.opacity(0.45) : Color.white.opacity(0.12), lineWidth: 0.8))
+                    .buttonStyle(.plain)
+                    .help("Snap the window back to top-center")
                 }
-                .buttonStyle(.plain)
-                .help(isMovedFromTop ? "Snap the dashboard back to the top edge. It stays draggable." : "Already at the top edge. Drag it anywhere.")
 
                 // Retract Close Button
                 Button(action: {
@@ -406,26 +510,29 @@ public struct LiquidGlassTopDashboardView: View {
                         .background(Circle().fill(Color.white.opacity(0.12)))
                 }
                 .buttonStyle(.plain)
+                .help("Slide window up into top ceiling")
             }
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
-            if isUnlockedFromTopDock {
-                HapticFeedback.tick()
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    dragOffset = .zero
-                    accumulatedOffset = .zero
-                }
+            HapticFeedback.tick()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                dragOffset = .zero
+                accumulatedOffset = .zero
+                savedPosX = 0
+                savedPosY = 0
             }
         }
     }
 
     // MARK: - 2. Tab Switcher
     private var tabSwitcher: some View {
-        HStack(spacing: 6) {
-            tabButton(title: "Quick Chat", icon: "bubble.left.and.bubble.right.fill", index: 0)
-            tabButton(title: "Mini Settings", icon: "gearshape.fill", index: 1)
-            tabButton(title: "System Status", icon: "chart.bar.xaxis", index: 2)
+        HStack(spacing: 5) {
+            tabButton(title: "Genie Studio", icon: "sparkles", index: 0)
+            tabButton(title: "PiP Browser", icon: "globe", index: 1)
+            tabButton(title: "Mini Finder", icon: "folder.fill", index: 2)
+            tabButton(title: "Mini Settings", icon: "gearshape.fill", index: 3)
+            tabButton(title: "System Status", icon: "chart.bar.xaxis", index: 4)
         }
         .padding(3)
         .background(Capsule().fill(Color.white.opacity(0.08)))
@@ -455,7 +562,20 @@ public struct LiquidGlassTopDashboardView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - 3. Quick Chat Pane
+    // MARK: - 3. Unified Genie Studio Pane (GENIE Blocks + Chat)
+    private var genieStudioPane: some View {
+        VStack(spacing: 8) {
+            // ── ⚡️ Retro Terminal ASCII Box (GENIE Blocks) ──
+            GenieTopDockNeuralEngineBannerView()
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+
+            // ── 💬 Consolidated Genie Chat & Intelligence ──
+            quickChatPane
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - 3b. Quick Chat Pane (Genie Studio)
     private var quickChatPane: some View {
         VStack(spacing: 10) {
             // Scrollable Message Conversation View
@@ -469,19 +589,19 @@ public struct LiquidGlassTopDashboardView: View {
                                     .foregroundColor(.cyan.opacity(0.85))
                                     .padding(.top, 14)
 
-                                Text("Genie Slide-Down Intelligence")
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                Text("Genie Studio")
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
                                     .foregroundColor(.white)
 
-                                Text("Ask questions, execute workflows, manage systems, or inspect status.")
+                                Text("Unified Slide-Down Neural Chat, Workflows & System Intelligence")
                                     .font(.system(size: 11, weight: .regular))
-                                    .foregroundColor(.white.opacity(0.60))
+                                    .foregroundColor(.white.opacity(0.65))
                                     .multilineTextAlignment(.center)
 
                                 // Quick suggestion chips
                                 HStack(spacing: 8) {
                                     suggestionChip("Summarize Desktop") { promptText = "Summarize the active desktop windows and status." }
-                                    suggestionChip("Open Workspace") { promptText = "Open Genie Workspace in ~/Desktop/Genie/Workspace" }
+                                    suggestionChip("Tail Recent Items") { promptText = "Show my recent computer items and documents." }
                                     suggestionChip("Check System") { promptText = "Report system resource health." }
                                 }
                                 .padding(.top, 4)
@@ -625,7 +745,7 @@ public struct LiquidGlassTopDashboardView: View {
                     .help("Clear slide-down chat history")
                 }
 
-                Button("Open Full Chat ↗") {
+                Button("Genie Studio ↗") {
                     withAnimation {
                         isPresented = false
                     }
@@ -634,6 +754,17 @@ public struct LiquidGlassTopDashboardView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.cyan)
                 .buttonStyle(.plain)
+                .help("Open full Genie Studio window (⌘⌥Space)")
+
+                Button("Active Desktop 🖥️") {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        DesktopWindowManager.shared.toggleActiveDesktopFromTopDock()
+                    }
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.yellow)
+                .buttonStyle(.plain)
+                .help("Expand to active desktop application matrix in same state")
             }
         }
         .padding(.vertical, 4)
@@ -846,15 +977,15 @@ public struct LiquidGlassTopDashboardView: View {
         HStack(spacing: 14) {
             // 1. Left Column: Saved Sessions, History & App Strip
             zenSessionsSidebarView
-                .frame(width: 260)
+                .frame(width: 250)
 
             // 2. Center Column: Big Expansive Chat Canvas
             zenMainChatCanvasView
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // 3. Right Column: System Telemetry & Studio Intelligence Hub
+            // 3. Right Column: PiP Companion Watcher (Browser / Mini Finder / Studio Hub)
             zenInspectorHubView
-                .frame(width: 270)
+                .frame(width: max(420, min(560, screenSize.width * 0.36)))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -1049,33 +1180,9 @@ public struct LiquidGlassTopDashboardView: View {
                     LazyVStack(spacing: 12) {
                         if localModels.chatHistory.isEmpty && !localModels.isGenerating && localModels.currentResponse.isEmpty {
                             VStack(spacing: 16) {
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            RadialGradient(
-                                                colors: [Color.cyan.opacity(0.25), Color.purple.opacity(0.12), Color.clear],
-                                                center: .center,
-                                                startRadius: 4,
-                                                endRadius: 36
-                                            )
-                                        )
-                                        .frame(width: 72, height: 72)
-
-                                    Image(systemName: "sparkles")
-                                        .font(.system(size: 32, weight: .medium))
-                                        .foregroundStyle(
-                                            LinearGradient(
-                                                colors: [.cyan, .mint, .white],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                }
-                                .padding(.top, 24)
-
-                                Text("Genie Fullscreen Workspace")
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
+                                // 🎮 Iconic 8-Bit Mario Block Letters Hero Banner
+                                GenieTopDockNeuralEngineBannerView(heroMode: true)
+                                    .padding(.top, 14)
 
                                 Text("Autonomous Mac Orchestration, Coding Studio, & Neural Intelligence.")
                                     .font(.system(size: 12, weight: .regular))
@@ -1085,14 +1192,14 @@ public struct LiquidGlassTopDashboardView: View {
                                 // Quick suggestion chips grid
                                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                     suggestionChip("🖥️ Summarize Desktop Windows") { promptText = "Summarize the active desktop windows, running processes, and open tabs." }
-                                    suggestionChip("📁 Inspect Workspace Project") { promptText = "Inspect files and repositories in ~/Desktop/Genie/Workspace" }
+                                    suggestionChip("📜 Tail Recent Computer Items") { promptText = "Show my recent computer items, opened documents, and past files." }
+                                    suggestionChip("🧠 Show Trained Mac Applications") { promptText = "List all installed applications on my Mac and what automation scripts you support." }
                                     suggestionChip("⚡ Report System Vitals") { promptText = "Report real-time Apple Silicon memory pressure and system health." }
-                                    suggestionChip("🛠️ Develop Swift Script") { promptText = "Create a modern Swift utility to automate system actions." }
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.top, 6)
                             }
-                            .frame(maxWidth: 680)
+                            .frame(maxWidth: 720)
                             .padding(.vertical, 16)
                         } else {
                             ForEach(localModels.chatHistory) { msg in
@@ -1205,30 +1312,96 @@ public struct LiquidGlassTopDashboardView: View {
         }
     }
 
-    // MARK: - 3. Right Column: Studio Hub & Telemetry
+    // MARK: - 3. Right Column: Studio Hub & PiP Companion Watcher
     private var zenInspectorHubView: some View {
-        VStack(spacing: 10) {
-            // Header
-            HStack {
-                Label("Studio Hub", systemImage: "slider.horizontal.3")
-                    .font(.system(size: 12.5, weight: .bold))
-                    .foregroundColor(.white)
-                Spacer()
-                Button("Open Window ↗") {
-                    withAnimation {
-                        isPresented = false
+        VStack(spacing: 8) {
+            // Header with PiP View Switcher
+            HStack(spacing: 5) {
+                ForEach(PipCompanionMode.allCases) { mode in
+                    Button(action: {
+                        HapticFeedback.selection()
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                            pipCompanionMode = mode
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: mode.icon)
+                                .font(.system(size: 10, weight: .semibold))
+                            Text(mode.rawValue)
+                                .font(.system(size: 10.5, weight: pipCompanionMode == mode ? .bold : .medium))
+                        }
+                        .foregroundColor(pipCompanionMode == mode ? .black : .white.opacity(0.85))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule().fill(pipCompanionMode == mode ? Color.cyan : Color.white.opacity(0.08))
+                        )
+                        .overlay(
+                            Capsule().stroke(pipCompanionMode == mode ? Color.cyan.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 0.7)
+                        )
                     }
-                    FinderChatWindowManager.shared.show(tab: .chat)
+                    .buttonStyle(.plain)
+                }
+
+                Spacer()
+
+                Button("Active Desktop 🖥️") {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                        DesktopWindowManager.shared.toggleActiveDesktopFromTopDock()
+                    }
                 }
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.cyan)
+                .foregroundColor(.yellow)
                 .buttonStyle(.plain)
-                .help("Open chat in floating window")
+                .help("Expand to active desktop in same state")
             }
             .padding(.horizontal, 4)
             .padding(.top, 2)
 
-            ScrollView(.vertical, showsIndicators: false) {
+            // PiP Watcher Viewport (Live Browser / Mini Finder / Studio Telemetry)
+            Group {
+                switch pipCompanionMode {
+                case .browser:
+                    VStack(spacing: 0) {
+                        LiveBrowserCradleView()
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Color.white.opacity(0.14), lineWidth: 0.8)
+                            )
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                case .finder:
+                    VStack(spacing: 0) {
+                        FinderFileBrowserPaneView()
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Color.white.opacity(0.14), lineWidth: 0.8)
+                            )
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                case .hub:
+                    zenStudioTelemetryCards
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.black.opacity(0.26))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 0.75)
+                )
+        )
+    }
+
+    private var zenStudioTelemetryCards: some View {
+        ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 10) {
                     // System Vitals Card
                     VStack(alignment: .leading, spacing: 7) {
@@ -1357,7 +1530,6 @@ public struct LiquidGlassTopDashboardView: View {
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08), lineWidth: 0.75))
                 }
             }
-        }
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)

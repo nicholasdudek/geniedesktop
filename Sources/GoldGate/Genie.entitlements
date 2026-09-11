@@ -2,53 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- ============================================================
-	     Developer ID (direct distribution) profile.
-	     Not sandboxed, but Hardened Runtime IS on (`codesign --options runtime`),
-	     which is mandatory for notarization. Under Hardened Runtime every
-	     capability below must be declared explicitly or it fails at runtime.
-	     ============================================================ -->
 	<key>com.apple.security.app-sandbox</key>
 	<false/>
-
-	<!-- REQUIRED for all NSAppleScript / osascript automation.
-	     Without this, a hardened-runtime app gets errAEEventNotPermitted (-1743)
-	     on every Apple Event, which is why Genie's 17 automation files
-	     silently did nothing in the shipped 4.0.0 build. -->
+	<key>com.apple.security.virtualization</key>
+	<true/>
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
-
-	<!-- Camera: AVCaptureDevice in SpatialFaceTrackingManager,
-	     GenieHDMICaptureEngine, DesktopNotePrinter. -->
 	<key>com.apple.security.device.camera</key>
 	<true/>
-
-	<!-- Local model runtimes (llama.cpp / MLX style) allocate executable
-	     memory at runtime; without these the JIT-backed engines crash. -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
 	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
 	<true/>
-
-	<!-- Genie loads model/plugin dylibs that are not signed by this Team ID. -->
 	<key>com.apple.security.cs.disable-library-validation</key>
 	<true/>
-
-	<!-- Genie spawns /bin/zsh, /usr/bin/osascript, sqlite3, defaults, etc.
-	     Hardened Runtime otherwise sanitises the environment those need. -->
 	<key>com.apple.security.cs.allow-dyld-environment-variables</key>
 	<true/>
-
-	<!-- Sign in with Apple (GenieAppleAuth). Needs the matching capability on the
-	     App ID and in the signing profile; unsigned builds fail with error 1000. -->
-	<key>com.apple.developer.applesignin</key>
-	<array>
-		<string>Default</string>
-	</array>
-
-	<key>com.apple.security.application-groups</key>
-	<array>
-		<string>group.com.nicholasdudek.genie</string>
-	</array>
 </dict>
 </plist>

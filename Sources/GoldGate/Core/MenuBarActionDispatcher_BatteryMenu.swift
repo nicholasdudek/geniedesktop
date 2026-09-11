@@ -533,16 +533,16 @@ extension MenuBarActionDispatcher {
         lockScreenItem.target = self
         menu.addItem(lockScreenItem)
 
-        // Anti-Sleep / Prevent Sleep Toggle
+        // Clamshell Awake / Keep Desktop Awake When Closed for Monitor
         let isSleepPrevented = GenieSleepPreventionManager.shared.isSleepDisabled
-        let antiSleepTitle = isSleepPrevented ? "Anti-Sleep: Active ☕ (Display Awake)" : "Anti-Sleep: Disabled 🌙"
+        let antiSleepTitle = isSleepPrevented ? "Clamshell Awake: Active 🖥️ (Lid Closed)" : "Clamshell Awake: Disabled 🌙"
         let antiSleepItem = NSMenuItem(
             title: antiSleepTitle,
             action: #selector(toggleAntiSleepAction),
             keyEquivalent: ""
         )
         antiSleepItem.state = isSleepPrevented ? .on : .off
-        antiSleepItem.image = NSImage(systemSymbolName: isSleepPrevented ? "cup.and.saucer.fill" : "cup.and.saucer", accessibilityDescription: nil)
+        antiSleepItem.image = NSImage(systemSymbolName: "display.2", accessibilityDescription: "Clamshell Awake")
         antiSleepItem.target = self
         menu.addItem(antiSleepItem)
 
@@ -585,7 +585,7 @@ extension MenuBarActionDispatcher {
         menu.addItem(NSMenuItem.separator())
         
         // ── 7. Settings & Quit ──
-        let settingsItem = NSMenuItem(title: LocalizedStrings.translateText("Genie Settings...", lang: lang), action: #selector(openBatterySettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: LocalizedStrings.translateText("Genie Settings...", lang: lang), action: #selector(openGenieSettings), keyEquivalent: ",")
         settingsItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
         settingsItem.target = self
         menu.addItem(settingsItem)

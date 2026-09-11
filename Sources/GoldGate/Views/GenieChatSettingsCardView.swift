@@ -6,12 +6,15 @@ public struct GenieChatSettingsCardView: View {
     @ObservedObject var localModels = LocalModelManager.shared
     @AppStorage(PrefKey.claudeApiKey) var claudeApiKey: String = ""
     @AppStorage(PrefKey.openaiApiKey) var openaiApiKey: String = ""
+    @AppStorage(PrefKey.grokApiKey) var grokApiKey: String = ""
+    @AppStorage(PrefKey.deepseekApiKey) var deepseekApiKey: String = ""
     @AppStorage(PrefKey.ollamaHost) var ollamaHost: String = "http://localhost:11434"
     @AppStorage(PrefKey.terminalAccessEnabled) var terminalAccessEnabled: Bool = true
     @AppStorage(PrefKey.terminalAutoExecute) var terminalAutoExecute: Bool = false
     @AppStorage(PrefKey.webAccessEnabled) var webAccessEnabled: Bool = true
     @AppStorage(PrefKey.webAutoSearch) var webAutoSearch: Bool = true
     @AppStorage(PrefKey.useOllamaModels) var useOllamaModels: Bool = true
+    @AppStorage(PrefKey.unifyChatWindow) var unifyChatWindow: Bool = true
     @AppStorage(PrefKey.aiEmotion) var selectedEmotionRaw: String = AIEmotionType.mystical.rawValue
 
     @State private var statusFeedback: String? = nil
@@ -59,6 +62,8 @@ public struct GenieChatSettingsCardView: View {
                         apiKeyRow(title: "Google Gemini Key", placeholder: "AIzaSy...", text: geminiApiKeyBinding, color: .blue)
                         apiKeyRow(title: "Anthropic Claude Key", placeholder: "sk-ant-api03...", text: $claudeApiKey, color: .orange)
                         apiKeyRow(title: "OpenAI GPT Key", placeholder: "sk-proj-...", text: $openaiApiKey, color: .green)
+                        apiKeyRow(title: "xAI Grok Key", placeholder: "xai-...", text: $grokApiKey, color: .purple)
+                        apiKeyRow(title: "DeepSeek Key", placeholder: "sk-...", text: $deepseekApiKey, color: .cyan)
                     }
                 }
 
@@ -120,7 +125,18 @@ public struct GenieChatSettingsCardView: View {
                     GenieEnvironmentSettingsView()
                 }
 
-                // ── 5. Chat History & Exports ───────────────────────────────
+                // ── 5. Unified Chat Window ─────────────────────────────────
+                settingsSection(title: "UNIFIED CHAT WINDOW", icon: "arrow.up.forward.and.arrow.down.backward") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle("Merge Top & Program Chat Windows into One", isOn: $unifyChatWindow)
+                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                        Text("When enabled, opening chat from the top menu bar automatically routes to the single unified program chat window so sessions and interactions stay in the same window.")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // ── 6. Chat History & Exports ───────────────────────────────
                 settingsSection(title: "CHAT MANAGEMENT & EXPORTS", icon: "arrow.up.doc.fill") {
                     HStack(spacing: 8) {
                         Button(action: {

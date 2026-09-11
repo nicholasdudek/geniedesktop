@@ -21,6 +21,19 @@ struct QuickSetupWizardView: View {
     @State private var soundChoice: Bool = true
     @State private var permTimer: Timer? = nil
 
+    @ObservedObject private var tinyEngine = GenieLocalTinyModelEngine.shared
+    @State private var showInstallEngineConfirm = false
+    @State private var autoPullAfterOllamaLaunch = false
+    /// Smallest model marked `isRecommended` in the curated catalog — see
+    /// GenieLocalTinyModelEngine.swift. Picked here (not genie-master) because
+    /// it's pulled by tag over HTTP in seconds-to-minutes, not a local
+    /// `ollama create` build of a 27B model, which would make this step a
+    /// many-GB, many-minute blocker on first launch.
+    private static let recommendedModelID = "qwen3.5:2b"
+    private var recommendedModel: FreeLocalModelCard? {
+        tinyEngine.curatedFreeModels.first(where: { $0.id == Self.recommendedModelID })
+    }
+
     private let formationsList: [(id: String, title: String, subtitle: String, icon: String)] = [
         ("Responsive Grid", "Responsive Grid", "Springboard matrix", "square.grid.3x3.fill"),
         ("Fibonacci Spiral Galaxy 🌀", "Fibonacci Spiral", "Golden ratio galaxy", "circle.hexagongrid.fill"),
@@ -76,8 +89,36 @@ struct QuickSetupWizardView: View {
 
                 Divider().opacity(0.3)
 
-                // ── 1. Permissions (Only Asked Once at Login) ──
+                // ── 0. Language & Region Selection (10 Languages) ──
                 VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.blue)
+                        Text(LocalizedStrings.translateText("Language & Region", lang: appLanguage))
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Picker("", selection: $appLanguage) {
+                            ForEach(AppLanguage.allCases) { lang in
+                                Text("\(lang.flag) \(lang.rawValue)").tag(lang.rawValue)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 175)
+                        .onChange(of: appLanguage) { _, newLang in
+                            HapticFeedback.selection()
+                            UserDefaults.standard.set(newLang, forKey: PrefKey.appLanguage)
+                            NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: nil)
+                            NotificationCenter.default.post(name: NSNotification.Name("NexusLanguageChanged"), object: newLang)
+                        }
+                    }
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.04)))
+
+                // ── 1. Permissions (Only Asked Once at Login) ──
+                VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
                         Image(systemName: "lock.shield.fill")
                             .font(.system(size: 12, weight: .semibold))
@@ -100,40 +141,134 @@ struct QuickSetupWizardView: View {
                         }
                     }
 
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Accessibility & Screen Overlay")
+                    // Accessibility row
+                    HStack(spacing: 8) {
+                        Image(systemName: accessibilityGranted ? "checkmark.circle.fill" : "hand.raised.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(accessibilityGranted ? .green : .orange)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Accessibility Control")
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(.primary.opacity(0.9))
-                            Text("Required for global gesture summon, app switching, and window snapping.")
-                                .font(.system(size: 9))
+                            Text("Enables window snapping, app switching, and gesture tracking.")
+                                .font(.system(size: 8.5))
                                 .foregroundColor(.secondary)
-                                .lineLimit(2)
                         }
-
                         Spacer()
-
-                        if !allPermissionsGranted {
+                        if !accessibilityGranted {
                             Button(action: {
                                 HapticFeedback.selection()
-                                requestPermissions()
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "hand.raised.fill")
-                                        .font(.system(size: 9))
-                                    Text("Authorize")
-                                        .font(.system(size: 10, weight: .semibold))
+                                PermissionsManager.shared.requestAccessibility()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                                    checkPermissions()
                                 }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.blue))
+                            }) {
+                                Text("Authorize")
+                                    .font(.system(size: 9.5, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(8)
-                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.04)))
+
+                    // Screen Recording row
+                    HStack(spacing: 8) {
+                        Image(systemName: screenGranted ? "checkmark.circle.fill" : "rectangle.dashed.badge.record")
+                            .font(.system(size: 11))
+                            .foregroundColor(screenGranted ? .green : .cyan)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Screen Overlay & Atmosphere")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.primary.opacity(0.9))
+                            Text("Powers liquid glass desktop reflections and shader atmosphere.")
+                                .font(.system(size: 8.5))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        if !screenGranted {
+                            Button(action: {
+                                HapticFeedback.selection()
+                                PermissionsManager.shared.requestScreenCapture()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                                    checkPermissions()
+                                }
+                            }) {
+                                Text("Authorize")
+                                    .font(.system(size: 9.5, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.cyan.opacity(0.85)))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.04)))
+
+                // ── 1b. AI Engine (Full Local Model Suite) ──
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(tinyEngine.isOllamaRunning ? .green : .purple)
+                        Text("Genie's AI Engine")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Spacer()
+
+                        if tinyEngine.downloadingModelId == Self.recommendedModelID {
+                            ProgressView(value: tinyEngine.downloadProgress)
+                                .frame(width: 70)
+                        } else if tinyEngine.isOllamaRunning {
+                            HStack(spacing: 3) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 10))
+                                Text("Ready")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.green.opacity(0.15)))
+                        } else {
+                            Button(action: {
+                                HapticFeedback.selection()
+                                showInstallEngineConfirm = true
+                            }) {
+                                Text(GenieCapabilities.canInstallExternalRuntimes ? "Install" : "Get Ollama")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.purple))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    Text("Runs fully on this Mac via Ollama — nothing leaves your machine. This pulls \(recommendedModel?.name ?? "Genie's recommended model") (\(recommendedModel?.displayDiskSize ?? "~2.7 GB")). You can skip this and set it up later from Settings > Models & Providers.")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .lineLimit(3)
+                }
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.04)))
+                .confirmationDialog(
+                    "Install Genie's AI Engine?",
+                    isPresented: $showInstallEngineConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("Install (\(recommendedModel?.displayDiskSize ?? "~2.7 GB"))") {
+                        beginEngineInstall()
+                    }
+                    Button("Not Now", role: .cancel) {}
+                } message: {
+                    Text("Downloads Ollama and \(recommendedModel?.name ?? "a local model") so Genie can run AI fully on this Mac. Uninstall or switch models anytime in Settings.")
                 }
 
                 // ── 2. Formation Style to Choose ──
@@ -299,6 +434,29 @@ struct QuickSetupWizardView: View {
             permTimer?.invalidate()
             permTimer = nil
         }
+        .onChange(of: tinyEngine.isOllamaRunning) { _, isRunning in
+            guard isRunning, autoPullAfterOllamaLaunch, let recommendedModel else { return }
+            autoPullAfterOllamaLaunch = false
+            tinyEngine.pullModel(card: recommendedModel)
+        }
+    }
+
+    /// Installing Ollama (Homebrew) is async and only flips `isOllamaRunning`
+    /// once it actually finishes; the pull is chained off that instead of a
+    /// fixed delay so it can't fire before the binary exists. Under the Mac
+    /// App Store build `canInstallExternalRuntimes` is false and
+    /// `installAndLaunchOllamaEngine()` just opens ollama.com instead — there's
+    /// no local install to chain a pull onto, so this deliberately no-ops.
+    private func beginEngineInstall() {
+        guard let recommendedModel else { return }
+        if GenieCapabilities.canInstallExternalRuntimes {
+            autoPullAfterOllamaLaunch = true
+            tinyEngine.installAndLaunchOllamaEngine()
+        } else if tinyEngine.isOllamaRunning {
+            tinyEngine.pullModel(card: recommendedModel)
+        } else {
+            tinyEngine.installAndLaunchOllamaEngine()
+        }
     }
 
     private var allPermissionsGranted: Bool {
@@ -349,6 +507,7 @@ struct QuickSetupWizardView: View {
         gridTransitionDirection = selectedTransition
         soundEnabled = soundChoice
         hapticsEnabled = soundChoice
+        UserDefaults.standard.set(appLanguage, forKey: PrefKey.appLanguage)
         UserDefaults.standard.set(selectedFormation, forKey: PrefKey.appFormation)
         UserDefaults.standard.set(selectedTransition, forKey: PrefKey.gridTransitionDirection)
         UserDefaults.standard.set(soundChoice, forKey: PrefKey.soundEnabled)
@@ -357,6 +516,9 @@ struct QuickSetupWizardView: View {
         hasCompletedInitialSetup = true
         UserDefaults.standard.set(true, forKey: PrefKey.permissionsAskedAtLogin)
         UserDefaults.standard.set(true, forKey: PrefKey.hasCompletedInitialSetup)
+        NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: nil)
+        NotificationCenter.default.post(name: NSNotification.Name("NexusLanguageChanged"), object: appLanguage)
+        UserDefaults.standard.synchronize()
 
         let screen = NSScreen.main ?? (NSScreen.screens.first ?? NSScreen())
         GenieSmokeEngine.shared.triggerBurst(

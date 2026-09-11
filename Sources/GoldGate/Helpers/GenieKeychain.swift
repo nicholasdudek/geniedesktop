@@ -11,19 +11,32 @@ public struct GenieKeychain {
     public let service: String
 
     public static let gemini = GenieKeychain(service: "com.nicholasdudek.genie.geminiApiKey")
+    public static let grok = GenieKeychain(service: "com.nicholasdudek.genie.grokApiKey")
+    public static let deepseek = GenieKeychain(service: "com.nicholasdudek.genie.deepseekApiKey")
 
     private var account: String { NSUserName() }
 
+    private var isHeadlessTest: Bool {
+        CommandLine.arguments.contains("--smoke-test") ||
+        CommandLine.arguments.contains("--benchmark") ||
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     private var baseQuery: [String: Any] {
-        [
+        var q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
+        q[kSecUseDataProtectionKeychain as String] = true
+        return q
     }
 
     /// Returns the stored secret, or nil when absent or unreadable.
     public func read() -> String? {
+        if isHeadlessTest {
+            return UserDefaults.standard.string(forKey: "genie.keychain.mock.\(service)")
+        }
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -41,6 +54,10 @@ public struct GenieKeychain {
     @discardableResult
     public func write(_ value: String) -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if isHeadlessTest {
+            UserDefaults.standard.set(trimmed, forKey: "genie.keychain.mock.\(service)")
+            return true
+        }
         guard !trimmed.isEmpty else { return delete() }
         guard let data = trimmed.data(using: .utf8) else { return false }
 
@@ -61,6 +78,10 @@ public struct GenieKeychain {
 
     @discardableResult
     public func delete() -> Bool {
+        if isHeadlessTest {
+            UserDefaults.standard.removeObject(forKey: "genie.keychain.mock.\(service)")
+            return true
+        }
         let status = SecItemDelete(baseQuery as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
     }

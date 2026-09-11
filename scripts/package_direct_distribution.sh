@@ -53,6 +53,19 @@ else
 fi
 cp "$PROJECT_DIR/Sources/GoldGate/Info.plist" "$BUILD_DIR/$APP_NAME.app/Contents/Info.plist"
 
+# Copy SwiftPM resource bundles (GenieEnvironmentKit ships the Linux guest worker).
+# Bundle.module resolves these from Contents/Resources; without them the guest
+# installer traps at runtime instead of reporting a normal error.
+if [ -n "$BIN_PATH" ]; then
+    for RESOURCE_BUNDLE in "$BIN_PATH"/*.bundle; do
+        [ -d "$RESOURCE_BUNDLE" ] || continue
+        cp -R "$RESOURCE_BUNDLE" "$BUILD_DIR/$APP_NAME.app/Contents/Resources/"
+    done
+    # A local test run leaves __pycache__ beside the guest scripts, and SwiftPM
+    # copies the directory verbatim. Don't ship one machine's stale bytecode.
+    find "$BUILD_DIR/$APP_NAME.app/Contents/Resources" -name '__pycache__' -type d -prune -exec rm -rf {} +
+fi
+
 # Copy compiled Assets.car
 if [ -f "$PROJECT_DIR/build/compiled_assets/Assets.car" ]; then
     cp "$PROJECT_DIR/build/compiled_assets/Assets.car" "$BUILD_DIR/$APP_NAME.app/Contents/Resources/Assets.car"
@@ -67,28 +80,39 @@ fi
 if [ -f "$PROJECT_DIR/Sources/GoldGate/HeaderBadge.png" ]; then
     cp "$PROJECT_DIR/Sources/GoldGate/HeaderBadge.png" "$BUILD_DIR/$APP_NAME.app/Contents/Resources/"
 fi
+if [ -d "$PROJECT_DIR/web" ]; then
+    cp -R "$PROJECT_DIR/web" "$BUILD_DIR/$APP_NAME.app/Contents/Resources/"
+    cp -R "$PROJECT_DIR/web/assets" "$BUILD_DIR/$APP_NAME.app/Contents/Resources/"
+fi
 
 # 5. Detect Signing Identity
 echo "==> Detecting Signing Identity..."
 DEV_ID=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -n 1 | awk '{print $2}' || true)
 if [ -z "$DEV_ID" ]; then
-    DEV_ID=$(security find-identity -v -p codesigning | grep "3rd Party Mac Developer Application" | head -n 1 | awk '{print $2}' || true)
+    DEV_ID=$(security find-identity -v -p codesigning | grep "Apple Development" | head -n 1 | awk '{print $2}' || true)
 fi
 if [ -z "$DEV_ID" ]; then
-    DEV_ID=$(security find-identity -v -p codesigning | grep "Apple Development" | head -n 1 | awk '{print $2}' || true)
+    DEV_ID=$(security find-identity -v -p codesigning | grep "3rd Party Mac Developer Application" | head -n 1 | awk '{print $2}' || true)
 fi
 
 echo "Using Signing Identity: ${DEV_ID:-Ad-Hoc / Self-Signed}"
 
-# 6. Sign binary and app bundle with Hardened Runtime
+# 6. Sign nested bundles, binary, and app bundle with Hardened Runtime.
+# Nested bundles need their own signature before the outer app is sealed, or
+# notarization rejects the app.
+SIGN_ID="${DEV_ID:--}"
+ENTITLEMENTS="$PROJECT_DIR/Sources/GoldGate/Genie.entitlements"
 if [ -n "$DEV_ID" ]; then
-    echo "==> Code signing with Hardened Runtime..."
-    codesign --force --options runtime --sign "$DEV_ID" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
-    codesign --force --options runtime --sign "$DEV_ID" "$BUILD_DIR/$APP_NAME.app"
+    echo "==> Code signing with Hardened Runtime ($DEV_ID)..."
+    for NESTED_BUNDLE in "$BUILD_DIR/$APP_NAME.app/Contents/Resources"/*.bundle; do
+        [ -d "$NESTED_BUNDLE" ] || continue
+        codesign --force --options runtime --sign "$SIGN_ID" "$NESTED_BUNDLE"
+    done
+    codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$SIGN_ID" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+    codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$SIGN_ID" "$BUILD_DIR/$APP_NAME.app"
 else
-    echo "==> Ad-Hoc code signing..."
-    codesign --force --options runtime --sign - "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
-    codesign --force --options runtime --sign - "$BUILD_DIR/$APP_NAME.app"
+    echo "==> Ad-Hoc code signing with entitlements..."
+    codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$BUILD_DIR/$APP_NAME.app"
 fi
 
 # 7. Create DMG for website distribution
@@ -100,6 +124,10 @@ mkdir -p "$DMG_STAGE"
 cp -R "$BUILD_DIR/$APP_NAME.app" "$DMG_STAGE/"
 ln -s /Applications "$DMG_STAGE/Applications"
 ln -s "/Applications/Utilities" "$DMG_STAGE/Utilities (Optional)" 2>/dev/null || true
+
+xattr -rc "$DMG_STAGE" 2>/dev/null || true
+sync
+sleep 1
 
 hdiutil create -volname "Genie Installer" -srcfolder "$DMG_STAGE" -ov -format UDZO "$DMG_OUTPUT"
 

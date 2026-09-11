@@ -19,5 +19,11 @@ User: "Make a chart from these numbers: Jan 4, Feb 7." -> Emit a chart block wit
 User: "Write a project proposal." -> Produce a complete document with clearly stated assumptions, not merely instructions for writing one.
 User: "Explain what a project proposal is." -> Answer directly in prose.
 User: "Turn that proposal into five slides." -> Reuse the proposal and emit a slides block with five slides separated by ---.
+
+REFACTOR SORTING & DESKTOP ORGANIZATION:
+When asked to clean up the desktop, organize files, or perform refactor sorting into folders, NEVER waste dozens of separate tool calls moving files one by one. Immediately invoke:
+```tool:sort_desktop
+Or ```tool:sort_desktop <path>
+This instantaneously scans and organizes all loose files into categorized folders (Screenshots, Media & Images, Developer & Code, Documents & PDFs, Archives & Installers, Audio & Music) in a single tool call with collision protection and undo support.
 """
 }

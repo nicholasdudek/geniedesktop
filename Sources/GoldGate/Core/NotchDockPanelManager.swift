@@ -68,15 +68,14 @@ public final class NotchDockPanelManager: NSObject {
     }
 
     // MARK: Geometry
-
-    /// Frame the dock rests in once revealed: centred on the notch, sitting just below the menu bar.
+    /// Frame the dock rests in once revealed: centred on the notch, flush under the camera housing.
     private func revealedFrame(for size: NSSize, screen: NSScreen) -> NSRect {
         let notch = ScreenNotchInfo.forScreen(screen)
         let centerX = notch.hasNotch ? notch.notchRect.midX : screen.frame.midX
-        let menuBarHeight = max(screen.safeAreaInsets.top, screen.frame.maxY - screen.visibleFrame.maxY)
+        let topBarHeight = notch.hasNotch ? notch.notchHeight : max(screen.safeAreaInsets.top, screen.frame.maxY - screen.visibleFrame.maxY)
         return NSRect(
             x: centerX - size.width / 2,
-            y: screen.frame.maxY - menuBarHeight - size.height - 4,
+            y: screen.frame.maxY - topBarHeight - size.height,
             width: size.width,
             height: size.height
         )
@@ -92,7 +91,8 @@ public final class NotchDockPanelManager: NSObject {
     private func isCursorInNotchZone(screen: NSScreen) -> Bool {
         let notch = ScreenNotchInfo.forScreen(screen)
         let mouse = NSEvent.mouseLocation
-        guard screen.frame.maxY - mouse.y <= Self.notchZoneDepth else { return false }
+        let triggerDepth = notch.hasNotch ? (notch.notchHeight + 12.0) : 10.0
+        guard screen.frame.maxY - mouse.y <= triggerDepth else { return false }
         let centerX = notch.hasNotch ? notch.notchRect.midX : screen.frame.midX
         let halfWidth = (notch.hasNotch ? notch.notchWidth / 2 : 90) + Self.notchZoneSlack
         return abs(mouse.x - centerX) <= halfWidth

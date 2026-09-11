@@ -5,7 +5,7 @@ import Foundation
 // Uses 64-bit character trigram bitmasks to eliminate >90% of non-matching entries in <10µs,
 // eliminating /usr/bin/mdfind subprocess storms.
 
-public struct IPESignature {
+public struct IPESignature: Sendable {
     public let bitmask: UInt64
     public let length: UInt16
     public let firstChar: UInt8
@@ -31,7 +31,7 @@ public struct IPESignature {
     }
 }
 
-public struct IPESearchCandidate: Identifiable {
+public struct IPESearchCandidate: Identifiable, Sendable {
     public let id: String
     public let title: String
     public let signature: IPESignature

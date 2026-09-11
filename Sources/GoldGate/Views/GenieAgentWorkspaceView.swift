@@ -3,6 +3,21 @@ import SwiftUI
 import Security
 import GenieAgentCore
 
+/// Bridges the agent's `activity_log` tool to the app's own bounded activity
+/// monitor. AgentRuntime can't see GoldGate types directly (it's a standalone
+/// package), so this is the one place that connects them.
+struct GenieActivityLogAdapter: AgentActivityLogProvider {
+    func recentActivityLog() async -> String {
+        await MainActor.run {
+            guard GenieActivityMonitor.shared.isMonitoring else { return "" }
+            return GenieActivityMonitor.shared.events.elements
+                .suffix(50)
+                .map(\.summary)
+                .joined(separator: "\n")
+        }
+    }
+}
+
 @MainActor
 final class GenieAgentWorkspaceModel: ObservableObject {
     static let shared = GenieAgentWorkspaceModel()
@@ -34,7 +49,7 @@ final class GenieAgentWorkspaceModel: ObservableObject {
             }
             current = run; isRunning = true; error = nil
             task = Task {
-                let result = await runtime.execute(run, model: adapter, store: store, bypassApproval: autonomous, approve: { call in
+                let result = await runtime.execute(run, model: adapter, store: store, bypassApproval: autonomous, activityLog: GenieActivityLogAdapter(), approve: { call in
                     return await self.requestApproval(call)
                 }, observe: { update in
                     await self.receive(update)
