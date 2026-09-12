@@ -1,0 +1,25 @@
+{
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "query_local_imessage_history",
+        "description": "Searches the user's local Apple iMessage database for historical context. Use this when the user asks about past conversations, links, or data sent via text/iMessage. This is a secure, local-only shadow API.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "search_term": {
+              "type": "string",
+              "description": "The keyword, phrase, or name to search for in the message history."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of messages to return (default 10)."
+            }
+          },
+          "required": ["search_term"]
+        }
+      }
+    }
+  ]
+}
