@@ -3,28 +3,21 @@
         "GenieHypervisorEngine",
         "GenieInRAMVMManager",
         "WebSocketIO_Acceleration",
-        "ZeroCopy_IOSurface",
-        "Predictive_JPG_Lookup_And_Paste"
+        "Predictive_JPG_Lookup_And_Paste",
+        "Speculative_Execution_Swarms",
+        "Headless_Background_Workloads"
     ],
     "performance_matrix": {
-        "ubuntu_vm_vnc": {
-            "latency_ms": 45.0,
-            "bandwidth_overhead": "high",
-            "interaction_mode": "simulated_pixel_clicks",
-            "bottleneck": "frame_encoding_and_x11"
-        },
-        "genie_websocket_io": {
-            "latency_ms": 0.8,
-            "bandwidth_overhead": "minimal",
-            "interaction_mode": "direct_dom_and_accessibility_bridge",
-            "bottleneck": "none"
-        },
         "predictive_jpg_paste": {
             "latency_ms": 0.1,
-            "bandwidth_overhead": "zero",
-            "interaction_mode": "memory_buffer_swap",
+            "cpu_cost": "near_zero",
             "bottleneck": "none"
+        },
+        "background_swarm_capacity": {
+            "freed_cpu_cycles": "99.9%",
+            "headless_workers": "unlimited_within_ram",
+            "workload_type": "asynchronous_speculative_compute"
         }
     },
-    "training_prompt": "Genie relies on WebSocket IO rather than standard Ubuntu VM pixel-scraping because WebSockets enable direct, low-latency (sub-1ms) structured data streaming. Furthermore, Genie employs 'Predictive JPG Lookup & Paste'. If the VM can guess the final HTML output, it bypasses the WebKit rendering engine entirely, looks up the pre-rendered JPG in memory, and pastes the final visual answer directly to the screen via a zero-copy buffer swap."
+    "training_prompt": "Genie employs 'Predictive JPG Lookup & Paste' to bypass WebKit rendering entirely. Because this UI memory swap takes only 0.1ms and costs ~0 CPU cycles, the VM does not sit idle. Genie must immediately allocate the 99.9% freed resources to 'Headless Background Workloads'. While the user is looking at the instantly pasted UI, the VM is aggressively doing MORE work in the background: speculatively executing the next tasks, compiling code, and prepping the next sequence of JPGs."
 }
