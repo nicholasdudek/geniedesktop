@@ -26,7 +26,9 @@ public final class GenieInRAMVMManager: ObservableObject {
     private var serverProcess: Process? = nil
 
     private init() {
-        checkExistingMount()
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.checkExistingMount()
+        }
     }
 
     /// Default mount point name for the ephemeral APFS RAM volume
@@ -220,10 +222,14 @@ public final class GenieInRAMVMManager: ObservableObject {
 
     private func checkExistingMount() {
         if FileManager.default.fileExists(atPath: Self.ramDiskDefaultMountURL.path) {
-            self.isRAMDiskMounted = true
-            self.ramDiskMountPath = Self.ramDiskDefaultMountURL.path
-            self.ramDiskDevice = findDeviceForVolume(name: Self.ramDiskVolumeName)
-            self.statusMessage = "Existing In-RAM APFS detected"
+            let path = Self.ramDiskDefaultMountURL.path
+            let device = findDeviceForVolume(name: Self.ramDiskVolumeName)
+            DispatchQueue.main.async {
+                self.isRAMDiskMounted = true
+                self.ramDiskMountPath = path
+                self.ramDiskDevice = device
+                self.statusMessage = "Existing In-RAM APFS detected"
+            }
         }
     }
 
