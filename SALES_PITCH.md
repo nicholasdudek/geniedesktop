@@ -101,4 +101,4 @@ Total mastery over hardware telemetry.
 > spatial,desktop,workspace,ai agent,hypervisor,world clock,launcher,mesh,metal,macos
 
 ---
-*Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party. All rights reserved.*
+*Copyright © 2026 Nicholas M. Dudek. Made in the United States and South Korea. United States Apple 3rd Party. All rights reserved.*

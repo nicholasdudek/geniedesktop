@@ -30,6 +30,52 @@ Artifacts/
 *.safetensors
 UnifiedTraining/genie_nemo_30b_lora_adapter.zip
 
-# Provisioning profiles
+# Provisioning profiles & credentials
 *.provisionprofile
 *.mobileprovision
+*.p12
+*.pem
+*.key
+*.cer
+*.p8
+.env*
+exportOptions*.plist
+ExportOptions*.plist
+*SALES_PITCH*
+
+# ==============================================================================
+# 🔒 Proprietary Intellectual Property — Kept Local On-Disk, Hidden from GitHub
+# Only Apple Store website, marketing assets, and submission docs stay in git
+# ==============================================================================
+Sources/
+GenieMobile/
+AgentRuntime/
+EnvironmentKit/
+UnifiedTraining/
+Unified_Model_Weights/
+Consolidated_Training/
+NeMo_30B_LoRA_Adapter/
+API_Server/
+tests/
+scripts/
+bin/
+examples/
+docs/
+Manifest/
+QA_Results/
+*.swift
+*.py
+*.sh
+Package.swift
+Package.resolved
+requirements.txt
+GENIE_MODEL_LITERATURE_AND_ARCHITECTURE.md
+DEVELOPER_NOTES.md
+ENGINEERING.md
+GENIE_4.0_ROADMAP.md
+CONSTITUTION.md
+CONTRIBUTIONS.md
+THIRD_PARTY_NOTICES.md
+CLAUDE.md
+AGENTS.md
+GEMINI.md

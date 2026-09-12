@@ -84,11 +84,11 @@ Engineered exclusively for macOS Sonoma & Sequoia (Apple Silicon M1/M2/M3/M4 & I
 ### Keywords (100 characters max)
 `code editor,ai,developer,spatial,widgets,dock pets,cursors,terminal,ide,metal,swift,productivity`
 
-### Support & Marketing URLs
-- **Support URL**: `https://nicholasdudek.github.io/geniedesktop/#contact`
-- **Marketing URL**: `https://nicholasdudek.github.io/geniedesktop/`
-- **Privacy Policy URL**: `https://nicholasdudek.github.io/geniedesktop/#privacy`
-- **Open Source Repository**: `https://github.com/nicholasdudek/geniedesktop`
+### Support & Marketing URLs (From Isolated App Store Site)
+- **Support URL**: `https://nicholasdudek.github.io/genie-site/#contact` (or `https://geniedesktop.pages.dev/#contact`)
+- **Marketing URL**: `https://nicholasdudek.github.io/genie-site/` (or `https://geniedesktop.pages.dev/`)
+- **Privacy Policy URL**: `https://nicholasdudek.github.io/genie-site/privacy.html` (or `https://geniedesktop.pages.dev/privacy.html`)
+- **Proprietary Code Policy**: Closed-source commercial binary; core engines, documents, and hypervisor repositories remain strictly private and unindexed.
 
 ---
 
@@ -164,7 +164,9 @@ Support & Documentation Website:
 https://nicholasdudek.github.io/geniedesktop/
 
 If you require any further demonstration or have any questions, please contact me directly at:
-Nicholas M. Dudek — contact@nicholasdudek.com
+Nicholas M. Dudek — nicholas.dudek@icloud.com
+Phone: 010-2052-0225
+Address: Seoul, South Korea
 ```
 
 ---
@@ -177,7 +179,9 @@ Nicholas M. Dudek — contact@nicholasdudek.com
 ### Comments, Complaints & Technical Inquiries
 > For questions, suggestions, comments, complaints, or bug reports related to the utility:
 > - **Developer**: Nicholas M. Dudek
-> - **Email**: `contact@nicholasdudek.com`
+> - **Email**: `nicholas.dudek@icloud.com`
+> - **Phone**: `010-2052-0225`
+> - **Address**: `Seoul, South Korea`
 > - **Website**: `https://nicholasdudek.com`
 
 ### "As Is" Warranty Disclaimer
