@@ -23,6 +23,8 @@ public enum PrefKey {
     public static let widgetBarPositionX = "nexus.widgetBarPositionX"
     public static let widgetBarPositionY = "nexus.widgetBarPositionY"
     public static let activeSubscriptionPlan = "nexus.activeSubscriptionPlan"
+    /// Expiry of the free student / under-18 year. Absent means not eligible.
+    public static let studentEligibilityExpiry = "nexus.studentEligibilityExpiry"
     public static let editorTheme = "nexus.editorTheme"
     // Embedded editor sidebar: "hidden", "compact" or "expanded", plus the
     // widths the user dragged the panes to.
