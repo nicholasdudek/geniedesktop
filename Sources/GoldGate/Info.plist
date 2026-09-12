@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Genie 1.0</string>
+	<string>Genie</string>
 	<key>CFBundleExecutable</key>
 	<string>Genie</string>
 	<key>CFBundleIconFile</key>

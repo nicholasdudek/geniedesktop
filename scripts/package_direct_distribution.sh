@@ -92,6 +92,9 @@ elif [ -n "$SIGN_IDENTITY" ]; then
     DEV_ID="$SIGN_IDENTITY"
 else
     DEV_ID=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -n 1 | awk '{print $2}' || true)
+    if [ -z "$DEV_ID" ]; then
+        DEV_ID=$(security find-identity -v -p codesigning | grep "Apple Development" | head -n 1 | awk '{print $2}' || true)
+    fi
 fi
 
 echo "Using Signing Identity: ${DEV_ID:-Ad-Hoc / Self-Signed (-)}"
@@ -102,16 +105,21 @@ xattr -cr "$BUILD_DIR/$APP_NAME.app"
 # 6. Sign nested bundles, binary, and app bundle.
 ENTITLEMENTS="$PROJECT_DIR/Sources/GoldGate/Genie.entitlements"
 if [ -n "$DEV_ID" ]; then
-    echo "==> Code signing with Hardened Runtime ($DEV_ID)..."
+    echo "==> Code signing with identity ($DEV_ID)..."
     for NESTED_BUNDLE in "$BUILD_DIR/$APP_NAME.app/Contents/Resources"/*.bundle; do
         [ -d "$NESTED_BUNDLE" ] || continue
-        codesign --force --options runtime --sign "$DEV_ID" "$NESTED_BUNDLE"
+        codesign --force --sign "$DEV_ID" "$NESTED_BUNDLE"
     done
-    codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$DEV_ID" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
-    codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$DEV_ID" "$BUILD_DIR/$APP_NAME.app"
+    codesign --force --entitlements "$ENTITLEMENTS" --sign "$DEV_ID" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+    codesign --force --entitlements "$ENTITLEMENTS" --sign "$DEV_ID" "$BUILD_DIR/$APP_NAME.app"
 else
     echo "==> Ad-Hoc code signing with entitlements..."
-    codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$BUILD_DIR/$APP_NAME.app"
+    for NESTED_BUNDLE in "$BUILD_DIR/$APP_NAME.app/Contents/Resources"/*.bundle; do
+        [ -d "$NESTED_BUNDLE" ] || continue
+        codesign --force --sign - "$NESTED_BUNDLE"
+    done
+    codesign --force --entitlements "$ENTITLEMENTS" --sign - "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+    codesign --force --entitlements "$ENTITLEMENTS" --sign - "$BUILD_DIR/$APP_NAME.app"
 fi
 
 # 7. Create DMG for website distribution

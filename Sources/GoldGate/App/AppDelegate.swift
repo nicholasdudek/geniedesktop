@@ -752,6 +752,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         self.renderIcon()
     }
 
+struct StandaloneGenieStatusItemView: View {
+    @State private var isHovered: Bool = false
+    @AppStorage(PrefKey.statusIconGlyph) private var statusIconGlyph: String = "Genie Person 🧞‍♂️"
+    @AppStorage(PrefKey.statusIconStyle) private var statusIconStyle: String = "Genie Person 🧞‍♂️"
+
+    var body: some View {
+        let selectedGlyph = statusIconGlyph.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? (statusIconStyle.isEmpty ? "Genie Person 🧞‍♂️" : statusIconStyle)
+            : statusIconGlyph
+        let img = StatusIconRenderer.generateGlyphImage(glyph: selectedGlyph, size: 18, phase: StatusIconRenderer.currentPhase)
+
+        Button(action: {
+            AppDelegate.shared?.statusBarButtonClicked(nil)
+        }) {
+            GenieMysticalIconView(
+                glyphImage: img,
+                isHovered: isHovered,
+                size: 18,
+                onPrimaryClick: {
+                    AppDelegate.shared?.statusBarButtonClicked(nil)
+                }
+            )
+            .frame(width: 28, height: 22)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onHover { isHovered = $0 }
+    }
+}
+
     func setupStatusItemView() {
         guard let button = statusItem.button else { return }
         button.subviews.forEach { $0.removeFromSuperview() }
@@ -770,15 +800,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             hostingView.clipsToBounds = false
             button.addSubview(hostingView)
         } else {
-            statusItem.length = NSStatusItem.squareLength
-            let glyph = UserDefaults.standard.string(forKey: PrefKey.statusIconGlyph)
-                ?? UserDefaults.standard.string(forKey: PrefKey.statusIconStyle)
-                ?? "Genie Person 🧞‍♂️"
-            button.image = StatusIconRenderer.generateGlyphImage(glyph: glyph, size: 18, phase: self.phase)
-            button.imagePosition = .imageOnly
-            button.target = self
-            button.action = #selector(statusBarButtonClicked)
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            statusItem.length = 30
+            let hostingView = ClickableHostingView(rootView: StandaloneGenieStatusItemView())
+            hostingView.frame = button.bounds
+            hostingView.autoresizingMask = [.width, .height]
+            hostingView.clipsToBounds = false
+            button.addSubview(hostingView)
         }
     }
 
@@ -789,8 +816,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let showMiniDock = UserDefaults.standard.bool(forKey: PrefKey.showMiniDockInMenuBar)
         guard showMiniDock else {
-            if statusItem.length != NSStatusItem.squareLength {
-                statusItem.length = NSStatusItem.squareLength
+            if statusItem.length != 30 {
+                statusItem.length = 30
             }
             return
         }

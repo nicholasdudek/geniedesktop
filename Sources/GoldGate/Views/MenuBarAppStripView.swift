@@ -1195,7 +1195,12 @@ public struct MenuBarAppStripView: View {
                 .padding(.vertical, 1.5)
             }
         } else {
-            EmptyView()
+            // When apps are hidden or collapsed, ALWAYS keep the nice animated Genie launcher in the menu bar!
+            HStack(alignment: .center, spacing: 0) {
+                genieLauncherButton
+            }
+            .padding(.horizontal, 3)
+            .padding(.vertical, 1.5)
         }
     }
 
