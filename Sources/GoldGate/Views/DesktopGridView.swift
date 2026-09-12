@@ -1283,10 +1283,13 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
             editingDoneButton(topClearance: topClearance, sideMargin: sideMargin)
         }
 
-        // 3. Desktop Floating Widget Bar (Replaces legacy pull-down top dock)
-        if showDesktopWidgetBar && !isEditing {
-            desktopWidgetBar(screenSize: screenSize)
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        // 3. Liquid Glass Top Pull-Down Dashboard Panel
+        if isTopSearchBarPoppedDown && !isEditing {
+            LiquidGlassTopDashboardView(isPresented: isTopSearchBarPoppedDownBinding, screenSize: screenSize)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
                 .zIndex(999)
         }
 
