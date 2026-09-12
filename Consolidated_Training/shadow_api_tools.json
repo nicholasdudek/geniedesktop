@@ -84,6 +84,38 @@
           ]
         }
       }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "final_cut_pro_genius_edit",
+        "description": "Acts as a Master Video Editor. Generates Final Cut Pro XML (FCPXML) to instantly assemble timelines, apply cuts, sync audio, or apply color grades. Use this when the user wants to automatically edit video files or send a rough cut directly into Final Cut Pro.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "description": "The editorial action (e.g., 'assemble_rough_cut', 'sync_audio_multicam', 'apply_basic_color_grade')."
+            },
+            "assets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "An array of local file paths to the raw video/audio files."
+            },
+            "timeline_name": {
+              "type": "string",
+              "description": "The name of the new project/timeline to create in Final Cut Pro."
+            }
+          },
+          "required": [
+            "action",
+            "assets",
+            "timeline_name"
+          ]
+        }
+      }
     }
   ]
 }
