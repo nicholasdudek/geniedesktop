@@ -124,6 +124,12 @@ assemble_bundle() {
     if [ -d "$PROJECT_DIR/Wallpapers" ]; then
         cp -R "$PROJECT_DIR/Wallpapers" "$target_bundle/Contents/Resources/"
     fi
+
+    # Web assets & Apple 2028 themes
+    if [ -d "$PROJECT_DIR/web" ]; then
+        cp -R "$PROJECT_DIR/web" "$target_bundle/Contents/Resources/"
+        cp -R "$PROJECT_DIR/web/assets" "$target_bundle/Contents/Resources/"
+    fi
     
     # Badges & emblems
     for asset in HeaderBadge.png HeaderBadge.jpg NanoEmblem.jpg GenieDynamic_Thumbnail.png GoldenGateDynamic_Thumbnail.png; do
@@ -131,6 +137,9 @@ assemble_bundle() {
             cp "$PROJECT_DIR/Sources/GoldGate/$asset" "$target_bundle/Contents/Resources/"
         fi
     done
+
+    # Strip extended attributes and quarantine flags
+    xattr -cr "$target_bundle"
 }
 
 # 5. Assemble Direct Release Bundle

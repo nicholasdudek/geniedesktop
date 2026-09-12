@@ -120,15 +120,18 @@ public final class GenieSporadicWishEngine: ObservableObject {
         startSporadicCycle()
     }
 
+    private var hasTriggeredOnceThisSession: Bool = false
+
     // MARK: - Sporadic Timer Loop
     public func startSporadicCycle() {
         sporadicTimer?.invalidate()
-        // First whim appears gracefully after 18 seconds of desktop use
-        scheduleNextSporadicWhim(delay: 18.0)
+        let isProactiveEnabled = UserDefaults.standard.bool(forKey: PrefKey.proactiveMenuDappEnabled)
+        guard isProactiveEnabled && !hasTriggeredOnceThisSession else { return }
+        scheduleNextSporadicWhim(delay: 25.0)
     }
 
     private func scheduleNextSporadicWhim(delay: TimeInterval? = nil) {
-        let interval = delay ?? Double.random(in: 45.0...85.0)
+        let interval = delay ?? 25.0
         sporadicTimer?.invalidate()
         sporadicTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
             Task { @MainActor in
@@ -139,10 +142,11 @@ public final class GenieSporadicWishEngine: ObservableObject {
 
     /// Triggers a sporadic whimsical event (asking for a wish, asking to rub lamp, celestial twinkle, etc.)
     public func triggerSporadicWhim() {
-        guard !isBubbleVisible else {
-            scheduleNextSporadicWhim()
-            return
-        }
+        let isProactiveEnabled = UserDefaults.standard.bool(forKey: PrefKey.proactiveMenuDappEnabled)
+        guard isProactiveEnabled && !hasTriggeredOnceThisSession else { return }
+        guard !isBubbleVisible else { return }
+
+        hasTriggeredOnceThisSession = true
 
         let whim = sporadicWhims.randomElement() ?? sporadicWhims[0]
         currentKind = whim.kind
@@ -167,9 +171,6 @@ public final class GenieSporadicWishEngine: ObservableObject {
                 self?.dismissBubble()
             }
         }
-
-        // Schedule next sporadic manifestation
-        scheduleNextSporadicWhim()
     }
 
     // MARK: - Lamp Rubbing Gesture

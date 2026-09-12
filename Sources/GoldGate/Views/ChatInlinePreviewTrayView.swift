@@ -12,6 +12,7 @@ public enum ChatInlinePreviewType: Equatable {
     case terminal(cmd: String, output: String)
     case visualLookup(image: NSImage, ocrText: String, lineCount: Int, wordCount: Int)
     case tricksterApp(appName: String, profile: VirtualScreenProfile, targetSize: CGSize, slot: Int)
+    case screenRecording(url: URL)
     case creationsGallery
 
     public static func == (lhs: ChatInlinePreviewType, rhs: ChatInlinePreviewType) -> Bool {
@@ -36,6 +37,8 @@ public enum ChatInlinePreviewType: Equatable {
             return img1 == img2 && text1 == text2
         case let (.tricksterApp(app1, prof1, _, slot1), .tricksterApp(app2, prof2, _, slot2)):
             return app1 == app2 && prof1 == prof2 && slot1 == slot2
+        case let (.screenRecording(u1), .screenRecording(u2)):
+            return u1 == u2
         default:
             return false
         }
@@ -55,7 +58,28 @@ public final class ChatInlinePreviewManager: ObservableObject {
     @Published public private(set) var recentCreations: [ChatInlinePreviewType] = []
     private let maxRecentCreations = 12
 
-    private init() {}
+    private init() {
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NexusScreenRecordingFinished"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notif in
+            guard let url = notif.object as? URL else { return }
+            Task { @MainActor [weak self] in
+                self?.showScreenRecordingPreview(url: url)
+            }
+        }
+    }
+
+    public func showScreenRecordingPreview(url: URL, notice: String? = nil) {
+        let preview = ChatInlinePreviewType.screenRecording(url: url)
+        recordCreation(preview)
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+            self.activePreview = preview
+            self.previewNotice = notice ?? "Screen Recording Ready 🎥"
+        }
+        HapticFeedback.success()
+    }
 
     private func recordCreation(_ preview: ChatInlinePreviewType) {
         recentCreations.removeAll { $0 == preview }
@@ -339,6 +363,36 @@ public struct ChatInlinePreviewTrayView: View {
                 Spacer()
             }
 
+        case .screenRecording(let url):
+            HStack(spacing: 10) {
+                Image(systemName: "video.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.red)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(Color.red.opacity(0.18)))
+                    .overlay(Circle().stroke(Color.red.opacity(0.40), lineWidth: 0.8))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(url.lastPathComponent)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                    Text("QuickTime Movie · Saved to Recordings")
+                        .font(.system(size: 9.5, design: .rounded))
+                        .foregroundColor(.white.opacity(0.55))
+                }
+
+                Spacer()
+
+                openButton(title: "Play") {
+                    NSWorkspace.shared.open(url)
+                }
+
+                openButton(title: "Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+            }
+
         case .creationsGallery:
             galleryContent
         }
@@ -391,6 +445,7 @@ public struct ChatInlinePreviewTrayView: View {
         case .terminal: return "terminal.fill"
         case .visualLookup: return "eye.fill"
         case .tricksterApp(_, let profile, _, _): return profile.icon
+        case .screenRecording: return "video.fill"
         case .creationsGallery: return "sparkles"
         }
     }
@@ -406,6 +461,7 @@ public struct ChatInlinePreviewTrayView: View {
         case .terminal(let cmd, _): return cmd
         case .visualLookup: return "Visual Lookup"
         case .tricksterApp(let appName, _, _, _): return appName
+        case .screenRecording(let url): return url.lastPathComponent
         case .creationsGallery: return "Gallery"
         }
     }
@@ -449,6 +505,7 @@ public struct ChatInlinePreviewTrayView: View {
         case .terminal: return .green
         case .visualLookup: return .cyan
         case .tricksterApp: return .purple
+        case .screenRecording: return .red
         case .creationsGallery: return .cyan
         }
     }

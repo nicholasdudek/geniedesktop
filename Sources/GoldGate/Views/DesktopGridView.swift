@@ -151,7 +151,7 @@ struct DesktopGridView: View {
     @AppStorage(PrefKey.isRightChatDockOpen) var isRightChatDockOpen: Bool = false
     @AppStorage(PrefKey.isRightAppsDockOpen) var isRightAppsDockOpen: Bool = false
     @AppStorage(PrefKey.rightDocksCoexistMode) var rightDocksCoexistMode: String = "Side-by-Side 📐"
-    /// Top dock visibility. Backed by `DesktopWindowManager` rather than local
+    /// Top dock visibility (LiquidGlassTopDashboardView). Backed by `DesktopWindowManager` rather than local
     /// `@State` so the menu bar dropdown — which lives in a different window —
     /// can close it, and vice versa. Only one chat surface is open at a time.
     /// The ~30 assignment sites below are unchanged; `nonmutating set` keeps
@@ -190,6 +190,10 @@ struct DesktopGridView: View {
     @AppStorage(PrefKey.animatedChatWidgetPosX) var animatedChatPosX: Double = 260.0
     @AppStorage(PrefKey.animatedChatWidgetPositionY) var animatedChatPosY: Double = 180.0
     @State private var animatedChatDragOffset: CGSize = .zero
+    @AppStorage(PrefKey.showDesktopWidgetBar) var showDesktopWidgetBar: Bool = false
+    @AppStorage(PrefKey.widgetBarPositionX) var widgetBarPosX: Double = 0.0
+    @AppStorage(PrefKey.widgetBarPositionY) var widgetBarPosY: Double = 32.0
+    @State private var widgetBarDragOffset: CGSize = .zero
     @AppStorage(PrefKey.formationAppLimit) var formationAppLimit: Int = 0
     @AppStorage(PrefKey.customFormationColumns) var customFormationColumns: Int = 4
 
@@ -235,7 +239,7 @@ struct DesktopGridView: View {
 
             let notchHeight = targetScreen.safeAreaInsets.top
             let menuBarHeight = targetScreen.frame.maxY - targetScreen.visibleFrame.maxY
-            let topClearance = max(notchHeight + 28.0, menuBarHeight + 20.0, 58.0)
+            let topClearance = max(notchHeight + 36.0, menuBarHeight + 28.0, 68.0)
             let dockInset = targetScreen.visibleFrame.minY - targetScreen.frame.minY
             let bottomClearance = dockAvoidanceEnabled ? max(78.0, dockInset + 28.0) : max(56.0, dockInset + 16.0)
             let sideMargin = max(40.0, max(targetScreen.visibleFrame.minX - targetScreen.frame.minX, targetScreen.frame.maxX - targetScreen.visibleFrame.maxX) + 24.0)
@@ -663,22 +667,13 @@ struct DesktopGridView: View {
                                     NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 1)
                                 }
                             }
-                            // 3. Top edge: optional top dock down from notch! ("and optional top dock down")
-                            else if (currentPage == 0 || appDisplayStage != .hidden || !isTopSearchBarPoppedDown) && (location.y <= 6 || location.y <= 14) && topEdgeCursorTrigger {
+                            // 3. Top edge: reveal Desktop Widget Bar
+                            else if (location.y <= 6 || location.y <= 14) && topEdgeCursorTrigger {
                                 lastPageSwitchTime = now
                                 HapticFeedback.selection()
                                 withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                                    currentPage = 1
-                                    appDisplayStage = .hidden
-                                    isTopSearchBarPoppedDown = true
-                                    isRightChatDockOpen = false
-                                    isRightAppsDockOpen = false
+                                    showDesktopWidgetBar = true
                                 }
-                                DesktopWindowManager.shared.setPage(1)
-                                DesktopWindowManager.shared.elevateForTopDashboard(isPopped: true)
-                                FinderChatWindowManager.shared.slideDownFullScreen()
-                                NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 1)
-                                NotificationCenter.default.post(name: NSNotification.Name("NexusFocusGenieSearchBar"), object: nil)
                             }
                             // 3b. Right Edge: bumping right edge of the screen reveals right dock / activates right edge tabs
                             else if location.x >= screenSize.width - 10 && !rightEdgeDocksEnabled {
@@ -1202,9 +1197,9 @@ struct DesktopGridView: View {
                                 }
                             }
                             let topEdgeTrigger = UserDefaults.standard.object(forKey: PrefKey.topEdgeCursorTrigger) as? Bool ?? false
-                            if topEdgeTrigger && localY <= 14.0 && !self.isTopSearchBarPoppedDown && abs(loc.x - currentScreen.frame.width / 2.0) <= currentScreen.frame.width * 0.45 {
+                            if topEdgeTrigger && localY <= 14.0 && !self.showDesktopWidgetBar && abs(loc.x - currentScreen.frame.width / 2.0) <= currentScreen.frame.width * 0.45 {
                                 withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
-                                    self.isTopSearchBarPoppedDown = true
+                                    self.showDesktopWidgetBar = true
                                 }
                             }
                         }
@@ -1303,16 +1298,12 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
             editingDoneButton(topClearance: topClearance, sideMargin: sideMargin)
         }
 
-        // 3. Liquid Glass Top Pull-Down Dashboard Panel
-        if isTopSearchBarPoppedDown && !isEditing {
-            LiquidGlassTopDashboardView(isPresented: isTopSearchBarPoppedDownBinding, screenSize: screenSize)
-                .transition(.asymmetric(
-                    insertion: .move(edge: .top).combined(with: .opacity),
-                    removal: .move(edge: .top).combined(with: .opacity)
-                ))
+        // 3. Desktop Floating Widget Bar (Replaces legacy pull-down top dock)
+        if showDesktopWidgetBar && !isEditing {
+            desktopWidgetBar(screenSize: screenSize)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 .zIndex(999)
         }
-
 
         // 4. Attachable World Clock Widget Complication
         if attachWorldClockWidget && !isEditing {
@@ -1340,6 +1331,132 @@ struct ContinuousSpacesScrollBridge: NSViewRepresentable {
 
         // 8. 📱 Right-Edge Sliding Docks & Trigger Tabs (Consolidated into Chat Bar Layer Views)
         // Disabled completely per user request ("the right side bar you have on the right near with the buttons get rid of them put them in the chat")
+    }
+
+    // MARK: - 🧩 Desktop Floating Widget Bar
+    @ViewBuilder
+    private func desktopWidgetBar(screenSize: CGSize) -> some View {
+        HStack(spacing: 8) {
+            // 1. Clock & Date Pill
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                HStack(spacing: 5) {
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.cyan)
+                    Text(context.date, style: .time)
+                        .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundColor(.white)
+                    Text(context.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.65))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.black.opacity(0.65)))
+                .overlay(Capsule().strokeBorder(LinearGradient(colors: [Color.white.opacity(0.3), Color.white.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.8))
+            }
+
+            // 2. Genie Copilot Quick Summon Pill
+            Button(action: {
+                HapticFeedback.selection()
+                FinderChatWindowManager.shared.toggle()
+            }) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.cyan)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: .cyan.opacity(0.8), radius: 4)
+
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.cyan)
+
+                    Text("Genie Copilot")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+
+                    Text("⌥Space")
+                        .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.55))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1.5)
+                        .background(RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.12)))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.black.opacity(0.65)))
+                .overlay(Capsule().strokeBorder(LinearGradient(colors: [Color.cyan.opacity(0.4), Color.cyan.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+
+            // 3. World Clock Toggle Pill
+            Button(action: {
+                HapticFeedback.selection()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    attachWorldClockWidget.toggle()
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "globe.americas.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(attachWorldClockWidget ? .orange : .white.opacity(0.7))
+                    Text("World Clock")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(attachWorldClockWidget ? .white : .white.opacity(0.75))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(attachWorldClockWidget ? Color.orange.opacity(0.2) : Color.black.opacity(0.65)))
+                .overlay(Capsule().strokeBorder(attachWorldClockWidget ? Color.orange.opacity(0.45) : Color.white.opacity(0.12), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+
+            // 4. Living Pet / Chat Widget Toggle Pill
+            Button(action: {
+                HapticFeedback.selection()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    attachAnimatedChatWidget.toggle()
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "waveform.circle.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(attachAnimatedChatWidget ? .purple : .white.opacity(0.7))
+                    Text("Live Widget")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(attachAnimatedChatWidget ? .white : .white.opacity(0.75))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(attachAnimatedChatWidget ? Color.purple.opacity(0.2) : Color.black.opacity(0.65)))
+                .overlay(Capsule().strokeBorder(attachAnimatedChatWidget ? Color.purple.opacity(0.45) : Color.white.opacity(0.12), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.45))
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.8))
+                .shadow(color: Color.black.opacity(0.35), radius: 12, y: 4)
+        )
+        .position(
+            x: (widgetBarPosX == 0 ? screenSize.width / 2.0 : widgetBarPosX) + widgetBarDragOffset.width,
+            y: widgetBarPosY + widgetBarDragOffset.height
+        )
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    widgetBarDragOffset = value.translation
+                }
+                .onEnded { value in
+                    let baseX = widgetBarPosX == 0 ? screenSize.width / 2.0 : widgetBarPosX
+                    widgetBarPosX = max(180, min(screenSize.width - 180, baseX + value.translation.width))
+                    widgetBarPosY = max(24, min(screenSize.height - 40, widgetBarPosY + value.translation.height))
+                    widgetBarDragOffset = .zero
+                }
+        )
     }
 
     // MARK: - Attachable World Clock Widget Complication

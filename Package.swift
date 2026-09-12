@@ -77,6 +77,9 @@ let package = Package(
                 "Models/README.md",
                 "Views/README.md"
             ],
+            resources: [
+                .process("Resources")
+            ],
             swiftSettings: [
                 .define(isMASBuild ? "GENIE_MAS" : "GENIE_DEVELOPER_ID")
             ]

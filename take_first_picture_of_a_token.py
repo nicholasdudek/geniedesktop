@@ -17,6 +17,7 @@ import os
 import sys
 import math
 import subprocess
+from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 def generate_token_activation_matrix(width=640, height=480, token_id=9707, token_text="Hello"):
@@ -89,8 +90,9 @@ def build_composite_token_photo():
     Creates a master composite image pairing the microscopic neural spectrogram
     with the macroscopic iOS Simulator screenshot of the token.
     """
-    sim_path = "/Users/nicholasdudek/Desktop/Genie/GoldGate/docs/ios_simulator_token_capture.png"
-    out_path = "/Users/nicholasdudek/Desktop/Genie/GoldGate/docs/first_picture_of_a_token.png"
+    base_dir = Path(__file__).resolve().parent
+    sim_path = str(base_dir / "docs" / "ios_simulator_token_capture.png")
+    out_path = str(base_dir / "docs" / "first_picture_of_a_token.png")
     
     canvas_w = 1280
     canvas_h = 720

@@ -242,7 +242,7 @@ public final class GenieSkillsOrchestrator: ObservableObject {
                     objective: objective,
                     workspace: workspace,
                     endpoint: "https://generativelanguage.googleapis.com",
-                    model: "gemini-2.5-pro",
+                    model: "gemini-3.8-flash",
                     key: UserDefaults.standard.string(forKey: "gemini_api_key") ?? "",
                     autonomous: true
                 )

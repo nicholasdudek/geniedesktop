@@ -555,7 +555,7 @@ public final class SpatialPlaneManager: ObservableObject {
         for screenIndex in 1...Self.totalUniverseScreens {
             let isCurrentDesktop = (screenIndex == currentSpaceIndex)
             let (columnCoordinate, rowCoordinate) = Self.universeCoordinate(for: screenIndex)
-            let (sectorIndex, compassBearing, _, _) = Self.macroPixelSector(for: screenIndex)
+            let (_, compassBearing, _, _) = Self.macroPixelSector(for: screenIndex)
             var buffer = desktopPlaneCacheBuffers[screenIndex] ?? DesktopPlaneRAMCache(
                 id: screenIndex,
                 name: screenIndex <= 9 ? "Desktop \(screenIndex)" : "Screen \(screenIndex)",

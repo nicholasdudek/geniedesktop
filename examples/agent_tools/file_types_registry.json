@@ -1,0 +1,85 @@
+{
+  "registry": "GenieFileTypesRegistry",
+  "total_registered_types": 56,
+  "categories": {
+    "Code": [
+      "swift",
+      "py",
+      "js",
+      "ts",
+      "c",
+      "cpp",
+      "h",
+      "hpp",
+      "m",
+      "mm",
+      "rs",
+      "go",
+      "java",
+      "kt",
+      "scala",
+      "rb",
+      "php",
+      "lua",
+      "cs"
+    ],
+    "Script": [
+      "sh",
+      "zsh",
+      "bash"
+    ],
+    "Document": [
+      "rtf",
+      "rtfd",
+      "doc",
+      "docx",
+      "pages",
+      "pdf",
+      "txt",
+      "md",
+      "odt"
+    ],
+    "Data": [
+      "csv",
+      "tsv",
+      "xlsx",
+      "xls",
+      "numbers",
+      "json",
+      "yaml",
+      "yml",
+      "toml",
+      "xml",
+      "plist",
+      "sql",
+      "log",
+      "env"
+    ],
+    "Web": [
+      "html",
+      "htm",
+      "css",
+      "scss"
+    ],
+    "Media": [
+      "png",
+      "jpg",
+      "jpeg",
+      "webp",
+      "svg",
+      "heic",
+      "gif",
+      "mov",
+      "mp4",
+      "mp3",
+      "wav",
+      "m4a"
+    ]
+  },
+  "features": [
+    "Sub-millisecond category classification",
+    "SF Symbol vector icon mapping",
+    "Live quicklook & drag-and-drop ingestion",
+    "Sandboxed read/write permissions gating"
+  ]
+}

@@ -49,6 +49,8 @@ struct CLI {
             let input = try JSONDecoder().decode(JSONValue.self, from: Data(argument(3).utf8))
             let key = args.count > 4 ? args[4] : UUID().uuidString
             print(try await manager.submit(environment: uuid(1), tool: argument(2), input: input, idempotencyKey: key).formatted)
+        case "clone-workspace":
+            print(try await manager.clone(environment: uuid(1), name: argument(2)).id.uuidString)
         case "jobs": print(try await manager.jobs(environment: uuid(1)).formatted)
         case "get": print(try await manager.job(environment: uuid(1), jobID: argument(2)).formatted)
         case "wait": print(try await manager.result(environment: uuid(1), jobID: argument(2)).formatted)
@@ -64,6 +66,7 @@ struct CLI {
             genie-env start|check|install VM_UUID
             genie-env clone TEMPLATE_UUID NAME
             genie-env register VM_UUID NAME
+            genie-env clone-workspace ENV_UUID NAME
             genie-env submit ENV_UUID TOOL JSON [IDEMPOTENCY_KEY]
             genie-env jobs ENV_UUID
             genie-env get|wait|cancel ENV_UUID JOB_ID

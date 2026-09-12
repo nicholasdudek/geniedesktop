@@ -55,11 +55,20 @@ public struct UTMBackend: EnvironmentTransport {
         return value["result"] ?? value
     }
     public func run(_ arguments: [String], timeout: TimeInterval = 20) async throws -> String {
+        #if GENIE_MAS
+        // utmctl lives outside the app bundle. Under the App Store sandbox the
+        // spawn cannot succeed, and the `isExecutableFile` probe below would
+        // report "UTM is not installed" even on a Mac where it is — misleading.
+        // Say what is actually true instead. `GenieCapabilities.canSpawnSubprocesses`
+        // already keeps the host-side UI from offering this.
+        throw EnvironmentError("Linux environments are not supported under macOS App Sandbox security restrictions. Use the direct download of Genie for UTM-backed environments.")
+        #else
         guard FileManager.default.isExecutableFile(atPath: executable.path) else { throw EnvironmentError("UTM is not installed at \(executable.path).") }
         let runner = ProcessRunner(executable: executable, arguments: arguments, timeout: timeout)
         return try await withTaskCancellationHandler {
             try await Task.detached { try runner.run() }.value
         } onCancel: { runner.cancel() }
+        #endif
     }
 }
 

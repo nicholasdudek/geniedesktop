@@ -94,10 +94,10 @@ def test_apple_menu_bar_inside_chat():
 def test_top_dock_neural_engine_banner():
     """Verifies the retro ASCII Neural Engine banner is integrated into the top dock."""
     banner_path = Path("Sources/GoldGate/Views/GenieTopDockNeuralEngineBannerView.swift")
-    dock_path = Path("Sources/GoldGate/Views/LiquidGlassMiniDockView.swift")
+    dock_path = Path("Sources/GoldGate/Views/LiquidGlassTopDashboardView.swift")
 
     assert banner_path.exists(), "GenieTopDockNeuralEngineBannerView.swift must exist"
-    assert dock_path.exists(), "LiquidGlassMiniDockView.swift must exist"
+    assert dock_path.exists(), "LiquidGlassTopDashboardView.swift must exist"
 
     banner_content = banner_path.read_text(encoding="utf-8")
     assert "GenieTopDockNeuralEngineBannerView" in banner_content

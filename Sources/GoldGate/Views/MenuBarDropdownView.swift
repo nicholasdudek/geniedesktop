@@ -6037,7 +6037,7 @@ struct MenuBarDropdownView: View {
                         }
                     }
                     HStack(spacing: 6) {
-                        TextField("sk-proj-... (GPT-4o, o3-mini, o1)", text: Binding(
+                        TextField("sk-proj-... (GPT-6 Astra, GPT-5.6)", text: Binding(
                             get: { LocalModelManager.shared.openaiApiKey },
                             set: { LocalModelManager.shared.openaiApiKey = $0 }
                         ))
@@ -7303,7 +7303,7 @@ struct MenuBarDropdownView: View {
                         }
                     }
                     HStack(spacing: 6) {
-                        TextField("sk-proj-... (GPT-4o, o3-mini, o1)", text: Binding(
+                        TextField("sk-proj-... (GPT-6 Astra, GPT-5.6)", text: Binding(
                             get: { LocalModelManager.shared.openaiApiKey },
                             set: { LocalModelManager.shared.openaiApiKey = $0 }
                         ))

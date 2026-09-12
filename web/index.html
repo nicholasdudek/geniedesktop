@@ -6,6 +6,7 @@
   <title>Genie — Next-Generation Spatial Workspace for macOS</title>
   <meta name="description" content="Genie is a native macOS spatial desktop workspace and application launcher engineered with Swift and Metal.">
   <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+  <link rel="stylesheet" href="assets/css/genie-apple-2028-themes.css">
   
   <style>
     :root, [data-theme="dark"] {
@@ -2585,8 +2586,14 @@
 
     <!-- Minimalist Desktop Quick Links (Clean, No-Wrap) -->
     <div class="nav-quick-links">
+      <a href="frontier.html" class="nav-quick-link" style="color:#38bdf8; font-weight:700;">
+        <span>🚀 Frontier Model (Trillions)</span>
+      </a>
       <a href="previews.html" class="nav-quick-link highlight" style="color:var(--gold); font-weight:700;">
-        <span>✨ Master Previews (18)</span>
+        <span>✨ Master Previews (21)</span>
+      </a>
+      <a href="commercials.html" class="nav-quick-link" style="color:var(--purple); font-weight:700;">
+        <span>🎬 Cinema & Commercials</span>
       </a>
       <a href="#menubar-studio" class="nav-quick-link">
         <span>⚡️ Battery & Menu Bar</span>
@@ -2594,8 +2601,11 @@
       <a href="features.html" class="nav-quick-link">
         <span>🧪 Studio Lab</span>
       </a>
-      <a href="#screenshots" class="nav-quick-link">
+      <a href="#showcase" class="nav-quick-link">
         <span>🖼️ Showcase</span>
+      </a>
+      <a href="#pricing" class="nav-quick-link" style="color:var(--gold); font-weight:700;">
+        <span>💎 $120/yr Pass</span>
       </a>
     </div>
 
@@ -2740,7 +2750,7 @@
             </a>
           </li>
           <li>
-            <a href="#screenshots" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+            <a href="#showcase" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
               <span class="sidebar-nav-left">
                 <span class="sidebar-nav-icon">🖼️</span>
                 <span>Retina App Store Showcase</span>
@@ -3290,19 +3300,20 @@
   </section>
 
   <!-- App Store Showcase (Interactive Slider + Side Bar + Full Grid Toggle) -->
-  <section id="screenshots" class="screenshots-section">
+  <section id="showcase" class="screenshots-section">
+    <a id="screenshots"></a>
     <div class="section-title">
-      <h2 data-i18n="showcase_title">App Store Showcase</h2>
-      <p data-i18n="showcase_desc">Explore all 10 official Mac App Store showcases in full 2880×1800 Retina resolution.</p>
+      <h2 data-i18n="showcase_title">App Store & Desktop Showcase</h2>
+      <p data-i18n="showcase_desc">Explore all 21 official Mac App Store & Desktop showcases in full 2880×1800 Retina resolution.</p>
     </div>
 
     <div class="showcase-control-bar">
       <div class="showcase-view-tabs">
         <button class="showcase-view-btn active" id="btn-carousel-mode" onclick="setShowcaseView('carousel')" data-i18n="carousel_toggle_slides">✨ Interactive Slider</button>
-        <button class="showcase-view-btn" id="btn-grid-mode" onclick="setShowcaseView('grid')" data-i18n="carousel_toggle_grid">▦ View All 18 Grid</button>
+        <button class="showcase-view-btn" id="btn-grid-mode" onclick="setShowcaseView('grid')" data-i18n="carousel_toggle_grid">▦ View All 21 Grid</button>
         <a href="previews.html" class="showcase-view-btn" style="background:var(--card-bg); border-color:var(--border-accent); color:var(--gold); text-decoration:none; font-weight:700;">🚀 Open Interactive Previews Studio ↗</a>
       </div>
-      <div class="showcase-counter" id="showcase-counter">SLIDE 01 / 18</div>
+      <div class="showcase-counter" id="showcase-counter">SLIDE 01 / 21</div>
     </div>
 
     <!-- Interactive Carousel with Sidebar & Back/Forward Arrows -->
@@ -3528,6 +3539,91 @@
     </div>
   </section>
 
+  <!-- Pricing & Subscription Section -->
+  <section id="pricing" class="pricing-section" style="padding: 90px 24px 70px 24px; max-width: 1200px; margin: 0 auto;">
+    <div class="section-title" style="text-align: center; margin-bottom: 50px;">
+      <div class="hero-badge" style="display: inline-block; margin-bottom: 14px; font-size: 0.85rem; padding: 6px 16px; background: rgba(244,195,117,0.12); border: 1px solid rgba(244,195,117,0.35); border-radius: 999px; color: var(--gold); font-weight: 700;">💎 Sovereign Desktop Subscriptions</div>
+      <h2 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; color: var(--text); margin-bottom: 14px;">Simple, Transparent Pricing</h2>
+      <p style="font-size: 1.1rem; color: var(--text-muted); max-width: 680px; margin: 0 auto; line-height: 1.6;">Everything unlocked. 100% offline sovereign execution, 81-screen spatial canvas matrix, live neural shaders, and local AI studio with zero telemetry.</p>
+    </div>
+
+    <div class="pricing-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; align-items: stretch;">
+      <!-- Card 1: Monthly Flexibility -->
+      <div class="pricing-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 36px 30px; display: flex; flex-direction: column; justify-content: space-between; backdrop-filter: blur(20px);">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 1.3rem; font-weight: 700; color: var(--text);">Genie Pro Monthly</h3>
+            <span style="font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.1); color: var(--text);">FLEXIBLE</span>
+          </div>
+          <div style="margin-bottom: 18px;">
+            <span style="font-size: 2.8rem; font-weight: 800; color: var(--text);">$19.99</span>
+            <span style="font-size: 1rem; color: var(--text-muted);">/ month</span>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Billed monthly ($239.88/yr equivalent)</div>
+          </div>
+          <p style="font-size: 0.92rem; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5;">Ideal for short-term projects and flexible workflow. Cancel anytime with a single tap in your Apple ID settings.</p>
+          <ul style="list-style: none; padding: 0; margin: 0 0 30px 0; display: flex; flex-direction: column; gap: 12px; font-size: 0.92rem; color: var(--text);">
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981;">✓</span> 30-Day Free Trial included</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981;">✓</span> Full 81-Screen Spatial Canvas Matrix</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981;">✓</span> Unified Code Studio & Miller Finder</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981;">✓</span> Local Ollama & Cloud Model Routing</li>
+          </ul>
+        </div>
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" style="display: block; text-align: center; padding: 14px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--text); font-weight: 600; text-decoration: none; transition: all 0.2s;">Start 30-Day Free Trial</a>
+      </div>
+
+      <!-- Card 2: Flagship Annual Pass ($120/yr) -->
+      <div class="pricing-card featured" style="background: linear-gradient(180deg, rgba(244,195,117,0.12) 0%, rgba(20,20,28,0.8) 100%); border: 2px solid var(--gold); border-radius: 20px; padding: 36px 30px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: 0 20px 50px rgba(244,195,117,0.18); backdrop-filter: blur(24px);">
+        <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: linear-gradient(90deg, #f59e0b, #eab308); color: #000; font-size: 0.75rem; font-weight: 800; padding: 4px 14px; border-radius: 999px; letter-spacing: 0.05em; text-transform: uppercase;">RECOMMENDED · 50% SAVINGS</div>
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; margin-top: 6px;">
+            <h3 style="font-size: 1.4rem; font-weight: 800; color: #fff;">Genie Annual Pass</h3>
+            <span style="font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(244,195,117,0.25); color: var(--gold);">BEST VALUE</span>
+          </div>
+          <div style="margin-bottom: 18px;">
+            <span style="font-size: 3.2rem; font-weight: 900; color: #fff;">$120</span>
+            <span style="font-size: 1.1rem; color: var(--gold); font-weight: 600;">/ year</span>
+            <div style="font-size: 0.95rem; color: #10b981; font-weight: 700; margin-top: 4px;">Just $10.00 / month • Save 50% vs Monthly</div>
+          </div>
+          <p style="font-size: 0.92rem; color: rgba(255,255,255,0.85); margin-bottom: 24px; line-height: 1.5;">The definitive Mac experience. All features, shaders, hypervisors, and expansion packs fully unlocked.</p>
+          <ul style="list-style: none; padding: 0; margin: 0 0 30px 0; display: flex; flex-direction: column; gap: 12px; font-size: 0.92rem; color: #fff;">
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> <strong>30-Day Free Trial</strong> included</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Complete 81-Screen Spatial Canvas Matrix</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Living Neural Bloom Shaders & 4K Shaders</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> The Brick Wall Context Firewall & AST Synthesis</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Sovereign Apple Silicon Linux Hypervisor</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> OLED World Clock Pillows & Animated Widgets</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> All 4 Expansion Packs (Cyberpunk, Zen, Cosmos, Retro)</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981; font-weight: bold;">✓</span> Priority updates & direct engineering support</li>
+          </ul>
+        </div>
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" style="display: block; text-align: center; padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 800; font-size: 1rem; text-decoration: none; box-shadow: 0 4px 15px rgba(245,158,11,0.4); transition: all 0.2s;">Start 30-Day Free Trial ($120/yr) →</a>
+      </div>
+
+      <!-- Card 3: Founder's 2-Year Pass -->
+      <div class="pricing-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 36px 30px; display: flex; flex-direction: column; justify-content: space-between; backdrop-filter: blur(20px);">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 1.3rem; font-weight: 700; color: var(--text);">Founder's 2-Year Pass</h3>
+            <span style="font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(168,85,247,0.2); color: #c084fc;">58% SAVINGS</span>
+          </div>
+          <div style="margin-bottom: 18px;">
+            <span style="font-size: 2.8rem; font-weight: 800; color: var(--text);">$199</span>
+            <span style="font-size: 1rem; color: var(--text-muted);">/ 2 years</span>
+            <div style="font-size: 0.85rem; color: #10b981; font-weight: 600; margin-top: 4px;">Only $8.29 / month ($99.50/yr)</div>
+          </div>
+          <p style="font-size: 0.92rem; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5;">For passionate creators who want to lock in 24 months of continuous access at the absolute lowest price.</p>
+          <ul style="list-style: none; padding: 0; margin: 0 0 30px 0; display: flex; flex-direction: column; gap: 12px; font-size: 0.92rem; color: var(--text);">
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981;">✓</span> 30-Day Free Trial included</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981;">✓</span> Locked-in $8.29/month rate for 24 months</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981;">✓</span> Direct developer feedback line with Nicholas</li>
+            <li style="display: flex; align-items: center; gap: 10px;"><span style="color: #10b981;">✓</span> All current and future expansion drops</li>
+          </ul>
+        </div>
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" style="display: block; text-align: center; padding: 14px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--text); font-weight: 600; text-decoration: none; transition: all 0.2s;">Get 2-Year Founder Pass</a>
+      </div>
+    </div>
+  </section>
+
   <!-- Contact & Developer Support Section -->
   <section id="contact" class="contact-section">
     <div class="section-title">
@@ -3600,7 +3696,7 @@
           <li><a href="#stats" data-i18n="nav_stats">Speed & Stats</a></li>
           <li><a href="#architecture" data-i18n="nav_architecture">Architecture</a></li>
           <li><a href="#features" data-i18n="nav_features">Features</a></li>
-          <li><a href="#screenshots" data-i18n="nav_showcase">Showcase</a></li>
+          <li><a href="#showcase" data-i18n="nav_showcase">Showcase</a></li>
         </ul>
       </div>
 
@@ -3629,7 +3725,7 @@
     </div>
 
     <div class="footer-bottom">
-      <div data-i18n="footer_copyright">Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.</div>
+      <div data-i18n="footer_copyright">Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party</div>
       <div data-i18n="footer_apple">Designed with precision in California. macOS, Apple Silicon, and App Store are trademarks of Apple Inc.</div>
     </div>
   </footer>
@@ -3970,15 +4066,33 @@
       },
       {
         id: 17,
-        title: "3×3 Spatial Matrix Overview",
-        caption: "Full-screen capture of all 9 independent workspaces on a 14\" display without clipping.",
-        img: "assets/screenshots/17_spatial_3x3_matrix_overview.png"
+        title: "World Clock Pillows & Time Travel",
+        caption: "Tactile blackout cards with specular rim lighting, multi-city dials, micro-hands, and temporal scrub.",
+        img: "assets/screenshots/17_world_clock_pillows.png"
       },
       {
         id: 18,
-        title: "Dialogue Studio & Omni-Search",
-        caption: "Floating conversational intelligence HUD with omni-search input canvas and system commands.",
-        img: "assets/screenshots/18_dialogue_studio_omni_search.png"
+        title: "Sovereign Linux Hypervisor",
+        caption: "Native Apple Hypervisor.framework Linux microVMs and dedicated agent sandbox environments.",
+        img: "assets/screenshots/18_hypervisor_ai_stations.png"
+      },
+      {
+        id: 19,
+        title: "Genie Chat & Live Web Studio",
+        caption: "Split-view dual-tab workspace pairing autonomous LLM coding agent with high-fidelity WebKit canvas.",
+        img: "assets/screenshots/19_chat_dual_tab_preview.png"
+      },
+      {
+        id: 20,
+        title: "System Diagnostics Sentinel",
+        caption: "Live Apple Silicon CPU/GPU cluster telemetry, memory pressure, and emergency overheat alert guards.",
+        img: "assets/screenshots/20_system_diagnostics_sentinel.png"
+      },
+      {
+        id: 21,
+        title: "Spatial Desktop Matrix Plane",
+        caption: "Bird's-eye spatial overview displaying all 9 continuous desktop planes simultaneously at 120 FPS.",
+        img: "assets/screenshots/21_spatial_desktop_grid.png"
       }
     ];
 

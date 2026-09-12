@@ -118,10 +118,13 @@ public final class GenieVisualToolLoopEngine: @unchecked Sendable {
         self.currentIteration = 0
         self.loopHistory.removeAll()
         self.lastActionSummary = "Starting visual agent loop: '\(goal)'"
+        GenieDualStreamWriter.shared.resetStreams()
+        GenieDualStreamWriter.shared.ingestTokenFragment("<div class=\"genie-card agent-goal\">\n  <h3>🎯 Autonomous Goal</h3>\n  <p>\(goal)</p>\n</div>")
 
         defer {
             self.isLoopRunning = false
             self.lastActionSummary = "Loop completed: '\(goal)'"
+            GenieDualStreamWriter.shared.flushRemaining()
         }
 
         for i in 1...maxIterations {
@@ -131,6 +134,7 @@ public final class GenieVisualToolLoopEngine: @unchecked Sendable {
             // Step 1: Perceive
             guard let perception = await captureAndParseScreen(targetScreen: targetScreen) else {
                 self.loopHistory.append("[\(i)] Failed to capture screen.")
+                GenieDualStreamWriter.shared.ingestTokenFragment("<div class=\"genie-card error\">\n  <p>Step \(i): Failed to capture screen framebuffer.</p>\n</div>")
                 break
             }
 
@@ -140,11 +144,21 @@ public final class GenieVisualToolLoopEngine: @unchecked Sendable {
             guard let nextAction = await actionPlanner(perception, i) else {
                 self.lastActionSummary = "Goal verified complete by planner at step \(i)."
                 self.loopHistory.append("[\(i)] Goal satisfied.")
+                GenieDualStreamWriter.shared.ingestTokenFragment("<div class=\"genie-card success\">\n  <h3>✅ Goal Achieved</h3>\n  <p>Verified complete at step \(i) of \(maxIterations).</p>\n</div>")
                 return true
             }
 
             self.lastActionSummary = "Executing: \(nextAction.summary)"
             self.loopHistory.append("[\(i)] Executing: \(nextAction.summary)")
+
+            // Stream user-facing block
+            let actionBlock = """
+            <div class=\"genie-card action-step\">
+              <h4>Step \(i): \(nextAction.summary)</h4>
+              <p>Perceived \(perception.elements.count) elements on screen.</p>
+            </div>
+            """
+            GenieDualStreamWriter.shared.ingestTokenFragment(actionBlock)
 
             // Step 3: Act (Trigger Action Burst)
             GenieAdaptiveFrameGovernor.shared.triggerActionBurst()
@@ -157,3 +171,4 @@ public final class GenieVisualToolLoopEngine: @unchecked Sendable {
         return true
     }
 }
+

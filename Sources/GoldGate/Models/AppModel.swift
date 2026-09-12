@@ -527,25 +527,16 @@ class AppModel: ObservableObject {
             return cached
         }
         let raw = NSWorkspace.shared.icon(forFile: path)
-        raw.size = NSSize(width: 1024, height: 1024)
+        let targetSize: CGFloat = 256.0
+        raw.size = NSSize(width: targetSize, height: targetSize)
 
-        // Prefer the largest bitmap representation to reduce fuzziness while scaling.
-        let reps = raw.representations.compactMap { $0 as? NSBitmapImageRep }
-        if let biggest = reps.max(by: {
-            ($0.pixelsWide * $0.pixelsHigh) < ($1.pixelsWide * $1.pixelsHigh)
-        }) {
-            let hi = NSImage(size: NSSize(width: biggest.pixelsWide, height: biggest.pixelsHigh))
-            hi.addRepresentation(biggest)
-            IconCacheBox.shared.set(hi, for: path)
-            return hi
-        }
-
+        // Downsample to crisp 256x256 Retina @2x (saves >150 MB of uncompressed bitmap RAM)
         if let rep = raw.bestRepresentation(
-            for: NSRect(x: 0, y: 0, width: 1024, height: 1024),
+            for: NSRect(x: 0, y: 0, width: targetSize, height: targetSize),
             context: nil,
             hints: [.interpolation: NSImageInterpolation.high.rawValue]
         ) {
-            let highResImage = NSImage(size: NSSize(width: 1024, height: 1024))
+            let highResImage = NSImage(size: NSSize(width: targetSize, height: targetSize))
             highResImage.addRepresentation(rep)
             IconCacheBox.shared.set(highResImage, for: path)
             return highResImage
@@ -562,7 +553,8 @@ private final class IconCacheBox: @unchecked Sendable {
     private let cache = NSCache<NSString, NSImage>()
 
     init() {
-        cache.countLimit = 500
+        cache.countLimit = 150
+        cache.totalCostLimit = 24 * 1024 * 1024 // 24 MB Max RAM budget for app icons
     }
 
     func get(_ key: String) -> NSImage? {
@@ -570,6 +562,7 @@ private final class IconCacheBox: @unchecked Sendable {
     }
 
     func set(_ image: NSImage, for key: String) {
-        cache.setObject(image, forKey: key as NSString)
+        let cost = Int(image.size.width * image.size.height * 4)
+        cache.setObject(image, forKey: key as NSString, cost: cost)
     }
 }

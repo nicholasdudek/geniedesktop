@@ -1,0 +1,32 @@
+{
+  "base_model_name_or_path": "nvidia/Mistral-NeMo-12B-Base",
+  "target_model_family": "nemo-30b",
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "r": 16,
+  "bias": "none",
+  "task_type": "CAUSAL_LM",
+  "peft_type": "LORA",
+  "target_modules": [
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj"
+  ],
+  "modules_to_save": null,
+  "inference_mode": true,
+  "fan_in_fan_out": false,
+  "genie_version": "4.0.0-quantum-2028",
+  "tool_capabilities": [
+    "run_command",
+    "desktop_agent",
+    "spatial_dom",
+    "warp_jump",
+    "skip_cursor",
+    "split_desktop",
+    "simultaneous_dual_input"
+  ]
+}

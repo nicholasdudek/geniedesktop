@@ -96,7 +96,7 @@ public struct WorkspaceTab: Identifiable, Equatable {
         ],
         terminalInput: String = "",
         browserURLString: String = "https://www.google.com",
-        repoPath: String = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Developer/GoldGate").path,
+        repoPath: String = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop/Genie/GoldGate").path,
         gitBranch: String = "main",
         selectedFilePath: String? = nil,
         selectedGitHubSubTab: String = "code"

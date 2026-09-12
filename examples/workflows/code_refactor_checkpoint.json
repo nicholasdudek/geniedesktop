@@ -1,0 +1,58 @@
+{
+  "task_id": "run_code_refactor_checkpoint_02",
+  "name": "Atomic Code Modification with Read-Back Checkpoint",
+  "model": "genie-master",
+  "checkpoints": {
+    "pre_execution_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "restore_enabled": true
+  },
+  "steps": [
+    {
+      "step_index": 1,
+      "tool": "search_files",
+      "parameters": {
+        "query": "showMiniDockInTopDashboard",
+        "path": "Sources/GoldGate/Views"
+      },
+      "result": {
+        "matches": [
+          {
+            "file": "Sources/GoldGate/Views/LiquidGlassTopDashboardView.swift",
+            "line": 19,
+            "content": "@AppStorage(PrefKey.showMiniDockInTopDashboard) var showMiniDockInTopDashboard: Bool = false"
+          }
+        ]
+      }
+    },
+    {
+      "step_index": 2,
+      "tool": "edit_file",
+      "requires_approval": true,
+      "approval_status": "APPROVED_BY_USER",
+      "parameters": {
+        "path": "Sources/GoldGate/Views/LiquidGlassTopDashboardView.swift",
+        "target_content": "@AppStorage(PrefKey.showMiniDockInTopDashboard) var showMiniDockInTopDashboard: Bool = false",
+        "replacement_content": "@AppStorage(PrefKey.showMiniDockInTopDashboard) var showMiniDockInTopDashboard: Bool = true"
+      },
+      "result": {
+        "status": "SUCCESS",
+        "atomic_readback_verified": true,
+        "bytes_written": 79930,
+        "diff_preview": "- false\n+ true"
+      }
+    },
+    {
+      "step_index": 3,
+      "tool": "run_command",
+      "requires_approval": true,
+      "approval_status": "APPROVED_BY_USER",
+      "parameters": {
+        "command": "swift build -c debug"
+      },
+      "result": {
+        "exit_code": 0,
+        "output": "Building for debugging...\n[2/2] Genie-product\nBuild complete! (3.31 sec)"
+      }
+    }
+  ]
+}

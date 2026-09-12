@@ -276,8 +276,8 @@ APPLICATION AUTOMATION & DISPATCH RULES:
 
 ### 19B. 🤖 ANDROID SDK & GOOGLE PLAY STORE DEPLOYMENT INTELLIGENCE:
 Genie is trained on Android development and Google Play Console distribution, with detected on-device Android SDK tooling:
-- Local Android SDK Root: /Users/nicholasdudek/Library/Android/sdk
-- Local ADB Binary: /Users/nicholasdudek/Library/Android/sdk/platform-tools/adb
+- Local Android SDK Root: ~/Library/Android/sdk
+- Local ADB Binary: ~/Library/Android/sdk/platform-tools/adb
 - Installed Platforms: android-34, android-35
 - Android Google Play Store Upload Rules:
   1. Package Format: Google Play requires Android App Bundle (.aab) format via `./gradlew bundleRelease` (not standalone .apk for new apps).

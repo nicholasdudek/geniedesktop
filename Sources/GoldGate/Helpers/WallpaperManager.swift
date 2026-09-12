@@ -52,10 +52,10 @@ public final class WallpaperManager: ObservableObject {
     private var refreshTimer: Timer?
 
     private init() {
-        thumbnailCache.countLimit = 30
-        // Each entry is a screen-sized 32-bit bitmap (~19 MB at 2704x1756@2x); keep only the
-        // current wallpaper plus the one either side of a switch.
-        displayReadyCache.countLimit = 3
+        thumbnailCache.countLimit = 20
+        thumbnailCache.totalCostLimit = 8 * 1024 * 1024 // 8 MB Max
+        displayReadyCache.countLimit = 2
+        displayReadyCache.totalCostLimit = 36 * 1024 * 1024 // 36 MB Max budget
         loadAvailableWallpapers()
         refresh()
         setupLiveMonitoring()
@@ -101,6 +101,7 @@ public final class WallpaperManager: ObservableObject {
         }
         baseDirs.append("/Applications/Genie.app/Contents/Resources/Wallpapers")
         let userHome = FileManager.default.homeDirectoryForCurrentUser.path
+        baseDirs.append("\(userHome)/Desktop/Genie/GoldGate/Sources/GoldGate/Resources/Wallpapers")
         baseDirs.append("\(userHome)/Developer/GoldGate/Wallpapers")
         baseDirs.append("\(userHome)/Desktop/Genie/GoldGate/Wallpapers")
         baseDirs.append("\(userHome)/Desktop")
@@ -206,7 +207,12 @@ public final class WallpaperManager: ObservableObject {
             }
         }
 
-        // 3. Fallback to 4K Golden Gate Dynamic
+        // 3. Fallback to Genie Default Load Screen
+        if let defaultLoad = loadBundledWallpaper(named: "GenieDefaultLoadScreen") {
+            lastLoadedPath = findBundledWallpaperPath(named: "GenieDefaultLoadScreen")
+            return defaultLoad
+        }
+
         if let gg = loadBundledWallpaper(named: "GoldenGateDynamic") ?? loadBundledWallpaper(named: "GoldenGateSunset") ?? loadBundledWallpaper(named: "GoldenGateAerial4K") {
             lastLoadedPath = findBundledWallpaperPath(named: "GoldenGateDynamic")
             return gg
@@ -230,6 +236,7 @@ public final class WallpaperManager: ObservableObject {
 
         // 1. Prominently feature all 4K & 5K Genie generated wallpapers at the very top
         let geniePresets: [(id: String, name: String, file: String, fallback: String, category: WallpaperCategory)] = [
+            ("genie_default_load", "Genie Default Load Screen 🌟", "GenieDefaultLoadScreen", "GenieDefaultLoadScreen", .dynamic),
             ("neural_bloom", "Neural Bloom (Interactive Canvas)", "Neural Bloom", "NeuralBloom", .dynamic),
             ("genie_dynamic", "Genie Dynamic 4K (Day / Sunset)", "GenieDynamic", "GoldenGateDynamic", .dynamic),
             ("genie_sunset", "Genie Sunset 4K (California Dusk)", "GenieSunset", "GoldenGateSunset", .landscape),
@@ -285,7 +292,7 @@ public final class WallpaperManager: ObservableObject {
 
             for case let fileURL as URL in enumerator {
                 let ext = fileURL.pathExtension.lowercased()
-                if ["heic", "jpg", "jpeg", "png", "html"].contains(ext) {
+                if ["heic", "jpg", "jpeg", "png", "html", "madesktop"].contains(ext) {
                     let path = fileURL.path
                     let isSolidColor = path.contains("Solid Colors")
                     let isAppleSystemThumbnail = path.contains("/System/Library/Desktop Pictures/.thumbnails") || path.contains("aerials/thumbnails")
@@ -295,10 +302,10 @@ public final class WallpaperManager: ObservableObject {
                         continue
                     }
 
-                    // Check file size (Solid Colors are ~300 bytes, official wallpapers >= 5 KB)
+                    // Check file size (Solid Colors are ~300 bytes, official wallpapers >= 5 KB, madesktop plists are ~500 bytes)
                     if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
                        let fileSize = attrs[.size] as? Int {
-                        if isSolidColor {
+                        if isSolidColor || ext == "madesktop" {
                             if fileSize < 50 { continue }
                         } else if ext == "html" {
                             if fileSize < 50 { continue }
@@ -320,9 +327,9 @@ public final class WallpaperManager: ObservableObject {
                             category = .studio
                         } else if ext == "html" || cleanName.lowercased().contains("neural") || cleanName.lowercased().contains("bloom") || cleanName.lowercased().contains("dark") || cleanName.lowercased().contains("dynamic") || cleanName.lowercased().contains("light") || cleanName.lowercased().contains("golden") {
                             category = .dynamic
-                        } else if cleanName.lowercased().contains("sunset") || cleanName.lowercased().contains("cliff") || cleanName.lowercased().contains("beach") || cleanName.lowercased().contains("coast") || cleanName.lowercased().contains("valley") || cleanName.lowercased().contains("horizon") || cleanName.lowercased().contains("sur") || cleanName.lowercased().contains("catalina") || cleanName.lowercased().contains("sonoma") {
+                        } else if cleanName.lowercased().contains("sunset") || cleanName.lowercased().contains("cliff") || cleanName.lowercased().contains("beach") || cleanName.lowercased().contains("coast") || cleanName.lowercased().contains("valley") || cleanName.lowercased().contains("horizon") || cleanName.lowercased().contains("sur") || cleanName.lowercased().contains("catalina") || cleanName.lowercased().contains("sonoma") || cleanName.lowercased().contains("desert") || cleanName.lowercased().contains("lake") || cleanName.lowercased().contains("mountain") {
                             category = .landscape
-                        } else if cleanName.lowercased().contains("grid") || cleanName.lowercased().contains("chroma") || cleanName.lowercased().contains("iridescence") || cleanName.lowercased().contains("dome") || cleanName.lowercased().contains("radial") {
+                        } else if cleanName.lowercased().contains("grid") || cleanName.lowercased().contains("chroma") || cleanName.lowercased().contains("iridescence") || cleanName.lowercased().contains("dome") || cleanName.lowercased().contains("radial") || cleanName.lowercased().contains("motion") || cleanName.lowercased().contains("stream") || cleanName.lowercased().contains("hello") || cleanName.lowercased().contains("imac") {
                             category = .studio
                         } else {
                             category = .dynamic
@@ -356,6 +363,24 @@ public final class WallpaperManager: ObservableObject {
             let thumb = generateCuratedWallpaper(named: "Neural Bloom", targetSize: CGSize(width: 480, height: 270))
             thumbnailCache.setObject(thumb, forKey: key)
             return thumb
+        }
+
+        // Check if item is an Apple .madesktop plist
+        if item.path.hasSuffix(".madesktop") {
+            let baseName = URL(fileURLWithPath: item.path).deletingPathExtension().lastPathComponent
+            let candidateThumb = "/System/Library/Desktop Pictures/.thumbnails/\(baseName).heic"
+            if FileManager.default.fileExists(atPath: candidateThumb), let img = NSImage(contentsOfFile: candidateThumb) {
+                thumbnailCache.setObject(img, forKey: key)
+                return img
+            }
+            if let plistData = try? Data(contentsOf: URL(fileURLWithPath: item.path)),
+               let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any],
+               let thumbPath = plist["thumbnailPath"] as? String,
+               FileManager.default.fileExists(atPath: thumbPath),
+               let img = NSImage(contentsOfFile: thumbPath) {
+                thumbnailCache.setObject(img, forKey: key)
+                return img
+            }
         }
 
         if let image = NSImage(contentsOfFile: item.path) {
@@ -425,7 +450,8 @@ public final class WallpaperManager: ObservableObject {
             cgImage: flattened,
             size: CGSize(width: CGFloat(pixelsWide) / scale, height: CGFloat(pixelsHigh) / scale)
         )
-        displayReadyCache.setObject(ready, forKey: cacheKey)
+        let byteCost = pixelsWide * pixelsHigh * 4
+        displayReadyCache.setObject(ready, forKey: cacheKey, cost: byteCost)
         return ready
     }
 
@@ -490,6 +516,13 @@ public final class WallpaperManager: ObservableObject {
             if let img = NSImage(contentsOfFile: customPath) {
                 publishWallpaper(img, key: resolvedSourceKey())
                 return
+            } else if customPath.hasSuffix(".madesktop") {
+                let baseName = URL(fileURLWithPath: customPath).deletingPathExtension().lastPathComponent
+                let candidateThumb = "/System/Library/Desktop Pictures/.thumbnails/\(baseName).heic"
+                if let thumbImg = NSImage(contentsOfFile: candidateThumb) {
+                    publishWallpaper(thumbImg, key: resolvedSourceKey())
+                    return
+                }
             }
         } else {
             self.activeHTMLWallpaperPath = nil
@@ -554,6 +587,15 @@ public final class WallpaperManager: ObservableObject {
                 success = true
             } catch {
                 print("Failed to set desktop image for screen: \(error)")
+                // Fallback for .madesktop: if direct setting fails, try thumbnail or candidate
+                if path.hasSuffix(".madesktop") {
+                    let baseName = fileURL.deletingPathExtension().lastPathComponent
+                    let candidateThumb = "/System/Library/Desktop Pictures/.thumbnails/\(baseName).heic"
+                    if FileManager.default.fileExists(atPath: candidateThumb) {
+                        try? NSWorkspace.shared.setDesktopImageURL(URL(fileURLWithPath: candidateThumb), for: screen, options: [:])
+                        success = true
+                    }
+                }
             }
         }
 

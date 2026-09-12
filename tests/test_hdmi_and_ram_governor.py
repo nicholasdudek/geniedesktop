@@ -58,7 +58,7 @@ def test_hdmi_capture_dual_channel_forking():
     assert "onFrameCaptured" in content
 
     # Neural Training Channel (Channel 2)
-    assert "Channel 2: Neural Training Channel (Zero-Copy Fork)" in content
+    assert "Channel 2: Neural Training & Agent Inference Channel (Zero-Copy Fork" in content
     assert "isPixelForkActive" in content
     assert "forkedDisplayFrames" in content
     assert "forkedTrainingFrames" in content

@@ -23,7 +23,7 @@ public enum GenieWebAssetResolver {
         }
 
         // 3. Local GoldGate development repository web path
-        let devWeb = URL(fileURLWithPath: "/Users/nicholasdudek/Desktop/Genie/GoldGate/web")
+        let devWeb = fm.homeDirectoryForCurrentUser.appendingPathComponent("Desktop/Genie/GoldGate/web")
         if fm.fileExists(atPath: devWeb.appendingPathComponent("assets").path) {
             return devWeb
         }

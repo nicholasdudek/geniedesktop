@@ -1,3 +1,8 @@
+// AXUIElement accessibility automation and NSApplication-level UI control have no
+// iOS equivalent (no cross-app UI tree, no CGEvent injection) — this entire file
+// is macOS-only. See AgentToolCatalog.platformUnavailable in AgentTypes.swift for
+// the catalog-side half of this gate.
+#if os(macOS)
 import AppKit
 import ApplicationServices
 
@@ -11,7 +16,11 @@ public enum AgentTextTransfer {
         guard range.location >= 0, range.length >= 0, range.location <= source.length,
               range.length <= source.length - range.location else { throw AgentFailure("Invalid text selection; reread the field.") }
         let nsRange = NSRange(location: range.location, length: range.length)
-        guard Range(nsRange, in: value) != nil else { throw AgentFailure("Selection splits a Unicode character.") }
+        guard let swiftRange = Range(nsRange, in: value),
+              swiftRange.lowerBound.samePosition(in: value) != nil,
+              swiftRange.upperBound.samePosition(in: value) != nil else {
+            throw AgentFailure("Selection splits a Unicode character.")
+        }
         return source.replacingCharacters(in: nsRange, with: text)
     }
 }
@@ -106,6 +115,8 @@ public final class AgentDesktopTools {
             let value = try text(target(args["element_id"]!), scope: args["scope"]!)
             if name == "copy_text" { try setClipboard(value) }
             return AgentToolResult(success: true, output: value)
+        case "desktop_agent":
+            return try await performDesktop(args)
         case "paste_text":
             let destination = try target(args["element_id"]!)
             let before = try text(destination, scope: "value")
@@ -150,4 +161,162 @@ public final class AgentDesktopTools {
         default: throw AgentFailure("Unknown desktop tool.")
         }
     }
+
+    // MARK: - desktop_agent
+    //
+    // Separate from the read_ui/copy_text/paste_text family above: those act on one
+    // Accessibility element the model already identified, these post raw HID events at
+    // screen coordinates, so they work even on apps with no usable accessibility tree.
+
+    private static let keyCodes: [String: CGKeyCode] = [
+        "a": 0x00, "s": 0x01, "d": 0x02, "f": 0x03, "h": 0x04, "g": 0x05, "z": 0x06, "x": 0x07,
+        "c": 0x08, "v": 0x09, "b": 0x0B, "q": 0x0C, "w": 0x0D, "e": 0x0E, "r": 0x0F, "y": 0x10,
+        "t": 0x11, "1": 0x12, "2": 0x13, "3": 0x14, "4": 0x15, "6": 0x16, "5": 0x17, "9": 0x19,
+        "7": 0x1A, "8": 0x1C, "0": 0x1D, "o": 0x1F, "u": 0x20, "i": 0x22, "p": 0x23, "l": 0x25,
+        "j": 0x26, "k": 0x28, "n": 0x2D, "m": 0x2E, "return": 0x24, "tab": 0x30, "space": 0x31,
+        "delete": 0x33, "escape": 0x35, "up": 0x7E, "down": 0x7D, "left": 0x7B, "right": 0x7C,
+    ]
+
+    /// Resolves a bundle ID or display name through LaunchServices and launches it.
+    /// Mirrors `GenieNativeSystem.launchApplication(named:)` on the host side.
+    private func launchApplication(named name: String) async throws -> Bool {
+        let bare = name.hasSuffix(".app") ? String(name.dropLast(4)) : name
+        if let running = NSWorkspace.shared.runningApplications
+            .first(where: { $0.bundleIdentifier == name || $0.localizedName == bare }) {
+            return running.activate()
+        }
+        var appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: name)
+        if appURL == nil {
+            let roots = ["/Applications", "/Applications/Utilities",
+                         "/System/Applications", "/System/Applications/Utilities",
+                         NSHomeDirectory() + "/Applications"]
+            appURL = roots.lazy
+                .map { URL(fileURLWithPath: $0 + "/" + bare + ".app") }
+                .first { FileManager.default.fileExists(atPath: $0.path) }
+        }
+        guard let appURL else { return false }
+        _ = try await NSWorkspace.shared.openApplication(
+            at: appURL, configuration: NSWorkspace.OpenConfiguration())
+        return true
+    }
+
+    private func point(_ args: [String: String], _ xKey: String = "x", _ yKey: String = "y") throws -> CGPoint {
+        guard let x = Double(args[xKey] ?? ""), let y = Double(args[yKey] ?? "") else {
+            throw AgentFailure("\(xKey)/\(yKey) must be numbers.")
+        }
+        return CGPoint(x: x, y: y)
+    }
+
+    private func postClick(at location: CGPoint, button: CGMouseButton, downType: CGEventType, upType: CGEventType) throws {
+        guard let down = CGEvent(mouseEventSource: nil, mouseType: downType, mouseCursorPosition: location, mouseButton: button),
+              let up = CGEvent(mouseEventSource: nil, mouseType: upType, mouseCursorPosition: location, mouseButton: button) else {
+            throw AgentFailure("Cannot create mouse events.")
+        }
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+    }
+
+    private func performDesktop(_ args: [String: String]) async throws -> AgentToolResult {
+        guard let action = args["action"] else { throw AgentFailure("action is required.") }
+        switch action {
+        case "open":
+            guard let name = args["app"] else { throw AgentFailure("app is required.") }
+            // LaunchServices rather than /usr/bin/open: same result, no subprocess,
+            // and it still works under the App Store sandbox, where spawning a
+            // binary outside the app bundle does not.
+            guard try await launchApplication(named: name) else {
+                throw AgentFailure("Could not open \(name); check the app name.")
+            }
+            return AgentToolResult(success: true, output: "Opened \(name).")
+        case "move":
+            let location = try point(args)
+            guard let event = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: location, mouseButton: .left) else {
+                throw AgentFailure("Cannot create move event.")
+            }
+            event.post(tap: .cghidEventTap)
+            return AgentToolResult(success: true, output: "Moved to \(location).")
+        case "click", "double_click", "right_click":
+            let location = try point(args)
+            let button: CGMouseButton = action == "right_click" ? .right : .left
+            let (downType, upType): (CGEventType, CGEventType) = action == "right_click" ? (.rightMouseDown, .rightMouseUp) : (.leftMouseDown, .leftMouseUp)
+            try postClick(at: location, button: button, downType: downType, upType: upType)
+            if action == "double_click" { try postClick(at: location, button: button, downType: downType, upType: upType) }
+            return AgentToolResult(success: true, output: "\(action) at \(location).")
+        case "drag":
+            let from = try point(args, "x", "y")
+            let to = try point(args, "x2", "y2")
+            guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: from, mouseButton: .left),
+                  let drag = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: to, mouseButton: .left),
+                  let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: to, mouseButton: .left) else {
+                throw AgentFailure("Cannot create drag events.")
+            }
+            down.post(tap: .cghidEventTap)
+            try await Task.sleep(nanoseconds: 30_000_000)
+            drag.post(tap: .cghidEventTap)
+            try await Task.sleep(nanoseconds: 30_000_000)
+            up.post(tap: .cghidEventTap)
+            return AgentToolResult(success: true, output: "Dragged from \(from) to \(to).")
+        case "scroll":
+            let dx = Int32(Double(args["dx"] ?? "0") ?? 0), dy = Int32(Double(args["dy"] ?? "0") ?? 0)
+            guard let event = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2, wheel1: dy, wheel2: dx, wheel3: 0) else {
+                throw AgentFailure("Cannot create scroll event.")
+            }
+            event.post(tap: .cghidEventTap)
+            return AgentToolResult(success: true, output: "Scrolled dx=\(dx) dy=\(dy).")
+        case "type":
+            guard let text = args["text"] else { throw AgentFailure("text is required.") }
+            guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
+                  let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else {
+                throw AgentFailure("Cannot create keyboard events.")
+            }
+            let units = Array(text.utf16)
+            down.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+            up.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+            return AgentToolResult(success: true, output: "Typed \(units.count) characters.")
+        case "key":
+            guard let combo = args["combo"]?.lowercased() else { throw AgentFailure("combo is required, e.g. cmd+s.") }
+            var parts = combo.split(separator: "+").map(String.init)
+            guard let keyName = parts.popLast(), let code = Self.keyCodes[keyName] else {
+                throw AgentFailure("Unknown key in combo: \(combo).")
+            }
+            var flags: CGEventFlags = []
+            for modifier in parts {
+                switch modifier {
+                case "cmd", "command": flags.insert(.maskCommand)
+                case "shift": flags.insert(.maskShift)
+                case "opt", "option", "alt": flags.insert(.maskAlternate)
+                case "ctrl", "control": flags.insert(.maskControl)
+                default: throw AgentFailure("Unknown modifier in combo: \(modifier).")
+                }
+            }
+            guard let down = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true),
+                  let up = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false) else {
+                throw AgentFailure("Cannot create key events.")
+            }
+            down.flags = flags; up.flags = flags
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+            return AgentToolResult(success: true, output: "Sent \(combo).")
+        case "snapshot":
+            guard CGPreflightScreenCaptureAccess() else {
+                throw AgentFailure("Enable Screen Recording access for Genie in System Settings, then retry.")
+            }
+            guard let image = CGWindowListCreateImage(.infinite, .optionOnScreenOnly, kCGNullWindowID, .bestResolution) else {
+                throw AgentFailure("Screen capture returned no image.")
+            }
+            let bitmap = NSBitmapImageRep(cgImage: image)
+            guard let jpeg = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.6]) else {
+                throw AgentFailure("Could not encode screenshot.")
+            }
+            guard jpeg.count <= 900_000 else {
+                throw AgentFailure("Screenshot exceeds the inline size limit at full screen resolution.")
+            }
+            return AgentToolResult(success: true, output: jpeg.base64EncodedString())
+        default:
+            throw AgentFailure("Unknown desktop_agent action: \(action)")
+        }
+    }
 }
+#endif

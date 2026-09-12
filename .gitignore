@@ -24,3 +24,8 @@ Genie.dmg
 Genie.pkg
 Genie.zip
 Artifacts/
+
+# Large ML artifacts — kept on disk, never in git history (>50 MB each)
+*.pt
+*.safetensors
+UnifiedTraining/genie_nemo_30b_lora_adapter.zip

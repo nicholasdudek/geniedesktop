@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Genie Agent Tool Catalog",
+  "description": "Validated 17-tool catalog executed natively on Apple Silicon with atomic pre-execution checkpoints and human approval gates.",
+  "tools": [
+    {
+      "name": "list_files",
+      "category": "filesystem",
+      "description": "Lists workspace files up to 2,000 entries excluding build artifacts (.build, DerivedData, node_modules).",
+      "requires_approval": false,
+      "parameters": {
+        "path": {
+          "type": "string",
+          "description": "Relative or absolute directory path"
+        },
+        "max_depth": {
+          "type": "integer",
+          "default": 3,
+          "description": "Maximum directory traversal depth"
+        }
+      }
+    },
+    {
+      "name": "read_file",
+      "category": "filesystem",
+      "description": "Reads file contents up to 5 MB UTF-8 text with line numbering support.",
+      "requires_approval": false,
+      "parameters": {
+        "path": {
+          "type": "string",
+          "description": "Path to file to read"
+        },
+        "start_line": {
+          "type": "integer",
+          "description": "Optional 1-indexed starting line"
+        },
+        "end_line": {
+          "type": "integer",
+          "description": "Optional 1-indexed ending line"
+        }
+      }
+    },
+    {
+      "name": "search_files",
+      "category": "filesystem",
+      "description": "Literal text or regex substring search across workspace files up to 100 matches.",
+      "requires_approval": false,
+      "parameters": {
+        "query": {
+          "type": "string",
+          "description": "Search term or regex pattern"
+        },
+        "path": {
+          "type": "string",
+          "description": "Directory to search within"
+        }
+      }
+    },
+    {
+      "name": "merge_files",
+      "category": "filesystem",
+      "description": "Three-way text merge preview only \u2014 writes nothing. Previews conflicts before commit.",
+      "requires_approval": false,
+      "parameters": {
+        "base_path": {
+          "type": "string"
+        },
+        "target_path": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "edit_file",
+      "category": "filesystem",
+      "description": "Single-match exact string replacement in a workspace text file with atomic read-back verification.",
+      "requires_approval": true,
+      "parameters": {
+        "path": {
+          "type": "string",
+          "description": "Target file to modify"
+        },
+        "target_content": {
+          "type": "string",
+          "description": "Exact text chunk to replace"
+        },
+        "replacement_content": {
+          "type": "string",
+          "description": "New replacement content"
+        }
+      }
+    },
+    {
+      "name": "write_file",
+      "category": "filesystem",
+      "description": "Writes or creates a file with atomic read-back and expected-content check.",
+      "requires_approval": true,
+      "parameters": {
+        "path": {
+          "type": "string",
+          "description": "File path to create or overwrite"
+        },
+        "content": {
+          "type": "string",
+          "description": "Complete file content to write"
+        }
+      }
+    },
+    {
+      "name": "run_command",
+      "category": "system",
+      "description": "Executes a shell command in an isolated process group with 60s timeout.",
+      "requires_approval": true,
+      "parameters": {
+        "command": {
+          "type": "string",
+          "description": "Terminal command to execute"
+        },
+        "working_directory": {
+          "type": "string",
+          "description": "Working directory for execution"
+        }
+      }
+    },
+    {
+      "name": "read_ui",
+      "category": "accessibility",
+      "description": "Inspects a running application accessibility tree; returns UI element hierarchy and identifiers.",
+      "requires_approval": false,
+      "parameters": {
+        "bundle_id": {
+          "type": "string",
+          "description": "Target macOS application bundle identifier"
+        }
+      }
+    },
+    {
+      "name": "grab_text",
+      "category": "accessibility",
+      "description": "Reads exact text from an element ID returned by read_ui.",
+      "requires_approval": false,
+      "parameters": {
+        "element_id": {
+          "type": "string",
+          "description": "Unique UI element identifier"
+        }
+      }
+    },
+    {
+      "name": "copy_text",
+      "category": "accessibility",
+      "description": "Copies an observed element text to the clipboard with verified read-back.",
+      "requires_approval": true,
+      "parameters": {
+        "element_id": {
+          "type": "string",
+          "description": "Element whose text is to be copied"
+        }
+      }
+    },
+    {
+      "name": "paste_text",
+      "category": "accessibility",
+      "description": "Pastes exact text into an observed element current selection with verification.",
+      "requires_approval": true,
+      "parameters": {
+        "element_id": {
+          "type": "string",
+          "description": "Target element for insertion"
+        },
+        "text": {
+          "type": "string",
+          "description": "Text to paste"
+        }
+      }
+    },
+    {
+      "name": "desktop_agent",
+      "category": "autonomous_gui",
+      "description": "Direct mouse, keyboard, and screen control. Actions: open, move, click, double_click, right_click, drag, scroll, type, key, snapshot.",
+      "requires_approval": true,
+      "parameters": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "open",
+            "move",
+            "click",
+            "double_click",
+            "right_click",
+            "drag",
+            "scroll",
+            "type",
+            "key",
+            "snapshot"
+          ]
+        },
+        "coordinate": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "[x, y] screen coordinates"
+        },
+        "text": {
+          "type": "string",
+          "description": "Text to type or key code"
+        }
+      }
+    },
+    {
+      "name": "app_doc",
+      "category": "inspection",
+      "description": "Live AppleScript dictionary (sdef) and bundle metadata for an installed app.",
+      "requires_approval": false,
+      "parameters": {
+        "app_name": {
+          "type": "string",
+          "description": "Application name or bundle identifier"
+        }
+      }
+    },
+    {
+      "name": "airdrop",
+      "category": "mesh",
+      "description": "Opens system AirDrop sheet for one file; confirms the sheet opened.",
+      "requires_approval": true,
+      "parameters": {
+        "path": {
+          "type": "string",
+          "description": "Path of file to share"
+        }
+      }
+    },
+    {
+      "name": "phone_bridge",
+      "category": "continuity",
+      "description": "Sends one iMessage to user preconfigured device via Messages continuity.",
+      "requires_approval": true,
+      "parameters": {
+        "message": {
+          "type": "string",
+          "description": "Message text to send"
+        }
+      }
+    },
+    {
+      "name": "agent_network",
+      "category": "mesh",
+      "description": "Sovereign peer mesh networking without third-party VPNs. Actions: advertise, discover, tunnel, send, clone, status, ping.",
+      "requires_approval": true,
+      "parameters": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "advertise",
+            "discover",
+            "tunnel",
+            "send",
+            "clone",
+            "status",
+            "ping"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "description": "Peer address or target node"
+        }
+      }
+    },
+    {
+      "name": "siri",
+      "category": "system",
+      "description": "Run Apple Shortcuts or execute tasks via Siri on macOS.",
+      "requires_approval": true,
+      "parameters": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "run_shortcut",
+            "ask",
+            "activate"
+          ]
+        },
+        "shortcut_name": {
+          "type": "string",
+          "description": "Name of Apple Shortcut"
+        },
+        "input": {
+          "type": "string",
+          "description": "Input argument for the shortcut"
+        }
+      }
+    }
+  ]
+}

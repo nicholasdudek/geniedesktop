@@ -49,6 +49,7 @@ public final class GenieMemoryGovernorEngine: ObservableObject, @unchecked Senda
     @Published public private(set) var currentPressureLevel: GenieMemoryPressureLevel = .normal
     @Published public private(set) var currentProcessResidentMB: Int = 0
     @Published public private(set) var hostAvailableMemoryMB: Int = 0
+    @Published public private(set) var hostUsedMemoryMB: Int = 0
     @Published public private(set) var totalHostMemoryMB: Int = 0
     @Published public private(set) var activeRunningTasks: Int = 0
     @Published public private(set) var queuedAgentsCount: Int = 0
@@ -152,7 +153,7 @@ public final class GenieMemoryGovernorEngine: ObservableObject, @unchecked Senda
             self.currentProcessResidentMB = Int(info.resident_size / (1024 * 1024))
         }
 
-        // 2. Host available memory approximation
+        // 2. Host available and used memory from Mach VM statistics
         var stats = vm_statistics64()
         var size = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / 4)
         let hostPort = mach_host_self()
@@ -164,7 +165,9 @@ public final class GenieMemoryGovernorEngine: ObservableObject, @unchecked Senda
         if hostErr == KERN_SUCCESS {
             let pageSize = vm_kernel_page_size
             let freePages = UInt64(stats.free_count) + UInt64(stats.inactive_count)
+            let usedPages = UInt64(stats.active_count) + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
             self.hostAvailableMemoryMB = Int((freePages * UInt64(pageSize)) / (1024 * 1024))
+            self.hostUsedMemoryMB = Int((usedPages * UInt64(pageSize)) / (1024 * 1024))
         }
     }
 

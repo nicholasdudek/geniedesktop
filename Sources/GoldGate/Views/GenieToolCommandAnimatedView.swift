@@ -297,8 +297,24 @@ public struct GenieToolCommandAnimatedView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isExecuting)
-                    .help("Execute this tool command immediately")
                 }
+
+                // Box Tool Call in New File
+                Button(action: boxInNewFile) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 8.5))
+                        Text("Box in File")
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.cyan)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.cyan.opacity(0.18)))
+                    .overlay(Capsule().strokeBorder(Color.cyan.opacity(0.40), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .help("Box this tool call into a new file in the editor")
 
                 // Copy Payload
                 Button(action: copyCommand) {
@@ -532,8 +548,34 @@ public struct GenieToolCommandAnimatedView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeInOut(duration: 0.2)) {
-                isCopied = false
+                self.isCopied = false
             }
         }
+    }
+
+    private func boxInNewFile() {
+        let cleanName = toolName.replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: "/", with: "_")
+        let filename = "ToolCall_\(cleanName)_\(Int(Date().timeIntervalSince1970)).sh"
+        let fullPayload = """
+        #!/usr/bin/env bash
+        # Genie Tool Call: \(toolName)
+        # Category: \(category.title)
+        # Generated: \(Date())
+
+        \(commandText)
+        """
+        AIEditorBridgeEngine.shared.streamCodeWithCopyPasteDrop(
+            filename: filename,
+            content: fullPayload,
+            language: "Bash",
+            openEditor: true
+        )
+        NotificationCenter.default.post(
+            name: NSNotification.Name("NexusAIDisplayCreation"),
+            object: fullPayload,
+            userInfo: ["title": "Tool Call: \(toolName)"]
+        )
+        FinderChatWindowManager.shared.openTab(.editor)
+        HapticFeedback.success()
     }
 }

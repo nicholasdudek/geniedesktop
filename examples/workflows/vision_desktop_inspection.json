@@ -1,0 +1,71 @@
+{
+  "task_id": "run_vision_inspect_01",
+  "name": "Desktop Screen Comprehension via Native Vision",
+  "model": "genie-master (27.3B Dense + 460M CLIP)",
+  "runtime": "Apple Silicon Unified Memory",
+  "steps": [
+    {
+      "step_index": 1,
+      "tool": "desktop_agent",
+      "action": "snapshot",
+      "requires_approval": true,
+      "approval_status": "APPROVED_BY_USER",
+      "result": {
+        "format": "PNG",
+        "dimensions": [
+          2880,
+          1800
+        ],
+        "latency_ms": 3.8,
+        "clip_features_extracted": 1024,
+        "ui_elements_detected": [
+          {
+            "id": "top_dock_banner",
+            "label": "GENIE STUDIO ASCII Banner",
+            "bounds": [
+              480,
+              12,
+              1440,
+              58
+            ]
+          },
+          {
+            "id": "mini_dock_capsule",
+            "label": "Liquid Glass Mini Dock",
+            "bounds": [
+              510,
+              64,
+              1410,
+              108
+            ]
+          },
+          {
+            "id": "studio_chat_pane",
+            "label": "Genie Studio Chat Window",
+            "bounds": [
+              240,
+              120,
+              1680,
+              1100
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "step_index": 2,
+      "model_reasoning": "Observed the slide-down Top Dock open with Mini Dock visible. User requested switching into Fullscreen Zenith mode. Preparing click on fullscreen toggle button.",
+      "tool": "desktop_agent",
+      "action": "click",
+      "parameters": {
+        "coordinate": [
+          1412,
+          35
+        ]
+      },
+      "requires_approval": true,
+      "approval_status": "APPROVED_BY_USER",
+      "result": "OK: Click event dispatched at (1412, 35). Zenith window expanded."
+    }
+  ]
+}

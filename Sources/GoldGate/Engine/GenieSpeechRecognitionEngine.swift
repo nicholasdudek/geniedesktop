@@ -90,6 +90,10 @@ public final class GenieSpeechRecognitionEngine: NSObject, ObservableObject {
 
     // MARK: - Authorization
     public func checkAuthorization() {
+        guard Bundle.main.object(forInfoDictionaryKey: "NSSpeechRecognitionUsageDescription") != nil else {
+            self.isAuthorized = false
+            return
+        }
         let status = SFSpeechRecognizer.authorizationStatus()
         switch status {
         case .authorized:

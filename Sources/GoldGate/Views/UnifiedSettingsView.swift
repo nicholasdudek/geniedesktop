@@ -9,6 +9,9 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
     case chat = "Genie Chat 💬"
     case miniDock = "Mini Dock & Bar"
     case expansion = "Feature Packs & Add-Ons 🛍️"
+    case themes = "Themes & Wallpapers 🎨"
+    case cursors = "Cursors & FX ⚡️"
+    case formations = "App Formations 🧊"
     case applications = "Applications"
     case desktop = "Desktop & Files"
     case studio = "Genio Studio Editor 💻"
@@ -28,6 +31,9 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
     /// and it is persisted in AppStorage, so renaming it would break both.
     public var displayName: String {
         switch self {
+        case .themes: return "Themes & Wallpapers"
+        case .cursors: return "Cursors & FX"
+        case .formations: return "App Formations"
         case .studio: return "Genie Studio"
         case .expansion: return "Feature Packs & Add-Ons"
         case .ergonomics: return "Vision & Ergonomics"
@@ -40,6 +46,9 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
         case .chat: return "bubble.left.and.bubble.right.fill"
         case .miniDock: return "menubar.rectangle"
         case .expansion: return "bag.fill"
+        case .themes: return "paintpalette.fill"
+        case .cursors: return "cursorarrow.rays"
+        case .formations: return "cube.transparent.fill"
         case .applications: return "square.grid.2x2.fill"
         case .desktop: return "desktopcomputer"
         case .studio: return "macwindow"
@@ -59,6 +68,9 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
         case .chat: return .cyan
         case .miniDock: return .blue
         case .expansion: return .orange
+        case .themes: return .purple
+        case .cursors: return .cyan
+        case .formations: return .blue
         case .applications: return .indigo
         case .desktop: return .teal
         case .studio: return .blue
@@ -78,6 +90,9 @@ public enum UnifiedSettingsTab: String, CaseIterable, Identifiable {
         case .chat: return ["chat", "dialogue", "ai", "models", "gemini", "claude", "gpt", "ollama", "prompts", "stream", "history", "speech", "voice", "mic", "microphone", "wake word", "hey genie", "learning", "ledger", "python", "self repair"]
         case .miniDock: return ["dock", "bar", "menu bar", "status icon", "battery", "percentage", "genie", "lamp", "person", "style", "install"]
         case .expansion: return ["cart", "shopping", "shop", "store", "expansion", "packs", "addons", "add-ons", "vip", "founder", "pass", "companions", "shaders", "snuggie", "pets"]
+        case .themes: return ["themes", "wallpapers", "background", "transparency", "glass", "atmospheres", "shader", "2028"]
+        case .cursors: return ["cursor", "fx", "mouse", "trail", "stardust", "comet", "sparkles", "virtual cursor"]
+        case .formations: return ["formation", "app formation", "grid", "hypercube", "yin yang", "supernova", "helix", "wave", "matrix"]
         case .applications: return ["applications", "apps", "grid", "slide", "direction", "launcher", "overlay", "size", "spacing"]
         case .desktop: return ["desktop", "files", "hide", "clean", "matrix", "wallpaper"]
         case .studio: return ["studio", "vscode", "editor", "panels", "flip", "welcome", "iphone", "instagram", "portrait", "activity bar", "code"]
@@ -302,6 +317,12 @@ public struct UnifiedSettingsView: View {
                             miniDockSettingsPane
                         case .expansion:
                             expansionSettingsPane
+                        case .themes:
+                            themesSettingsPane
+                        case .cursors:
+                            cursorsSettingsPane
+                        case .formations:
+                            formationsSettingsPane
                         case .applications:
                             applicationsSettingsPane
                         case .desktop:
@@ -4862,6 +4883,145 @@ public struct UnifiedSettingsView: View {
             withAnimation {
                 if statusFeedback == text {
                     statusFeedback = nil
+                }
+            }
+        }
+    }
+
+    // MARK: - Toggle Row Helper
+    private func settingToggleRow(title: String, subtitle: String, icon: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(.cyan)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                Text(subtitle)
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.60))
+            }
+            Spacer()
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(SwitchToggleStyle(tint: .cyan))
+        }
+    }
+
+    // MARK: - Themes & Wallpapers Pane
+    private var themesSettingsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            settingsGlassCard(title: "Living Atmosphere Themes", icon: "paintpalette.fill", tint: .purple) {
+                VStack(alignment: .leading, spacing: 12) {
+                    GenieThemeQuickPickerView(selectedTheme: Binding(
+                        get: { GenieTheme(rawValue: activeGenieThemeRaw) ?? .defaultTheme },
+                        set: { newTheme in
+                            activeGenieThemeRaw = newTheme.rawValue
+                            UserDefaults.standard.set(newTheme.rawValue, forKey: PrefKey.activeGenieTheme)
+                            showBannerFeedback("Theme applied: \(newTheme.shortTitle)")
+                        }
+                    ))
+                }
+            }
+
+            settingsGlassCard(title: "Wallpaper Transparency & Backdrops", icon: "sparkles", tint: .cyan) {
+                VStack(alignment: .leading, spacing: 10) {
+                    settingToggleRow(
+                        title: "Living Neural Bloom Canvas",
+                        subtitle: "Bioluminescent 120 FPS particle backdrop behind chat & desktop cards",
+                        icon: "leaf.fill",
+                        isOn: Binding(
+                            get: { UserDefaults.standard.bool(forKey: "genieZenModeEnabled") },
+                            set: { UserDefaults.standard.set($0, forKey: "genieZenModeEnabled") }
+                        )
+                    )
+
+                    settingToggleRow(
+                        title: "Neural Bloom Lightning Arcs",
+                        subtitle: "Electric plasma lightning when moving cursor or dragging windows",
+                        icon: "bolt.fill",
+                        isOn: $neuralBloomLightningEnabled
+                    )
+
+                    settingToggleRow(
+                        title: "Apple Liquid Glass Material",
+                        subtitle: "Specular frosted materials across windows and desktop surfaces",
+                        icon: "square.on.square.dashed",
+                        isOn: Binding(
+                            get: { UserDefaults.standard.bool(forKey: PrefKey.liquidGlassEnabled) },
+                            set: { UserDefaults.standard.set($0, forKey: PrefKey.liquidGlassEnabled) }
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Cursors & FX Pane
+    private var cursorsSettingsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            settingsGlassCard(title: "Desktop Cursor Trail & FX", icon: "cursorarrow.rays", tint: .cyan) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Active Cursor Effect")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text("Renders particle FX and trails following mouse movement")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        Spacer()
+                        Picker("", selection: $cursorFxType) {
+                            ForEach(cursorFxOptions, id: \.self) { option in
+                                Text(option).tag(option)
+                            }
+                        }
+                        .frame(width: 220)
+                        .onChange(of: cursorFxType) { _, newFx in
+                            HapticFeedback.selection()
+                            UserDefaults.standard.set(newFx, forKey: PrefKey.cursorFxType)
+                            showBannerFeedback("Cursor FX: \(newFx)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - App Formations Pane
+    private var formationsSettingsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            settingsGlassCard(title: "Desktop App Formations", icon: "cube.transparent.fill", tint: .blue) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Spatial App Formation Layout")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text("Arranges desktop icons into 3D geometric matrix patterns")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        Spacer()
+                        Picker("", selection: $appFormation) {
+                            Text("Natural Grid (macOS Default)").tag("Natural Grid (macOS Default)")
+                            Text("Tesseract Hypercube 🧊").tag("Tesseract Hypercube 🧊")
+                            Text("Zen Garden Yin-Yang ☯️").tag("Zen Garden Yin-Yang ☯️")
+                            Text("Supernova Burst 💥").tag("Supernova Burst 💥")
+                            Text("DNA Double Helix 🧬").tag("DNA Double Helix 🧬")
+                            Text("Sine Wave 🌊").tag("Sine Wave 🌊")
+                            Text("Concentric Circle Grid ⭕️").tag("Concentric Circle Grid ⭕️")
+                        }
+                        .frame(width: 220)
+                        .onChange(of: appFormation) { _, newFormation in
+                            HapticFeedback.selection()
+                            UserDefaults.standard.set(newFormation, forKey: PrefKey.appFormation)
+                            showBannerFeedback("Formation: \(newFormation)")
+                        }
+                    }
                 }
             }
         }

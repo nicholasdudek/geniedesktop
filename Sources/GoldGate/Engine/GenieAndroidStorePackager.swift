@@ -222,7 +222,7 @@ public final class GenieAndroidStorePackager: ObservableObject {
             set -e
 
             echo "🚀 Building Genie Android App Bundle (.aab) for Google Play Console..."
-            export ANDROID_HOME="${ANDROID_HOME:-/Users/nicholasdudek/Library/Android/sdk}"
+            export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 
             if [ -f "./gradlew" ]; then
                 ./gradlew bundleRelease

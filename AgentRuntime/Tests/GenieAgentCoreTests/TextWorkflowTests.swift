@@ -63,4 +63,18 @@ final class TextWorkflowTests: XCTestCase {
             XCTFail("Merge path escaped workspace")
         } catch {}
     }
+
+    func testSovereignMeshValidationAndStatus() async throws {
+        let tools = AgentTools(workspace: FileManager.default.temporaryDirectory)
+        XCTAssertTrue(AgentToolCatalog.names.contains("agent_network"))
+        XCTAssertTrue(AgentToolCatalog.mutatingNames.contains("agent_network"))
+
+        let statusCall = try call("agent_network", ["action": "status"])
+        let args = try await tools.arguments(for: statusCall)
+        XCTAssertEqual(args["action"], "status")
+
+        let result = try await tools.execute(statusCall, approved: true)
+        XCTAssertTrue(result.success)
+        XCTAssertTrue(result.output.contains("Sovereign Mesh Status"))
+    }
 }

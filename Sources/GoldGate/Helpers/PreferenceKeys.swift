@@ -19,6 +19,9 @@ public enum PrefKey {
     public static let animatedChatWidgetPositionY = "nexus.animatedChatWidgetPositionY"
     public static let animatedChatWidgetPosX = "nexus.animatedChatWidgetPositionX"
     public static let animatedChatWidgetPosY = "nexus.animatedChatWidgetPositionY"
+    public static let showDesktopWidgetBar = "nexus.showDesktopWidgetBar"
+    public static let widgetBarPositionX = "nexus.widgetBarPositionX"
+    public static let widgetBarPositionY = "nexus.widgetBarPositionY"
     public static let activeSubscriptionPlan = "nexus.activeSubscriptionPlan"
     public static let editorTheme = "nexus.editorTheme"
     // Embedded editor sidebar: "hidden", "compact" or "expanded", plus the
@@ -339,6 +342,7 @@ public enum PrefKey {
     public static let clearHTMLOverlayEnabled = "nexus.clearHTMLOverlayEnabled"
     public static let showShortcutHints = "genie.showShortcutHints"
     public static let appsPopUpDelaySeconds = "genie.appsPopUpDelaySeconds"
+    public static let proactiveMenuDappEnabled = "genie.proactiveMenuDappEnabled"
 
     // SkyLight 2nd Overlay Full-Screen Adjustable Zen Mode
     public static let zenModeEnabled = "genieZenModeEnabled"

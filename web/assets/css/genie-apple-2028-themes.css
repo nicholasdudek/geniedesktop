@@ -1,0 +1,61 @@
+/**
+ * 🪔 GENIE APPLE 2028 UNIFIED SUITE OF THEMES
+ * Architected by Nicholas M. Dudek for Genie 4.0 Quantum macOS.
+ *
+ * Includes:
+ * 1. Apple 2028 Living Liquid Water 💧
+ * 2. Apple 2028 OLED Blackout Pillow ⏱️
+ * 3. Apple 2028 Quantum Titanium Glass ✨
+ * 4. Apple 2028 Frosted Alabaster Light ☀️
+ */
+
+@import url("./genie-apple-2028-liquid.css");
+@import url("./genie-apple-2028-oled-pillow.css");
+@import url("./genie-apple-2028-quantum.css");
+
+/* 🌐 Default :root Theme Variables (Apple 2028 Living Liquid Water fallback) */
+:root {
+  --genie-bg: #050a14;
+  --genie-bg-gradient: radial-gradient(circle at 50% -10%, #0d2847 0%, #061122 45%, #02060d 100%);
+  --genie-glass-card: rgba(10, 20, 38, 0.72);
+  --genie-glass-blur: blur(32px) saturate(210%);
+  --genie-border-liquid: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(0, 240, 255, 0.55) 35%, rgba(0, 128, 255, 0.20) 70%, rgba(255, 255, 255, 0.35) 100%);
+  --genie-border-subtle: rgba(0, 240, 255, 0.18);
+  --genie-caustic-cyan: #00f0ff;
+  --genie-caustic-blue: #0080ff;
+  --genie-caustic-teal: #00e5a3;
+  --genie-caustic-purple: #9d4edd;
+  --genie-text-primary: #f0f9ff;
+  --genie-text-secondary: #93c5fd;
+  --genie-text-muted: #64748b;
+  --genie-code-bg: rgba(3, 7, 18, 0.85);
+  --genie-glow-spread: 0 20px 50px rgba(0, 240, 255, 0.12), 0 0 35px rgba(0, 128, 255, 0.10);
+}
+
+/* ☀️ Apple 2028 Frosted Alabaster Light */
+[data-theme="apple-2028-frosted-light"], body.theme-apple-2028-frosted-light {
+  --genie-bg: #f8fafc;
+  --genie-bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #f1f5f9 60%, #e2e8f0 100%);
+  --genie-glass-card: rgba(255, 255, 255, 0.82);
+  --genie-glass-blur: blur(28px) saturate(160%);
+  --genie-border-rim: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(226, 232, 240, 0.6) 50%, rgba(203, 213, 225, 0.4) 100%);
+  --genie-accent-orange: #f97316;
+  --genie-accent-blue: #0284c7;
+  --genie-text-primary: #0f172a;
+  --genie-text-secondary: #475569;
+  --genie-text-muted: #94a3b8;
+  --genie-code-bg: #f1f5f9;
+  --genie-card-shadow: 0 20px 45px rgba(15, 23, 42, 0.08), 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.genie-light-card {
+  position: relative;
+  background: var(--genie-glass-card);
+  -webkit-backdrop-filter: var(--genie-glass-blur);
+  backdrop-filter: var(--genie-glass-blur);
+  border-radius: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: var(--genie-card-shadow);
+  color: var(--genie-text-primary);
+  overflow: hidden;
+}

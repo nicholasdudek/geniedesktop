@@ -1,0 +1,33 @@
+{
+  "base_model_name_or_path": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
+  "target_model_family": "nemotron-3-30b",
+  "lora_alpha": 32.0,
+  "lora_dropout": 0.05,
+  "r": 16,
+  "bias": "none",
+  "task_type": "CAUSAL_LM",
+  "peft_type": "LORA",
+  "target_modules": [
+    "in_proj",
+    "out_proj",
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "up_proj",
+    "down_proj"
+  ],
+  "modules_to_save": null,
+  "inference_mode": true,
+  "fan_in_fan_out": false,
+  "genie_version": "4.0.0-quantum-2028",
+  "tool_capabilities": [
+    "run_command",
+    "desktop_agent",
+    "spatial_dom",
+    "warp_jump",
+    "skip_cursor",
+    "split_desktop",
+    "simultaneous_dual_input"
+  ]
+}

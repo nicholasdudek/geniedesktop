@@ -408,6 +408,21 @@ public struct MenuBarAppStripView: View {
         }
     }
 
+    private var genieBatteryColor: Color {
+        let pct = batteryMonitor.batteryPct ?? 100
+        let isCharging = batteryMonitor.isCharging
+        if isCharging {
+            return Color(red: 0.20, green: 0.95, blue: 0.45) // Charging Emerald Green
+        }
+        if pct > 60 {
+            return Color(red: 0.0, green: 0.90, blue: 1.0)  // Full / Normal Cyan
+        } else if pct > 25 {
+            return Color(red: 1.0, green: 0.75, blue: 0.20) // Medium Amber Gold
+        } else {
+            return Color(red: 1.0, green: 0.30, blue: 0.30) // Low Battery Crimson Red
+        }
+    }
+
     private var batteryImage: NSImage? {
         _ = batteryStyle
         _ = batteryColorMode
@@ -827,18 +842,10 @@ public struct MenuBarAppStripView: View {
                     }
                 }
             }
-            .frame(width: 32, height: 26)
-            .background(
-                Capsule()
-                    .fill(isHovered ? Color.white.opacity(0.18) : Color.white.opacity(0.07))
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(isHovered ? Color.white.opacity(0.32) : Color.white.opacity(0.12), lineWidth: 0.8)
-                    )
-            )
+            .frame(width: 26, height: 22)
             .scaleEffect(gWave.scale, anchor: .top)
             .offset(x: magnificationDisplacement(for: "leoLauncher"), y: gWave.yOffset)
-            .contentShape(Capsule())
+            .contentShape(Rectangle())
         }
         .background(
             GeometryReader { geo in
@@ -1128,17 +1135,8 @@ public struct MenuBarAppStripView: View {
 
                     putBackPillButton
                 }
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3.5)
-                .background(
-                    Capsule()
-                        .fill(Color.white.opacity(isStripHovered ? 0.16 : 0.08))
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(Color.white.opacity(isStripHovered ? 0.28 : 0.14), lineWidth: 0.8)
-                        )
-                        .shadow(color: Color.black.opacity(0.25), radius: 3, y: 1)
-                )
+                .padding(.horizontal, 3)
+                .padding(.vertical, 1.5)
             } else {
                 HStack(alignment: .center, spacing: 3.5) {
                     // 0. Primary GENIE menu bar icon (brings to chat!)
@@ -1193,17 +1191,8 @@ public struct MenuBarAppStripView: View {
                     // 8. Genie Settings Inside Pill Dock
                     settingsPillItemView
                 }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 3.5)
-                .background(
-                    Capsule()
-                        .fill(Color.white.opacity(isStripHovered ? 0.16 : 0.08))
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(Color.white.opacity(isStripHovered ? 0.28 : 0.14), lineWidth: 0.8)
-                        )
-                        .shadow(color: Color.black.opacity(0.25), radius: 3, y: 1)
-                )
+                .padding(.horizontal, 3)
+                .padding(.vertical, 1.5)
             }
         } else {
             EmptyView()

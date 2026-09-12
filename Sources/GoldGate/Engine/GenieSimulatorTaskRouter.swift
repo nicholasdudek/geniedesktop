@@ -128,6 +128,7 @@ public final class GenieSimulatorTaskRouter: ObservableObject {
 
     // MARK: - 3. Open Webpage / Dev Server in Assigned Simulator
     public func openURL(_ urlString: String, forChat chatId: String) async -> Bool {
+        guard GenieCapabilities.canSpawnSubprocesses else { return false }
         let binding: ChatSimulatorBinding
         if let existing = activeBindings[chatId] {
             binding = existing
@@ -159,6 +160,7 @@ public final class GenieSimulatorTaskRouter: ObservableObject {
 
     // MARK: - 4. Direct Framebuffer Screenshot Capture (Zero-Copy)
     public func captureScreenshot(forChat chatId: String) async -> String? {
+        guard GenieCapabilities.canSpawnSubprocesses else { return nil }
         let binding: ChatSimulatorBinding
         if let existing = activeBindings[chatId] {
             binding = existing
@@ -195,6 +197,7 @@ public final class GenieSimulatorTaskRouter: ObservableObject {
 
     // MARK: - 5. Clipboard Sync
     public func copyToSimulator(_ text: String, forChat chatId: String) async {
+        guard GenieCapabilities.canSpawnSubprocesses else { return }
         let binding: ChatSimulatorBinding
         if let existing = activeBindings[chatId] {
             binding = existing

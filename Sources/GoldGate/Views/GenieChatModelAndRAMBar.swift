@@ -25,6 +25,11 @@ public struct GenieChatModelAndRAMBar: View {
         return String(format: "%.1f GB", gb)
     }
 
+    private var hostUsedGBString: String {
+        let gb = Double(governor.hostUsedMemoryMB) / 1024.0
+        return String(format: "%.1f GB", gb)
+    }
+
     private var availableHostGBString: String {
         let gb = Double(governor.hostAvailableMemoryMB) / 1024.0
         return String(format: "%.1f GB", gb)
@@ -222,8 +227,9 @@ public struct GenieChatModelAndRAMBar: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 memoryRow(title: "Hardware Unified RAM", value: LocalModelManager.detectedRAMString, highlight: true)
-                memoryRow(title: "Genie Process Resident", value: processResidentGBString, highlight: false)
+                memoryRow(title: "System RAM In-Use", value: "\(hostUsedGBString) / \(LocalModelManager.detectedRAMString)", highlight: false)
                 memoryRow(title: "System Available RAM", value: availableHostGBString, highlight: false)
+                memoryRow(title: "Genie App Resident", value: processResidentGBString, highlight: false)
                 memoryRow(title: "Active Model Target", value: "\(localModels.activeModelMinimumRAM) GB recommended", highlight: false)
                 memoryRow(title: "Memory Pressure", value: memoryPressureText, highlight: false)
                 memoryRow(title: "Idle Leak Health", value: governor.idleStatusDescription, highlight: false)

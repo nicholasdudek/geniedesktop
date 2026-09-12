@@ -7,9 +7,9 @@ class GitRepositoryManager: ObservableObject {
 
     // MARK: - Repository Metadata
     @Published public var currentRepoPath: String = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Developer/GoldGate").path
+        .appendingPathComponent("Desktop/Genie/GoldGate").path
     @Published public var currentFolderPath: String = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Developer/GoldGate").path
+        .appendingPathComponent("Desktop/Genie/GoldGate").path
     @Published public var remoteOriginURL: String = ""
     @Published public var currentBranch: String = "main"
     @Published public var branches: [String] = ["main", "develop"]
@@ -48,7 +48,7 @@ class GitRepositoryManager: ObservableObject {
 
     func loadRepository(at path: String? = nil) {
         let targetPath = path ?? FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Developer/GoldGate").path
+            .appendingPathComponent("Desktop/Genie/GoldGate").path
         currentRepoPath = targetPath
         currentFolderPath = targetPath
         refreshRepositoryData()

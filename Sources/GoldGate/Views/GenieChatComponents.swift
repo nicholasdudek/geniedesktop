@@ -195,6 +195,52 @@ public struct GenieCodeArtifactView: View {
                 .buttonStyle(.plain)
                 .help("Open Artifact in Split Window Pane")
 
+                // 📝 Box in New File Button
+                Button(action: {
+                    let ext: String = {
+                        let l = language.lowercased()
+                        if l == "swift" { return "swift" }
+                        if l == "python" || l == "py" { return "py" }
+                        if l == "html" { return "html" }
+                        if l == "css" { return "css" }
+                        if l == "js" || l == "javascript" { return "js" }
+                        if l == "ts" || l == "typescript" { return "ts" }
+                        if l == "json" { return "json" }
+                        if l == "bash" || l == "sh" || l == "zsh" { return "sh" }
+                        if l == "markdown" || l == "md" { return "md" }
+                        return "txt"
+                    }()
+                    let safeTitle = (title ?? "Artifact").replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: "/", with: "_")
+                    let filename = "\(safeTitle)_\(Int(Date().timeIntervalSince1970)).\(ext)"
+                    AIEditorBridgeEngine.shared.streamCodeWithCopyPasteDrop(
+                        filename: filename,
+                        content: code,
+                        language: language,
+                        openEditor: true
+                    )
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("NexusAIDisplayCreation"),
+                        object: code,
+                        userInfo: ["title": title ?? filename]
+                    )
+                    FinderChatWindowManager.shared.openTab(.editor)
+                    HapticFeedback.success()
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 8.5))
+                        Text("New File")
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.cyan)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2.5)
+                    .background(Capsule().fill(Color.cyan.opacity(0.18)))
+                    .overlay(Capsule().strokeBorder(Color.cyan.opacity(0.40), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .help("Box this code artifact into a new file on disk and open in editor")
+
                 if canRunInTerminal {
                     Button(action: {
                         runCodeCommand()
@@ -615,11 +661,21 @@ public struct GenieMarkdownMessageView: View {
         return nil
     }
 
+    private static let imgRegex = try? NSRegularExpression(pattern: #"!\[([^\]]*)\]\(([^)]+)\)"#, options: [])
+    private static let rawPathRegex = try? NSRegularExpression(
+        pattern: #"((?:/(?:[^\s\n\r"'`()\[\]<>]|\\ )+|~/(?:[^\s\n\r"'`()\[\]<>]|\\ )+|file://(?:[^\s\n\r"'`()\[\]<>]|\\ )+)\.(?:png|jpg|jpeg|gif|webp|heic|tiff|bmp|svg))"#,
+        options: [.caseInsensitive]
+    )
+    private static let rawURLRegex = try? NSRegularExpression(
+        pattern: #"(?<!\]\()(https?://[a-zA-Z0-9\-_]+(?:\.[a-zA-Z0-9\-_]+)+(?:/[^\s<>()"']*)?)"#,
+        options: []
+    )
+    private static let linkDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+
     private func parseImagesAndText(_ raw: String) -> [ContentSegment] {
         var segs: [ContentSegment] = []
         // 1. Match ![alt](pathOrUrl) markdown image syntax
-        let imgPattern = #"!\[([^\]]*)\]\(([^)]+)\)"#
-        if let regex = try? NSRegularExpression(pattern: imgPattern, options: []) {
+        if let regex = Self.imgRegex {
             let nsString = raw as NSString
             let matches = regex.matches(in: raw, options: [], range: NSRange(location: 0, length: nsString.length))
             if !matches.isEmpty {
@@ -657,10 +713,7 @@ public struct GenieMarkdownMessageView: View {
     private func parseRawFilePathsAndText(_ input: String) -> [ContentSegment] {
         var segs: [ContentSegment] = []
 
-        // Match raw screenshot / image paths (e.g. /var/folders/.../Screenshot...png, ~/Desktop/...jpg, etc.)
-        let rawPathPattern = #"((?:/(?:[^/\n\r]+(?:\\ )*)+|\~/(?:[^/\n\r]+(?:\\ )*)+|file://(?:[^/\n\r]+(?:\\ )*)+)\.(?:png|jpg|jpeg|gif|webp|heic|tiff|bmp|svg))"#
-
-        guard let regex = try? NSRegularExpression(pattern: rawPathPattern, options: [.caseInsensitive]) else {
+        guard let regex = Self.rawPathRegex else {
             segs.append(ContentSegment(kind: .regular(input)))
             return segs
         }
@@ -701,8 +754,7 @@ public struct GenieMarkdownMessageView: View {
 
     private func convertRawURLsToMarkdownLinks(_ input: String) -> String {
         // Only convert URLs that have a valid domain and TLD, avoiding dummy or unopenable links
-        let pattern = "(?<!\\]\\()(https?://[a-zA-Z0-9\\-_]+(?:\\.[a-zA-Z0-9\\-_]+)+[a-zA-Z0-9\\.\\-_~:/?#@!$&'()*+,;=%]*[a-zA-Z0-9/])"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+        guard let regex = Self.rawURLRegex else {
             return input
         }
         let range = NSRange(input.startIndex..<input.endIndex, in: input)
@@ -710,7 +762,7 @@ public struct GenieMarkdownMessageView: View {
     }
 
     private func extractURLs(from input: String) -> [URL] {
-        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return [] }
+        guard let detector = Self.linkDetector else { return [] }
         let matches = detector.matches(in: input, options: [], range: NSRange(location: 0, length: input.utf16.count))
         return matches.compactMap { match in
             guard let url = match.url else { return nil }

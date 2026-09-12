@@ -184,6 +184,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // 11. Make the Clock and Studio the actual program: present on launch (no app icon dock)
+        UserDefaults.standard.set(false, forKey: PrefKey.showMiniDockInTopDashboard)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DesktopWindowManager.shared.showTopDockProgram()
+        }
+
         print("GENIE: applicationDidFinishLaunching completed")
     }
 
@@ -213,14 +219,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     print("GENIE IPC Action received: \(content)")
                     if content == "toggle-canvas" || content == "canvas" {
                         FinderChatWindowManager.shared.toggle()
-                    } else if content == "show-finder-chat" || content == "finder-chat" || content == "chat" || content == "mode-settings" || content == "settings" {
+                    } else if content == "show-finder-chat" || content == "finder-chat" || content == "chat" {
                         FinderChatWindowManager.shared.show()
                         NotificationCenter.default.post(name: NSNotification.Name("NexusSetWindowMode"), object: "combined")
+                    } else if content == "mode-settings" || content == "settings" || content == "top-dock-settings" || content == "top-settings" {
+                        DesktopWindowManager.shared.showTopDockSettings()
                     } else if content == "mode-apps" || content == "apps" {
                         FinderChatWindowManager.shared.show()
                         NotificationCenter.default.post(name: NSNotification.Name("NexusSetWindowMode"), object: "combined")
                     } else if content == "toggle-finder-chat" {
                         FinderChatWindowManager.shared.toggle()
+                    } else if content == "dock" || content == "top-dock" || content == "desktop-dock" || content == "show-dock" || content == "desktop" || content == "move-dock" || content == "move-dock-to-desktop" {
+                        DesktopWindowManager.shared.switchToStation(.desktop)
+                        DesktopWindowManager.shared.showTopDockProgram()
+                        NSApp.activate(ignoringOtherApps: true)
                     } else if content == "toggle-command-window" || content == "command-window" {
                         UnifiedCommandWindowManager.shared.toggle()
                     } else if content.hasPrefix("pan ") {
@@ -288,9 +300,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.set(newLock, forKey: PrefKey.isChatLockedInPlace)
         NotificationCenter.default.post(name: NSNotification.Name("NexusToggleDockLock"), object: newLock)
 
-        // 2. Always activate the Genie chat main desktop view first!
+        // 2. Make the Dock the actual program: activate and present the Dock!
         DesktopWindowManager.shared.switchToStation(.desktop)
-        FinderChatWindowManager.shared.show(tab: .chat)
+        DesktopWindowManager.shared.showTopDockProgram()
         NSApp.activate(ignoringOtherApps: true)
 
         // 3. Keep it open for a timer so we can activate the dock when we need to
@@ -448,12 +460,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     public func openSettingsInChatWindow() {
-        FinderChatWindowManager.shared.show(tab: .settings)
-        if let st = WorkspaceTabManager.shared.tabs.first(where: { $0.type == .settings }) {
-            WorkspaceTabManager.shared.selectTab(id: st.id)
-        } else {
-            WorkspaceTabManager.shared.createTab(type: .settings)
-        }
+        DesktopWindowManager.shared.showTopDockSettings()
         NotificationCenter.default.post(name: NSNotification.Name("NexusOpenSettingsInChat"), object: nil)
     }
 
@@ -468,29 +475,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var applicationsSettingsPanel: NSPanel?
 
     func toggleApplicationsSettings(tab: UnifiedSettingsTab = .miniDock) {
-        let dropdownTab: DropdownSidebarTab
-        switch tab {
-        case .chat: dropdownTab = .chat
-        case .applications: dropdownTab = .applications
-        case .miniDock: dropdownTab = .battery
-        case .desktop: dropdownTab = .workspace
-        case .soundAndSmoke: dropdownTab = .soundHaptics
-        case .studio, .models, .livingGlass, .systemAccess, .huggingface, .generalAndPrivacy, .virtualMachines, .expansion, .ergonomics: dropdownTab = .privacy
+        if DesktopWindowManager.shared.isTopDockPresented && DesktopWindowManager.shared.topDockPage == 1 {
+            DesktopWindowManager.shared.dismissTopDock()
+        } else {
+            DesktopWindowManager.shared.showTopDockSettings()
         }
-        toggleMenuBarSettingsDropdown(targetTab: dropdownTab)
     }
 
     func showApplicationsSettings(tab: UnifiedSettingsTab = .miniDock) {
-        let dropdownTab: DropdownSidebarTab
-        switch tab {
-        case .chat: dropdownTab = .chat
-        case .applications: dropdownTab = .applications
-        case .miniDock: dropdownTab = .battery
-        case .desktop: dropdownTab = .workspace
-        case .soundAndSmoke: dropdownTab = .soundHaptics
-        case .studio, .models, .livingGlass, .systemAccess, .huggingface, .generalAndPrivacy, .virtualMachines, .expansion, .ergonomics: dropdownTab = .privacy
-        }
-        showMenuBarSettingsDropdown(targetTab: dropdownTab)
+        DesktopWindowManager.shared.showTopDockSettings()
     }
 
     func dismissApplicationsSettings() {
@@ -1081,7 +1074,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func menuOpenSettings() {
-        FinderChatWindowManager.shared.show(settings: true)
+        DesktopWindowManager.shared.showTopDockSettings()
     }
 
     @objc func menuToggleZenOverlay() {
@@ -1280,13 +1273,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor [weak self] in self?.dismissMenuBarPopover() }
         }
 
-        nc.addObserver(forName: NSNotification.Name("NexusOpenSettings"), object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.showMenuBarSettingsDropdown(targetTab: .battery) }
+        nc.addObserver(forName: NSNotification.Name("NexusOpenSettings"), object: nil, queue: .main) { _ in
+            Task { @MainActor in DesktopWindowManager.shared.showTopDockSettings() }
         }
 
-        nc.addObserver(forName: NSNotification.Name("NexusToggleSettingsDropdown"), object: nil, queue: .main) { [weak self] notif in
-            let tab = (notif.object as? String).flatMap { DropdownSidebarTab(caseInsensitive: $0) } ?? .battery
-            Task { @MainActor [weak self] in self?.toggleMenuBarSettingsDropdown(targetTab: tab) }
+        nc.addObserver(forName: NSNotification.Name("NexusToggleSettingsDropdown"), object: nil, queue: .main) { _ in
+            Task { @MainActor in DesktopWindowManager.shared.showTopDockSettings() }
         }
 
         nc.addObserver(forName: NSNotification.Name("NexusBatteryEnabledChanged"), object: nil, queue: .main) { [weak self] _ in

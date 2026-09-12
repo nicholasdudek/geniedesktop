@@ -349,6 +349,7 @@ public struct FinderStyleChatWindowView: View {
     @ObservedObject var imessageManager = GenieiMessageExtensionManager.shared
     @ObservedObject var voiceEngine = GenieVoiceEngine.shared
     @ObservedObject var speechEngine = GenieSpeechRecognitionEngine.shared
+    @ObservedObject var screenRecorder = DesktopScreenRecorder.shared
     @AppStorage(PrefKey.aiEmotion) var selectedEmotionRaw: String = AIEmotionType.mystical.rawValue
     @AppStorage(PrefKey.activeGenieTheme) private var activeThemeRaw: String = GenieTheme.defaultTheme.rawValue
     @AppStorage(PrefKey.isEditorCollapsed) private var isEditorCollapsed: Bool = false
@@ -363,6 +364,7 @@ public struct FinderStyleChatWindowView: View {
     @AppStorage(PrefKey.liquidGlassEnabled) private var isLiquidGlassEnabled: Bool = true
     @AppStorage(PrefKey.agentSandboxEnabled) private var isSandboxEnabled: Bool = true
     @AppStorage(PrefKey.notchClearanceMode) private var notchClearanceMode: Bool = true
+    @AppStorage("genieShowInChatWidgets") private var showInChatWidgets: Bool = false
 
     private var isHintsActive: Bool {
         showShortcutHints || isHintsHovered || isHintsRowHovered
@@ -567,6 +569,11 @@ public struct FinderStyleChatWindowView: View {
                     .zIndex(300)
                 }
 
+                // 🕒 In-Chat Integrated World Clock & Widgets Drawer
+                if showInChatWidgets {
+                    inChatWidgetBarDrawer
+                }
+
                 // Main Workspace: chat always fills the window as a single chat-only
                 // container. Editor/Files becomes a hover-reveal drawer over it.
                 GeometryReader { geo in
@@ -598,135 +605,36 @@ public struct FinderStyleChatWindowView: View {
                 )
         )
         .overlay(alignment: .top) {
-            if let fb = statusFeedback {
-                Text(fb)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.black.opacity(0.85)))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.5))
-                    .padding(.top, 48)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
+            statusFeedbackOverlay
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NexusSetWindowMode"))) { notif in
-            if let mode = notif.object as? String {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
-                    if mode == "settings" || mode == "mode-settings" || mode == "settings-only" {
-                        layoutMode = .settingsOnly
-                    } else if mode == "files" {
-                        layoutMode = .editor
-                    } else {
-                        layoutMode = .chatOnly
-                    }
-                }
-            }
+            if let mode = notif.object as? String { handleSetWindowMode(mode) }
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NexusSwitchFinderSidebar"))) { notif in
-            if let item = notif.object as? FinderChatSidebarItem {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
-                    if item == .settings {
-                        layoutMode = .settingsOnly
-                    } else {
-                        layoutMode = .chatOnly
-                    }
-                }
-            }
+            if let item = notif.object as? FinderChatSidebarItem { handleSwitchFinderSidebar(item) }
         }
-        .onReceive(windowManager.$stagedAttachments) { newFiles in
-            guard !newFiles.isEmpty else { return }
-            for f in newFiles {
-                if !droppedAttachments.contains(f) {
-                    droppedAttachments.append(f)
-                }
-            }
-            windowManager.clearStagedAttachments()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusAIDisplayCreation"))) { notif in
-            if let code = notif.object as? String, !code.isEmpty {
-                let title = (notif.userInfo?["title"] as? String) ?? "AI Creation"
-                let isLive = (notif.userInfo?["isLiveStream"] as? Bool) ?? false
-                let fileURL: URL? = {
-                    if let uStr = notif.userInfo?["fileURL"] as? String, let u = URL(string: uStr) {
-                        return u
-                    }
-                    if let path = notif.userInfo?["filePath"] as? String {
-                        return URL(fileURLWithPath: path)
-                    }
-                    return nil
-                }()
-                if isLive && self.previewCreation != nil {
-                    // Update straight from RAM without bouncing layout animations
-                    self.previewCreation = (title: title, html: code, fileURL: fileURL)
-                    if let idx = self.sessionArtifacts.firstIndex(where: { $0.title == title }) {
-                        self.sessionArtifacts[idx] = (title: title, html: code, fileURL: fileURL)
-                    } else {
-                        self.sessionArtifacts.append((title: title, html: code, fileURL: fileURL))
-                    }
-                } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        self.previewCreation = (title: title, html: code, fileURL: fileURL)
-                        if let idx = self.sessionArtifacts.firstIndex(where: { $0.title == title }) {
-                            self.sessionArtifacts[idx] = (title: title, html: code, fileURL: fileURL)
-                        } else {
-                            self.sessionArtifacts.append((title: title, html: code, fileURL: fileURL))
-                        }
-                    }
-                }
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .genieChatRenderFocused)) { notif in
-            guard let artifact = notif.object as? ChatRenderArtifact else { return }
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                self.previewCreation = (title: artifact.title, html: artifact.body, fileURL: nil)
-                if !self.sessionArtifacts.contains(where: { $0.title == artifact.title }) {
-                    self.sessionArtifacts.append((title: artifact.title, html: artifact.body, fileURL: nil))
-                }
-            }
-        }
+        .onReceive(windowManager.$stagedAttachments) { newFiles in handleStagedAttachments(newFiles) }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusAIDisplayCreation"))) { notif in handleAIDisplayCreation(notif) }
+        .onReceive(NotificationCenter.default.publisher(for: .genieChatRenderFocused)) { notif in handleChatRenderFocused(notif) }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSpeechTranscriptUpdated"))) { notif in
-            if let text = notif.object as? String {
-                self.promptText = text
-            }
+            if let text = notif.object as? String { self.promptText = text }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusVoiceSubmitChat"))) { notif in
-            if let text = notif.object as? String, !text.isEmpty {
-                self.promptText = text
-            }
-            handlePromptSubmit()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSpeechClearChat"))) { _ in
-            self.promptText = ""
-        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusVoiceSubmitChat"))) { notif in handleVoiceSubmitChat(notif) }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSpeechClearChat"))) { _ in self.promptText = "" }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("GenieSetChatPromptText"))) { notif in
-            if let text = notif.object as? String {
-                self.promptText = text
-            }
+            if let text = notif.object as? String { self.promptText = text }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusSearchBarAppendText"))) { notif in
-            if let text = notif.object as? String {
-                if self.promptText.isEmpty {
-                    self.promptText = text
-                } else if !self.promptText.hasSuffix(text) {
-                    self.promptText += " " + text
-                }
-            }
+            if let text = notif.object as? String { handleSearchBarAppendText(text) }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NexusFocusGenieSearchBarWithMode"))) { notif in
-            if let mode = notif.object as? String, (mode.hasPrefix("Help me with") || mode.hasPrefix("Summarize") || mode.contains(":")) {
-                self.promptText = mode
-            }
+            if let mode = notif.object as? String { handleFocusGenieSearchBarWithMode(mode) }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("GenieOpenURLInEditor"))) { notif in
-            if let url = notif.object as? URL {
-                openFileInEditor(url)
-            }
+            if let url = notif.object as? URL { openFileInEditor(url) }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("GenieToggleDropDownCLI"))) { _ in
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                showDropDownCLIDrawer.toggle()
-            }
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { showDropDownCLIDrawer.toggle() }
         }
         .background(
             Button("") {
@@ -753,72 +661,7 @@ public struct FinderStyleChatWindowView: View {
             return .handled
         }
         .onKeyPress { press in
-            if press.characters == "\u{1b}" || press.key == .escape {
-                if previewCreation != nil {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                        previewCreation = nil
-                    }
-                    HapticFeedback.selection()
-                    return .handled
-                }
-            }
-            if press.modifiers.contains(.command) && (press.characters == "w" || press.characters == "W") {
-                if previewCreation != nil {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                        previewCreation = nil
-                    }
-                    HapticFeedback.selection()
-                    return .handled
-                }
-            }
-            if press.modifiers.contains(.command) && press.characters == "\\" {
-                if previewCreation != nil {
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                        isEditorCollapsed.toggle()
-                    }
-                    return .handled
-                }
-            }
-            if press.modifiers.contains(.command) && (press.characters == "+" || press.characters == "=") {
-                withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
-                    chatZoomLevel = min(2.0, chatZoomLevel + 0.10)
-                }
-                HapticFeedback.selection()
-                return .handled
-            }
-            if press.modifiers.contains(.command) && press.characters == "-" {
-                withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
-                    chatZoomLevel = max(0.70, chatZoomLevel - 0.10)
-                }
-                HapticFeedback.selection()
-                return .handled
-            }
-            if press.modifiers.contains(.command) && press.characters == "0" {
-                withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
-                    chatZoomLevel = 1.0
-                }
-                HapticFeedback.selection()
-                return .handled
-            }
-            if press.modifiers.contains([.command, .shift]) && (press.characters == "C" || press.characters == "c") {
-                if localModels.copyWholeChat() {
-                    showStatusFeedback("Copied whole chat to clipboard 📋")
-                } else {
-                    showStatusFeedback("No messages in chat to copy ⚠️")
-                }
-                HapticFeedback.selection()
-                return .handled
-            }
-            if press.modifiers.contains([.command, .shift]) && (press.characters == "V" || press.characters == "v") {
-                let res = localModels.pasteWholeChat()
-                if res.success {
-                    showStatusFeedback("Pasted whole chat (\(res.count) messages) 📋✨")
-                } else {
-                    showStatusFeedback("No chat transcript in clipboard ⚠️")
-                }
-                return .handled
-            }
-            return .ignored
+            handleKeyPress(press)
         }
         .onAppear {
             localModels.activeSaveDirectoryOverride = browserURL
@@ -2007,6 +1850,28 @@ public struct FinderStyleChatWindowView: View {
             // 📑 3-Tab Sliding Pill [ 📁 Files | 📝 Editor & Preview | 💬 Chat ]
             threeTabSlidingPill
 
+            // 🕒 In-Chat Widgets Toggle Button
+            Button(action: {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                    showInChatWidgets.toggle()
+                }
+                HapticFeedback.selection()
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: showInChatWidgets ? "clock.fill" : "clock")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("Widgets")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(showInChatWidgets ? .cyan : .white.opacity(0.80))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(showInChatWidgets ? Color.cyan.opacity(0.20) : Color.white.opacity(0.08)))
+                .overlay(Capsule().strokeBorder(showInChatWidgets ? Color.cyan.opacity(0.45) : Color.white.opacity(0.12), lineWidth: 0.6))
+            }
+            .buttonStyle(.plain)
+            .help("Toggle In-Chat World Clock & Widgets")
+
             // 🔄 Slide-Down / Desktop Presentation Switcher (only for top-level window)
             if !isEmbedded {
                 presentationSwitcherControls
@@ -2784,6 +2649,22 @@ public struct FinderStyleChatWindowView: View {
 
                 Section("Mac Actions") {
                     Button(action: {
+                        if screenRecorder.isRecording {
+                            screenRecorder.stopRecording()
+                            showStatusFeedback("Screen Recording Saved! 🎥")
+                        } else {
+                            screenRecorder.startRecording()
+                            showStatusFeedback("Recording Screen... 🔴")
+                        }
+                        HapticFeedback.selection()
+                    }) {
+                        Label(
+                            screenRecorder.isRecording ? "Stop Screen Recording (\(screenRecorder.elapsedSeconds)s)" : "Record Desktop Screen (HD)",
+                            systemImage: screenRecorder.isRecording ? "stop.circle.fill" : "record.circle"
+                        )
+                    }
+
+                    Button(action: {
                         sleepManager.toggleSleepPrevention()
                         showStatusFeedback(sleepManager.isSleepDisabled ? "Clamshell Awake ON 🖥️" : "Normal Sleep 🌙")
                         HapticFeedback.selection()
@@ -2905,6 +2786,9 @@ public struct FinderStyleChatWindowView: View {
                 .help("Clear Input")
             }
 
+            // 🎥 Native Screen Recorder Button
+            screenRecordButton
+
             // 🎙️ Voice Input (Speech Recognition & Command Decoder)
             voiceDictationButton
 
@@ -3005,6 +2889,43 @@ public struct FinderStyleChatWindowView: View {
         }
         .buttonStyle(GenieMagneticButtonStyle())
         .help(speechEngine.isRunning ? "Listening..." : "Voice Dictation")
+    }
+
+    @ViewBuilder
+    private var screenRecordButton: some View {
+        Button(action: {
+            HapticFeedback.selection()
+            if screenRecorder.isRecording {
+                screenRecorder.stopRecording()
+                showStatusFeedback("Screen Recording Saved! 🎥")
+            } else {
+                screenRecorder.startRecording()
+                showStatusFeedback("Recording Screen... 🔴")
+            }
+        }) {
+            HStack(spacing: 4) {
+                Image(systemName: screenRecorder.isRecording ? "stop.fill" : "record.circle")
+                    .font(.system(size: screenRecorder.isRecording ? 10 : 13, weight: .bold))
+                    .foregroundColor(screenRecorder.isRecording ? Color.red : Color.white.opacity(0.70))
+
+                if screenRecorder.isRecording {
+                    Text("\(screenRecorder.elapsedSeconds)s")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.red)
+                }
+            }
+            .frame(width: screenRecorder.isRecording ? 52 : 28, height: 28)
+            .background(
+                Capsule()
+                    .fill(screenRecorder.isRecording ? Color.red.opacity(0.25) : Color.white.opacity(0.08))
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(screenRecorder.isRecording ? Color.red.opacity(0.70) : Color.white.opacity(0.12), lineWidth: 0.8)
+            )
+        }
+        .buttonStyle(GenieMagneticButtonStyle())
+        .help(screenRecorder.isRecording ? "Stop Screen Recording (\(screenRecorder.elapsedSeconds)s)" : "Record Desktop Screen (HD)")
     }
 
     @ViewBuilder
@@ -3670,7 +3591,7 @@ public struct FinderStyleChatWindowView: View {
 
         // Auto-detect screenshot and image file paths typed or pasted directly in the prompt
         if filesToProcess.isEmpty {
-            let rawPathPattern = #"((?:/(?:[^/\n\r]+(?:\\ )*)+|\~/(?:[^/\n\r]+(?:\\ )*)+|file://(?:[^/\n\r]+(?:\\ )*)+)\.(?:png|jpg|jpeg|gif|webp|heic|tiff|bmp|svg))"#
+            let rawPathPattern = #"((?:/(?:[^\s\n\r"'`()\[\]<>]|\\ )+|~/(?:[^\s\n\r"'`()\[\]<>]|\\ )+|file://(?:[^\s\n\r"'`()\[\]<>]|\\ )+)\.(?:png|jpg|jpeg|gif|webp|heic|tiff|bmp|svg))"#
             if let regex = try? NSRegularExpression(pattern: rawPathPattern, options: [.caseInsensitive]) {
                 let ns = clean as NSString
                 let matches = regex.matches(in: clean, options: [], range: NSRange(location: 0, length: ns.length))
@@ -4017,5 +3938,264 @@ public struct FinderStyleChatWindowView: View {
                 if statusFeedback == msg { statusFeedback = nil }
             }
         }
+    }
+
+    @ViewBuilder
+    private var statusFeedbackOverlay: some View {
+        if let fb = statusFeedback {
+            Text(fb)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Color.black.opacity(0.85)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.5))
+                .padding(.top, 48)
+                .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    private func updateOrAppendArtifact(title: String, code: String, fileURL: URL?, animate: Bool) {
+        let block = {
+            self.previewCreation = (title: title, html: code, fileURL: fileURL)
+            if let idx = self.sessionArtifacts.firstIndex(where: { $0.title == title }) {
+                self.sessionArtifacts[idx] = (title: title, html: code, fileURL: fileURL)
+            } else {
+                self.sessionArtifacts.append((title: title, html: code, fileURL: fileURL))
+            }
+        }
+        if animate {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                block()
+            }
+        } else {
+            block()
+        }
+    }
+
+    private func handleSetWindowMode(_ mode: String) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+            if mode == "settings" || mode == "mode-settings" || mode == "settings-only" {
+                layoutMode = .settingsOnly
+            } else if mode == "files" {
+                layoutMode = .editor
+            } else {
+                layoutMode = .chatOnly
+            }
+        }
+    }
+
+    private func handleSwitchFinderSidebar(_ item: FinderChatSidebarItem) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+            if item == .settings {
+                layoutMode = .settingsOnly
+            } else {
+                layoutMode = .chatOnly
+            }
+        }
+    }
+
+    private func handleStagedAttachments(_ newFiles: [URL]) {
+        guard !newFiles.isEmpty else { return }
+        for f in newFiles {
+            if !droppedAttachments.contains(f) {
+                droppedAttachments.append(f)
+            }
+        }
+        windowManager.clearStagedAttachments()
+    }
+
+    private func handleAIDisplayCreation(_ notif: Notification) {
+        if let code = notif.object as? String, !code.isEmpty {
+            let title = (notif.userInfo?["title"] as? String) ?? "AI Creation"
+            let isLive = (notif.userInfo?["isLiveStream"] as? Bool) ?? false
+            let fileURL: URL? = {
+                if let uStr = notif.userInfo?["fileURL"] as? String, let u = URL(string: uStr) {
+                    return u
+                }
+                if let path = notif.userInfo?["filePath"] as? String {
+                    return URL(fileURLWithPath: path)
+                }
+                return nil
+            }()
+            let animate = !(isLive && self.previewCreation != nil)
+            updateOrAppendArtifact(title: title, code: code, fileURL: fileURL, animate: animate)
+        }
+    }
+
+    private func handleChatRenderFocused(_ notif: Notification) {
+        guard let artifact = notif.object as? ChatRenderArtifact else { return }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+            self.previewCreation = (title: artifact.title, html: artifact.body, fileURL: nil)
+            if !self.sessionArtifacts.contains(where: { $0.title == artifact.title }) {
+                self.sessionArtifacts.append((title: artifact.title, html: artifact.body, fileURL: nil))
+            }
+        }
+    }
+
+    private func handleVoiceSubmitChat(_ notif: Notification) {
+        if let text = notif.object as? String, !text.isEmpty {
+            self.promptText = text
+        }
+        handlePromptSubmit()
+    }
+
+    private func handleSearchBarAppendText(_ text: String) {
+        if self.promptText.isEmpty {
+            self.promptText = text
+        } else if !self.promptText.hasSuffix(text) {
+            self.promptText += " " + text
+        }
+    }
+
+    private func handleFocusGenieSearchBarWithMode(_ mode: String) {
+        if mode.hasPrefix("Help me with") || mode.hasPrefix("Summarize") || mode.contains(":") {
+            self.promptText = mode
+        }
+    }
+
+    private func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
+        if press.characters == "\u{1b}" || press.key == .escape {
+            if previewCreation != nil {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                    previewCreation = nil
+                }
+                HapticFeedback.selection()
+                return .handled
+            }
+        }
+        if press.modifiers.contains(.command) && (press.characters == "w" || press.characters == "W") {
+            if previewCreation != nil {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                    previewCreation = nil
+                }
+                HapticFeedback.selection()
+                return .handled
+            }
+        }
+        if press.modifiers.contains(.command) && press.characters == "\\" {
+            if previewCreation != nil {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                    isEditorCollapsed.toggle()
+                }
+                return .handled
+            }
+        }
+        let isPlusOrEqual = press.characters == "+" || press.characters == "=" || press.key == KeyEquivalent("+") || press.key == KeyEquivalent("=")
+        if press.modifiers.contains(.command) && isPlusOrEqual {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
+                chatZoomLevel = min(2.50, chatZoomLevel + 0.10)
+                let currentTS = UserDefaults.standard.double(forKey: PrefKey.textSize)
+                let newTS = max(8.0, min(24.0, (currentTS > 0 ? currentTS : 11.0) + 1.0))
+                UserDefaults.standard.set(newTS, forKey: PrefKey.textSize)
+            }
+            showStatusFeedback("Text & UI Scale: \(Int((chatZoomLevel * 100).rounded()))% (\(Int(UserDefaults.standard.double(forKey: PrefKey.textSize))) pt) 🔍+")
+            HapticFeedback.selection()
+            return .handled
+        }
+        let isMinusOrUnderscore = press.characters == "-" || press.characters == "_" || press.key == KeyEquivalent("-") || press.key == KeyEquivalent("_")
+        if press.modifiers.contains(.command) && isMinusOrUnderscore {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
+                chatZoomLevel = max(0.60, chatZoomLevel - 0.10)
+                let currentTS = UserDefaults.standard.double(forKey: PrefKey.textSize)
+                let newTS = max(8.0, min(24.0, (currentTS > 0 ? currentTS : 11.0) - 1.0))
+                UserDefaults.standard.set(newTS, forKey: PrefKey.textSize)
+            }
+            showStatusFeedback("Text & UI Scale: \(Int((chatZoomLevel * 100).rounded()))% (\(Int(UserDefaults.standard.double(forKey: PrefKey.textSize))) pt) 🔍-")
+            HapticFeedback.selection()
+            return .handled
+        }
+        let isZero = press.characters == "0" || press.key == KeyEquivalent("0")
+        if press.modifiers.contains(.command) && isZero {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
+                chatZoomLevel = 1.0
+                UserDefaults.standard.set(11.0, forKey: PrefKey.textSize)
+            }
+            showStatusFeedback("Text & UI Scale: 100% Reset (11 pt) 🔍")
+            HapticFeedback.selection()
+            return .handled
+        }
+        if press.modifiers.contains([.command, .shift]) && (press.characters == "C" || press.characters == "c") {
+            if localModels.copyWholeChat() {
+                showStatusFeedback("Copied whole chat to clipboard 📋")
+            } else {
+                showStatusFeedback("No messages in chat to copy ⚠️")
+            }
+            HapticFeedback.selection()
+            return .handled
+        }
+        if press.modifiers.contains([.command, .shift]) && (press.characters == "V" || press.characters == "v") {
+            let res = localModels.pasteWholeChat()
+            if res.success {
+                showStatusFeedback("Pasted whole chat (\(res.count) messages) 📋✨")
+            } else {
+                showStatusFeedback("No chat transcript in clipboard ⚠️")
+            }
+            return .handled
+        }
+        return .ignored
+    }
+
+    // MARK: - 🕒 In-Chat Integrated World Clock & Widgets Drawer
+    @ViewBuilder
+    private var inChatWidgetBarDrawer: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 12) {
+                // Header Label
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.fill")
+                        .foregroundColor(.cyan)
+                        .font(.system(size: 12, weight: .bold))
+                    Text("In-Chat World Clock & Active Widgets")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+
+                Spacer()
+
+                // Hide/Close Button
+                Button(action: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        showInChatWidgets = false
+                    }
+                    HapticFeedback.selection()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.white.opacity(0.70))
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.plain)
+                .help("Close In-Chat Widgets Drawer")
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 8)
+
+            WorldClockPaneView()
+                .frame(maxHeight: 190)
+                .clipped()
+        }
+        .padding(.bottom, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(red: 0.08, green: 0.09, blue: 0.14).opacity(0.88))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color.cyan.opacity(0.40), Color.white.opacity(0.12)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.8
+                        )
+                )
+        )
+        .padding(.horizontal, isEmbedded ? 8 : 14)
+        .padding(.bottom, 6)
+        .transition(.asymmetric(
+            insertion: .move(edge: .top).combined(with: .opacity),
+            removal: .move(edge: .top).combined(with: .opacity)
+        ))
+        .zIndex(250)
     }
 }

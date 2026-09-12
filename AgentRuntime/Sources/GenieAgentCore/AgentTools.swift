@@ -1,4 +1,10 @@
 import Foundation
+
+// posix_spawn_file_actions_addchdir_np and general process spawning are
+// unavailable on iOS — no shell tool exists there at all, sandboxed or not
+// (run_command is withheld from the iOS catalog; see
+// AgentToolCatalog.platformUnavailable in AgentTypes.swift).
+#if os(macOS)
 import Darwin
 
 private final class AgentCancellation: @unchecked Sendable {
@@ -84,11 +90,18 @@ public enum AgentCommandRunner {
         }, onCancel: { cancellation.cancel() })
     }
 }
+#endif
 
 public actor AgentTools {
     public let workspace: URL
+    #if os(macOS)
     private var desktop: AgentDesktopTools?
-    public init(workspace: URL) { self.workspace = workspace.standardizedFileURL.resolvingSymlinksInPath() }
+    #endif
+    private let activityLog: AgentActivityLogProvider?
+    public init(workspace: URL, activityLog: AgentActivityLogProvider? = nil) {
+        self.workspace = workspace.standardizedFileURL.resolvingSymlinksInPath()
+        self.activityLog = activityLog
+    }
 
     public func resolve(_ path: String) throws -> URL {
         guard !path.hasPrefix("/"), !path.contains("\0") else { throw AgentFailure("Use a relative workspace path.") }
@@ -122,10 +135,48 @@ public actor AgentTools {
         case "edit_file": required = ["path", "old_text", "new_text"]
         case "write_file": required = ["path", "expected_content", "content"]
         case "merge_files": required = ["path", "base_path", "incoming_path"]
+        case "activity_log": required = []
+        #if os(macOS)
         case "read_ui": required = ["app"]
         case "grab_text", "copy_text": required = ["element_id", "scope"]
         case "paste_text": required = ["element_id", "expected_value", "text"]
-        default: required = ["command"]
+        case "app_doc": required = ["app"]
+        case "airdrop": required = ["path"]
+        case "phone_bridge": required = ["text"]
+        case "desktop_agent":
+            switch args["action"] {
+            case "open": required = ["action", "app"]
+            case "move", "click", "double_click", "right_click": required = ["action", "x", "y"]
+            case "drag": required = ["action", "x", "y", "x2", "y2"]
+            case "scroll": required = ["action", "dx", "dy"]
+            case "type": required = ["action", "text"]
+            case "key": required = ["action", "combo"]
+            case "snapshot": required = ["action"]
+            default: throw AgentFailure("Unknown or missing desktop_agent action.")
+            }
+        case "agent_network":
+            switch args["action"] {
+            case "advertise", "discover", "status": required = ["action"]
+            case "send": required = ["action", "path", "peer"]
+            case "clone": required = ["action", "path"]
+            case "tunnel":
+                if args["port"] != nil { required = ["action", "host", "port"] }
+                else { required = ["action", "host"] }
+            case "ping": required = ["action", "peer"]
+            default: throw AgentFailure("Unknown or missing agent_network action.")
+            }
+        case "siri":
+            switch args["action"] {
+            case "run_shortcut":
+                if args["input"] != nil { required = ["action", "shortcut_name", "input"] }
+                else { required = ["action", "shortcut_name"] }
+            case "ask", "query": required = ["action", "input"]
+            case "activate": required = ["action"]
+            default: throw AgentFailure("Unknown or missing siri action.")
+            }
+        case "run_command": required = ["command"]
+        #endif
+        default: throw AgentFailure("Unknown tool.")
         }
         guard Set(args.keys) == required else { throw AgentFailure("Unexpected or missing tool arguments.") }
         if let path = args["path"] { _ = try resolve(path) }
@@ -169,12 +220,36 @@ public actor AgentTools {
         try Task.checkCancellation()
         let args = try arguments(for: call)
         switch call.name {
+        case "activity_log":
+            guard let activityLog else { throw AgentFailure("Activity log is not available in this build.") }
+            let text = await activityLog.recentActivityLog()
+            return AgentToolResult(success: true, output: text.isEmpty ? "No activity logged. The user may have Activity Monitor turned off in Settings > General & Privacy." : text)
+        #if os(macOS)
         case "read_ui", "grab_text", "copy_text", "paste_text":
             if AgentToolCatalog.mutatingNames.contains(call.name) && !approved {
                 throw AgentFailure("Clipboard changes require approval.")
             }
             if desktop == nil { desktop = await AgentDesktopTools() }
             return try await desktop!.execute(call.name, args: args)
+        case "desktop_agent":
+            guard approved else { throw AgentFailure("Desktop actions require approval.") }
+            if desktop == nil { desktop = await AgentDesktopTools() }
+            return try await desktop!.execute(call.name, args: args)
+        case "app_doc":
+            return try await AgentAppDocTools.execute(args)
+        case "airdrop":
+            guard approved else { throw AgentFailure("AirDrop requires approval.") }
+            return try await AgentAirDropTools.execute(args)
+        case "phone_bridge":
+            guard approved else { throw AgentFailure("Sending a message requires approval.") }
+            return try await AgentMessagesBridge.execute(args)
+        case "agent_network":
+            guard approved else { throw AgentFailure("Network actions require approval.") }
+            return try await AgentNetworkService.shared.execute(args)
+        case "siri":
+            guard approved else { throw AgentFailure("Siri and Shortcut actions require approval.") }
+            return try await AgentSiriTools.execute(args)
+        #endif
         case "write_file":
             guard approved else { throw AgentFailure("File writes require approval.") }
             let url = try resolve(args["path"]!)
@@ -235,9 +310,13 @@ public actor AgentTools {
             guard try readText(url) == content else { throw AgentFailure("File read-back verification failed.") }
             return AgentToolResult(success: true, output: "Saved and read back \(args["path"]!). Run relevant tests to verify behavior.")
         default:
+            #if os(macOS)
             guard approved else { throw AgentFailure("Commands require approval.") }
             guard let command = args["command"], !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AgentFailure("Command is empty.") }
             return try await AgentCommandRunner.run(command, directory: workspace)
+            #else
+            throw AgentFailure("Unknown tool.")
+            #endif
         }
     }
 }

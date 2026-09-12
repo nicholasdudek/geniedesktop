@@ -333,8 +333,13 @@ public struct GenieChatAppleMenuBarView: View {
                 showAboutSheet = true
             }
             Button("Genie Architecture Documentation") {
-                let docURL = URL(fileURLWithPath: "/Users/nicholasdudek/Desktop/Genie/GoldGate/docs/GENIE_NOVEL_ARCHITECTURE.md")
-                NSWorkspace.shared.open(docURL)
+                let fm = FileManager.default
+                let docURL = fm.homeDirectoryForCurrentUser.appendingPathComponent("Desktop/Genie/GoldGate/docs/GENIE_NOVEL_ARCHITECTURE.md")
+                if fm.fileExists(atPath: docURL.path) {
+                    NSWorkspace.shared.open(docURL)
+                } else if let bundleDoc = Bundle.main.url(forResource: "GENIE_NOVEL_ARCHITECTURE", withExtension: "md") {
+                    NSWorkspace.shared.open(bundleDoc)
+                }
             }
         }
         .menuStyle(.borderlessButton)

@@ -207,7 +207,7 @@ public final class GenieAutonomousLoopEngine: ObservableObject {
         let mgr = LocalModelManager.shared
         if brainProvider == .cloudGemini && mgr.hasGeminiKey {
             let key = mgr.geminiApiKey
-            let modelId = mgr.effectiveModel.contains("gemini") ? mgr.effectiveModel : "gemini-2.5-flash"
+            let modelId = mgr.effectiveModel.contains("gemini") ? mgr.effectiveModel : "gemini-3.8-flash"
             guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(key)") else {
                 return "echo 'Invalid Gemini URL'"
             }

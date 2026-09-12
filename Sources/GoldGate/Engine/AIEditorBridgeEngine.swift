@@ -212,6 +212,43 @@ public final class AIEditorBridgeEngine: ObservableObject {
         }
     }
 
+    // MARK: - 1b. Stream Code with Atomic "Copy-and-Paste" Cadence
+    /// Instead of character-by-character typewriter crawling, drops complete atomic blocks into the renderer
+    /// with tactile Cmd+V cadence, while writing to disk immediately.
+    public func streamCodeWithCopyPasteDrop(
+        filename: String,
+        content: String,
+        language: String = "Swift",
+        targetDirectory: URL? = nil,
+        openEditor: Bool = true,
+        completion: ((URL?) -> Void)? = nil
+    ) {
+        Task {
+            let outcomes = await GenieParallelFileWriterAndRenderer.shared.writeMultipleFilesInParallel(
+                files: [(filename, content, language, targetDirectory)],
+                targetRenderFile: filename
+            )
+            completion?(outcomes.first?.url)
+        }
+    }
+
+    // MARK: - 1c. Stream Multiple Files Concurrently in Parallel
+    /// Concurrently writes N files to disk while streaming the primary active file into the renderer with
+    /// atomic copy-paste block drops.
+    public func streamMultipleFilesInParallel(
+        files: [(filename: String, content: String, language: String, directory: URL?)],
+        targetRenderFile: String? = nil,
+        completion: (([AIFileWriteOutcome]) -> Void)? = nil
+    ) {
+        Task {
+            let outcomes = await GenieParallelFileWriterAndRenderer.shared.writeMultipleFilesInParallel(
+                files: files,
+                targetRenderFile: targetRenderFile
+            )
+            completion?(outcomes)
+        }
+    }
+
     /// Purely visual. Bounded to `maxAnimationSeconds` so a large file reveals at
     /// the same pace as a small one instead of taking minutes.
     private func playTypewriter(_ content: String, filename: String, speed: Double) async {

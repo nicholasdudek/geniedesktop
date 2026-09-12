@@ -3,6 +3,19 @@ import Foundation
 public enum AgentFileMerge {
     /// diff3 performs a real ancestor-based merge. Originals are never modified.
     public static func preview(current: String, base: String, incoming: String) async throws -> AgentToolResult {
+        #if GENIE_MAS
+        // /usr/bin/diff3 is outside the app bundle; the App Store sandbox cannot
+        // spawn it. `merge_files` is withheld from the tool catalog in this
+        // flavour (see AgentToolCatalog), so the model should never reach here —
+        // this guard exists for direct callers.
+        throw AgentFailure("Three-way merge is not supported under macOS App Sandbox security restrictions. Read both versions and compose the merge instead.")
+        #elseif !os(macOS)
+        // Foundation.Process doesn't exist on iOS at all — no process spawning
+        // under any circumstances. merge_files is withheld from the iOS catalog
+        // entirely (see AgentToolCatalog.platformUnavailable); this guard is
+        // only for direct callers bypassing the catalog.
+        throw AgentFailure("Three-way merge needs a shell tool not available on this platform. Read both versions and compose the merge instead.")
+        #else
         let result = try await Task.detached(priority: .utility) {
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent("genie-merge-" + UUID().uuidString)
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -35,5 +48,6 @@ public enum AgentFileMerge {
         }.value
         try Task.checkCancellation()
         return result
+        #endif
     }
 }

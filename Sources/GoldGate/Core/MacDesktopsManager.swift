@@ -955,41 +955,22 @@ public struct MiniMenuBarDesktopSpacesView: View {
 
     @ViewBuilder
     private func miniDesktopThumbnail(slotIndex: Int, isCurrent: Bool, space: MacDesktopSpace?) -> some View {
-        if desktopPreviewStyle == "Compact Badges" {
-            let c1 = isCurrent ? Color(red: 0.15, green: 0.25, blue: 0.50) : Color.black.opacity(0.4)
-            let c2 = isCurrent ? Color(red: 0.25, green: 0.10, blue: 0.40) : Color.gray.opacity(0.2)
-            LinearGradient(
-                colors: [c1, c2],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .frame(width: 38, height: 24)
-        } else if desktopPreviewStyle == "Wallpaper Previews" {
-            if let wp = wallpaperManager.activeWallpaperImage {
+        let wallpaperImg: NSImage? = {
+            if let live = manager.desktopLivePreviews[slotIndex] { return live }
+            if let active = wallpaperManager.activeWallpaperImage { return active }
+            if let liveSys = wallpaperManager.resolveLiveSystemWallpaper() { return liveSys }
+            return wallpaperManager.loadBundledWallpaper(named: "GenieDefaultLoadScreen")
+                ?? wallpaperManager.loadBundledWallpaper(named: "GoldenGateDynamic")
+        }()
+
+        ZStack {
+            if let wp = wallpaperImg {
                 Image(nsImage: wp)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 38, height: 24)
                     .clipped()
-                    .opacity(isCurrent ? 1.0 : (space != nil ? 0.65 : 0.35))
-            } else {
-                Color.black.opacity(0.5)
-                    .frame(width: 38, height: 24)
-            }
-        } else {
-            if let live = manager.desktopLivePreviews[slotIndex] {
-                Image(nsImage: live)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 38, height: 24)
-                    .clipped()
-            } else if let wp = wallpaperManager.activeWallpaperImage {
-                Image(nsImage: wp)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 38, height: 24)
-                    .clipped()
-                    .opacity(isCurrent ? 1.0 : (space != nil ? 0.65 : 0.35))
+                    .opacity(isCurrent ? 1.0 : (space != nil ? 0.80 : 0.45))
             } else {
                 let gradColors: [Color] = isCurrent
                     ? [Color(red: 0.1, green: 0.15, blue: 0.3), Color(red: 0.2, green: 0.05, blue: 0.25)]
@@ -1001,7 +982,59 @@ public struct MiniMenuBarDesktopSpacesView: View {
                 )
                 .frame(width: 38, height: 24)
             }
+
+            // Miniature Realistic macOS UI Window Cards Layer
+            if space != nil {
+                HStack(spacing: 2.0) {
+                    // Mini Finder / Chat UI Window Box
+                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                        .fill(Color.black.opacity(0.40))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.4)
+                        )
+                        .overlay(
+                            VStack(alignment: .leading, spacing: 1.0) {
+                                HStack(spacing: 0.8) {
+                                    Circle().fill(Color.red.opacity(0.9)).frame(width: 1.2, height: 1.2)
+                                    Circle().fill(Color.yellow.opacity(0.9)).frame(width: 1.2, height: 1.2)
+                                    Circle().fill(Color.green.opacity(0.9)).frame(width: 1.2, height: 1.2)
+                                }
+                                .padding(.leading, 1.0)
+                                .padding(.top, 1.0)
+                                Spacer()
+                            }
+                        )
+                        .frame(width: 16, height: 13)
+
+                    // Secondary Mini Studio Window Box
+                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                        .fill(Color.blue.opacity(0.35))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                                .strokeBorder(Color.cyan.opacity(0.35), lineWidth: 0.4)
+                        )
+                        .frame(width: 13, height: 11)
+                }
+                .padding(.bottom, 2.0)
+            }
+
+            // Miniature Bottom Floating Dock Layer
+            VStack {
+                Spacer()
+                HStack(spacing: 1.0) {
+                    Circle().fill(Color.cyan).frame(width: 1.8, height: 1.8)
+                    Circle().fill(Color.blue).frame(width: 1.8, height: 1.8)
+                    Circle().fill(Color.orange).frame(width: 1.8, height: 1.8)
+                    Circle().fill(Color.green).frame(width: 1.8, height: 1.8)
+                }
+                .padding(.horizontal, 3)
+                .padding(.vertical, 0.8)
+                .background(Capsule().fill(Color.black.opacity(0.65)))
+                .padding(.bottom, 1.0)
+            }
         }
+        .frame(width: 38, height: 24)
     }
 
     @ViewBuilder
@@ -1110,15 +1143,6 @@ public struct MiniMenuBarDesktopSpacesView: View {
             .help("Desktop \(slotIndex) — Click to switch, hold & drag to rearrange or drag off to remove")
             .contextMenu {
                 desktopCardContextMenu(slotIndex: slotIndex, space: space)
-            }
-            .popover(
-                isPresented: Binding(
-                    get: { hoveredSpaceIndex == slotIndex && draggingSlotIndex == nil },
-                    set: { if !$0 && hoveredSpaceIndex == slotIndex { hoveredSpaceIndex = nil } }
-                ),
-                arrowEdge: .bottom
-            ) {
-                desktopHoverPreview(slotIndex: slotIndex, isCurrent: isCurrent)
             }
 
             // Hover [-] Close Button inside Pill Thumbnail

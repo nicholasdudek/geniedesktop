@@ -142,7 +142,7 @@ public struct GenieTopDockNeuralEngineBannerView: View {
 
             // ── Sub-Banner: Neural Engine Hardware Acceleration Line ──
             HStack(spacing: 4) {
-                Text(">>> GENIE STUDIO // ARM64 // METAL ACCELERATED // \(timeMode) // APPS: \(appTrainer.trainedApps.count) TRAINED")
+                Text(">>> GENIE OS // GENIE NEURAL ENGINE // ARM64 // METAL ACCELERATED // \(timeMode) // APPS: \(appTrainer.trainedApps.count) TRAINED")
                     .font(.system(size: heroMode ? 10.5 : 9.5, weight: .semibold, design: .monospaced))
                     .foregroundColor(.white.opacity(0.90))
 

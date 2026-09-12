@@ -103,6 +103,21 @@ public actor EnvironmentManager {
             try await Task.sleep(nanoseconds: 1_000_000_000)
         }
     }
+    /// Copies an environment's whole guest directory into a new one: workspace
+    /// files and the browser profile beside them, so the clone keeps the sessions
+    /// the original had signed in. Job history is not copied — it stays with the
+    /// source and the clone starts with an empty log.
+    @discardableResult
+    public func clone(environment id: UUID, name: String) async throws -> EnvironmentSpec {
+        let source = try open(id)
+        let spec = EnvironmentSpec(name: name, vmID: source.vmID, tools: source.tools)
+        let data = try JSONEncoder().encode(spec)
+        let value = try JSONDecoder().decode(JSONValue.self, from: data)
+        _ = try await call(source, op: "clone", fields: ["spec": value])
+        try data.write(to: location(spec.id), options: .atomic)
+        return spec
+    }
+
     /// Forgets an environment locally. Guest job state and its workspace files
     /// are left intact, so registering the same identifier again reattaches them.
     public func remove(_ id: UUID) throws {

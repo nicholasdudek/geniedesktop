@@ -17,6 +17,7 @@ import os
 import subprocess
 import json
 import plistlib
+from pathlib import Path
 from dataclasses import dataclass, asdict
 from typing import Dict, Any, List
 
@@ -139,7 +140,7 @@ def main():
         print(f"   Action:      {b['reengineering_action']}")
 
     # Export report
-    out_file = "/Users/nicholasdudek/Desktop/Genie/GoldGate/docs/hardware_reengineering_blueprint.json"
+    out_file = str(Path(__file__).resolve().parent / "docs" / "hardware_reengineering_blueprint.json")
     with open(out_file, "w") as f:
         json.dump({"telemetry": telem, "blueprints": blueprints}, f, indent=2)
     print(f"\n[+] Exported Hardware Re-Engineering Blueprint to: {out_file}")

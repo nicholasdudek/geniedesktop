@@ -1,0 +1,26 @@
+{
+  "task_id": "run_worker_node_fork_03",
+  "name": "Genie Shared Folder Worker Node Fork",
+  "orchestrator": "GenieWorkerNodeOrchestrator",
+  "target_workspace": "~/Genie/shared_runtime/worker_build",
+  "isolation_mode": "VZVirtualMachine virtio-fs",
+  "instructions": [
+    {
+      "step": 1,
+      "action": "checkout",
+      "ref": "goldgate-release-candidate"
+    },
+    {
+      "step": 2,
+      "action": "compile",
+      "command": "swift test --filter DocksAndNavigation"
+    },
+    {
+      "step": 3,
+      "action": "smoke_verify",
+      "command": "./.build/debug/Genie --smoke-test"
+    }
+  ],
+  "status": "COMPLETED",
+  "execution_time_seconds": 12.4
+}

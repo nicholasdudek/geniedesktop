@@ -69,12 +69,18 @@ public struct CloudModelItem: Identifiable, Hashable {
 }
 
 // MARK: - Local AI Model Item
+protocol OllamaNamed { var name: String { get } }
+
 public struct LocalModelInfo: Identifiable, Hashable {
     public var id: String { name }
     public let name: String
     public let parameterSize: String?
     public let sizeBytes: Int64?
     public let source: String // "Ollama" or "LM Studio"
+    /// Other tags in the runtime that resolve to these exact same weights.
+    /// Ollama content-addresses blobs, so `genie-master` and `genie-3` can be one
+    /// file on disk under two names; we list it once and keep the rest here.
+    public var aliases: [String] = []
 
     public var displayName: String {
         var clean = name
@@ -304,98 +310,98 @@ public final class LocalModelManager: ObservableObject {
         // ── Top 5 Cloud Providers (BYOK) ──────────────────
         // 1. Google Gemini
         CloudModelItem(
-            id: "gemini-2.5-flash",
-            name: "gemini-2.5-flash",
+            id: "gemini-3.8-flash",
+            name: "gemini-3.8-flash",
             provider: .gemini,
-            displayName: "Gemini 2.5 Flash",
-            description: "Google multimodal flagship — high speed, 1M context, tools & visual analysis",
+            displayName: "Gemini 3.8 Flash",
+            description: "Google agentic flagship — long-horizon software engineering and enterprise workflows",
             minimumRAMGigabytes: 0,
             contextWindow: 1048576
         ),
         CloudModelItem(
-            id: "gemini-2.5-pro",
-            name: "gemini-2.5-pro",
+            id: "gemini-3.5-flash-lite",
+            name: "gemini-3.5-flash-lite",
             provider: .gemini,
-            displayName: "Gemini 2.5 Pro",
-            description: "Google deep reasoning flagship — state-of-the-art coding, math & agentic planning",
+            displayName: "Gemini 3.5 Flash-Lite",
+            description: "Google high-throughput tier — fastest and most cost-effective Gemini",
             minimumRAMGigabytes: 0,
-            contextWindow: 2097152
+            contextWindow: 1048576
         ),
         // 2. Anthropic Claude
         CloudModelItem(
-            id: "claude-3-7-sonnet-latest",
-            name: "claude-3-7-sonnet-latest",
+            id: "claude-opus-5",
+            name: "claude-opus-5",
             provider: .claude,
-            displayName: "Claude 3.7 Sonnet",
-            description: "Anthropic hybrid reasoning & coding flagship with hybrid thinking",
+            displayName: "Claude Opus 5",
+            description: "Anthropic flagship — adaptive thinking, effort control and long-horizon agentic work",
             minimumRAMGigabytes: 0,
-            contextWindow: 200000
+            contextWindow: 1000000
         ),
         CloudModelItem(
-            id: "claude-3-5-haiku-latest",
-            name: "claude-3-5-haiku-latest",
+            id: "claude-sonnet-5",
+            name: "claude-sonnet-5",
             provider: .claude,
-            displayName: "Claude 3.5 Haiku",
-            description: "Anthropic high-speed model for rapid tool execution and summarization",
+            displayName: "Claude Sonnet 5",
+            description: "Anthropic high-volume tier — adaptive thinking at a fraction of Opus pricing",
             minimumRAMGigabytes: 0,
-            contextWindow: 200000
+            contextWindow: 1000000
         ),
         // 3. OpenAI
         CloudModelItem(
-            id: "gpt-4o",
-            name: "gpt-4o",
+            id: "gpt-6-astra",
+            name: "gpt-6-astra",
             provider: .openai,
-            displayName: "GPT-4o Omni",
-            description: "OpenAI versatile multimodal flagship — audio, vision & fast intelligence",
+            displayName: "GPT-6 Astra",
+            description: "OpenAI flagship — most capable model, built for hard end-to-end work",
             minimumRAMGigabytes: 0,
-            contextWindow: 128000
+            contextWindow: 1050000
         ),
         CloudModelItem(
-            id: "o3-mini",
-            name: "o3-mini",
+            id: "gpt-5.6-luna",
+            name: "gpt-5.6-luna",
             provider: .openai,
-            displayName: "o3-mini",
-            description: "OpenAI high-speed reasoning model specialized for math, science and coding",
+            displayName: "GPT-5.6 Luna",
+            description: "OpenAI cost-optimized tier — high-volume workloads at $0.20 per input MTok",
             minimumRAMGigabytes: 0,
-            contextWindow: 200000
+            contextWindow: 1050000
         ),
         // 4. xAI Grok
         CloudModelItem(
-            id: "grok-2-latest",
-            name: "grok-2-latest",
+            id: "grok-4.6",
+            name: "grok-4.6",
             provider: .grok,
-            displayName: "Grok 2",
-            description: "xAI flagship intelligence — real-world understanding, uncensored analysis & coding",
+            displayName: "Grok 4.6",
+            description: "xAI flagship — most intelligent and fastest Grok, real-time world knowledge",
             minimumRAMGigabytes: 0,
-            contextWindow: 131072
+            contextWindow: 500000
         ),
         CloudModelItem(
-            id: "grok-2-vision-128k",
-            name: "grok-2-vision-128k",
+            id: "grok-4.5",
+            name: "grok-4.5",
             provider: .grok,
-            displayName: "Grok 2 Vision",
-            description: "xAI multimodal reasoning — visual layout understanding and document parsing",
+            displayName: "Grok 4.5",
+            description: "xAI previous flagship — strong reasoning and coding at lower cost",
             minimumRAMGigabytes: 0,
-            contextWindow: 131072
+            contextWindow: 500000
         ),
         // 5. DeepSeek
         CloudModelItem(
-            id: "deepseek-chat",
-            name: "deepseek-chat",
+            id: "deepseek-flash",
+            name: "deepseek-flash",
             provider: .deepseek,
-            displayName: "DeepSeek V3",
-            description: "DeepSeek general intelligence flagship — MoE architecture and balanced coding",
+            displayName: "DeepSeek V4.1 Flash",
+            description: "DeepSeek speed tier — MoE architecture, 1M context and 384K max output",
             minimumRAMGigabytes: 0,
-            contextWindow: 65536
+            contextWindow: 1000000
         ),
         CloudModelItem(
-            id: "deepseek-reasoner",
-            name: "deepseek-reasoner",
+            id: "deepseek-v4-pro",
+            name: "deepseek-v4-pro",
             provider: .deepseek,
-            displayName: "DeepSeek R1",
-            description: "DeepSeek pure reasoning flagship — open reasoning tokens and step-by-step logic",
+            displayName: "DeepSeek V4 Pro",
+            description: "DeepSeek reasoning flagship — step-by-step logic with open reasoning tokens",
             minimumRAMGigabytes: 0,
-            contextWindow: 65536
+            contextWindow: 1000000
         )
     ]
     public var cloudModels: [CloudModelItem] { Self.cloudModels }
@@ -1216,6 +1222,26 @@ public final class LocalModelManager: ObservableObject {
         }
     }
 
+    /// When several tags share one blob, prefer the one a user is most likely to
+    /// recognise: an explicit version tag over `:latest`, then the shortest name,
+    /// then alphabetical so the pick is stable between refreshes.
+    fileprivate static func canonicalTag<E>(in group: [E]) -> E? where E: OllamaNamed {
+        group.min { a, b in
+            let aLatest = a.name.hasSuffix(":latest"), bLatest = b.name.hasSuffix(":latest")
+            if aLatest != bLatest { return !aLatest }
+            if a.name.count != b.name.count { return a.name.count < b.name.count }
+            return a.name < b.name
+        }
+    }
+
+    /// True for an Ollama cloud model — inference runs on Ollama's servers, not here.
+    /// Identified by the `-cloud` tag suffix, or by carrying no local weights at all.
+    nonisolated static func isOllamaCloudModel(name: String, sizeBytes: Int64?) -> Bool {
+        let tag = name.split(separator: ":").last.map(String.init) ?? ""
+        if tag == "cloud" || tag.hasSuffix("-cloud") { return true }
+        return (sizeBytes ?? 0) == 0
+    }
+
     private func fetchOllamaModels() async -> [LocalModelInfo]? {
         let host = ollamaHost.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanHost = host.isEmpty ? "http://localhost:11434" : host
@@ -1228,9 +1254,10 @@ public final class LocalModelManager: ObservableObject {
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
 
             struct OllamaTagResponse: Decodable {
-                struct ModelEntry: Decodable {
+                struct ModelEntry: Decodable, OllamaNamed {
                     let name: String
                     let size: Int64?
+                    let digest: String?
                     struct Details: Decodable {
                         let parameter_size: String?
                     }
@@ -1240,12 +1267,34 @@ public final class LocalModelManager: ObservableObject {
             }
 
             let decoded = try JSONDecoder().decode(OllamaTagResponse.self, from: data)
-            return decoded.models.map { entry in
-                LocalModelInfo(
-                    name: entry.name,
-                    parameterSize: entry.details?.parameter_size,
-                    sizeBytes: entry.size,
-                    source: "Ollama"
+            // Ollama 0.34+ registers cloud models locally: they answer /api/tags with a
+            // `-cloud` tag and zero bytes on disk, but the daemon forwards inference to
+            // Ollama's servers. Listing them under "Local Models" would send a prompt
+            // off this machine while the UI says local, so they are dropped here.
+            // One entry per distinct blob, not per tag. Several tags routinely point
+            // at the same weights (`ollama cp`, renamed Modelfiles), and listing each
+            // one separately both clutters the picker and overstates disk use — the
+            // `size` field is per-tag, so summing tags double-counts shared storage.
+            let usable = decoded.models
+                .filter { !Self.isOllamaCloudModel(name: $0.name, sizeBytes: $0.size) }
+
+            var byDigest: [String: [OllamaTagResponse.ModelEntry]] = [:]
+            var order: [String] = []
+            for entry in usable {
+                // No digest means we cannot prove it is a duplicate — keep it standalone.
+                let key = entry.digest ?? "tag:\(entry.name)"
+                if byDigest[key] == nil { order.append(key) }
+                byDigest[key, default: []].append(entry)
+            }
+
+            return order.compactMap { key -> LocalModelInfo? in
+                guard let group = byDigest[key], let primary = Self.canonicalTag(in: group) else { return nil }
+                return LocalModelInfo(
+                    name: primary.name,
+                    parameterSize: primary.details?.parameter_size,
+                    sizeBytes: primary.size,
+                    source: "Ollama",
+                    aliases: group.map(\.name).filter { $0 != primary.name }.sorted()
                 )
             }
         } catch {

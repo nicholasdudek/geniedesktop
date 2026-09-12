@@ -81,12 +81,14 @@ Total mastery over hardware telemetry.
 
 ## 5. Pricing & Packaging Strategy
 
-- **Mac App Store (Genie Lite)**: 
+- **Mac App Store (Genie Lite & Studio)**: 
   - **Category**: Productivity / Utilities
-  - **Price**: $19.99 (or Free Download with Pro Workspace Unlock)
+  - **Genie Pro Monthly**: **$19.99 / month** (Flexible, cancel anytime, 30-day free trial included)
+  - **Genie Annual Pass**: **$120.00 / year** ($10.00/mo effective, Save 50% / $119.88 off vs. monthly, 30-day free trial included)
+  - **Founder's 2-Year Pass**: **$199.00 / 2 years** ($8.29/mo effective, Save 58%, 30-day free trial included)
   - **Compliance**: 100% Apple Sandbox compliant (`GENIE_MAS=1`, Hardened Runtime, Zero Privileged Helpers).
 - **Direct Distribution (Genie Sovereign Pro)**:
-  - Notarized Developer ID DMG with full Hypervisor daemon and CLI tool integrations.
+  - Notarized Developer ID DMG with full Hypervisor daemon, local model runner, and CLI tool integrations.
 
 ---
 

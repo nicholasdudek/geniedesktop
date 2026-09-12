@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import sqlite3
 import time
@@ -136,6 +137,36 @@ class Worker:
         if op == 'jobs':
             return [self.job(env, row['id']) for row in self.db.execute(
                 'SELECT id FROM jobs WHERE environment=? ORDER BY created DESC LIMIT 100', (env,)).fetchall()]
+        if op == 'clone':
+            spec = request['spec']
+            target = identifier(spec['id'])
+            if not set(spec['tools']) <= {'browser', 'filesystem', 'shell', 'python'}:
+                raise ValueError('Unsupported tool family')
+            if target == env:
+                raise ValueError('A clone target must differ from its source')
+            if self.db.execute('SELECT 1 FROM environments WHERE id=?', (target,)).fetchone():
+                raise ValueError('Clone target is already registered')
+            destination = self.root / target
+            if destination.exists():
+                raise ValueError('Clone target directory already exists')
+            # Copies the whole environment directory, not just workspace: the
+            # browser profile is a sibling of it, so a workspace-only copy would
+            # silently drop every logged-in session. Symlinks are preserved as
+            # symlinks rather than followed; within() re-checks them on access.
+            try:
+                shutil.copytree(self.root / env, destination, symlinks=True)
+            except Exception:
+                shutil.rmtree(destination, ignore_errors=True)
+                raise
+            # A profile copied from a running browser carries Chromium's
+            # singleton locks, which make the clone refuse to launch.
+            for lock in (destination / 'browser-profile').glob('Singleton*'):
+                lock.unlink(missing_ok=True)
+            (destination / 'workspace').mkdir(parents=True, exist_ok=True)
+            with self.db:
+                self.db.execute('INSERT INTO environments VALUES(?,?)',
+                                (target, json.dumps(spec, sort_keys=True)))
+            return spec
         if op == 'events':
             return [dict(row) for row in self.db.execute(
                 'SELECT * FROM events WHERE environment=? AND cursor>? ORDER BY cursor LIMIT 200',

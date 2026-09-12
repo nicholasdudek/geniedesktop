@@ -11,14 +11,22 @@ public struct LiquidGlassMiniDockView: View {
 
     @ObservedObject var dockManager = DockAndDesktopManager.shared
     @ObservedObject var trashMonitor = TrashMonitor.shared
+    @ObservedObject var localModels = LocalModelManager.shared
+    @ObservedObject var windowManager = DesktopWindowManager.shared
+    @ObservedObject var batteryMonitor = BatteryMonitor.shared
 
     @AppStorage(PrefKey.dockActiveAppsOnly) var dockActiveAppsOnly: Bool = false
     @AppStorage(PrefKey.dockAlwaysShowFinder) var dockAlwaysShowFinder: Bool = true
     @AppStorage(PrefKey.dockAlwaysShowTrash) var dockAlwaysShowTrash: Bool = true
     @AppStorage(PrefKey.dockShowFolderStacks) var dockShowFolderStacks: Bool = true
+    @AppStorage(PrefKey.batteryEnabled) var batteryEnabled: Bool = true
+    @AppStorage(PrefKey.showChargingBolt) var showChargingBolt: Bool = true
 
     @State private var hoveredItemId: String? = nil
     @State private var bouncingItemId: String? = nil
+    @State private var dockChatInput: String = ""
+    @State private var isBatteryHovered: Bool = false
+    @FocusState private var isDockChatFocused: Bool
 
     public init(isPresented: Binding<Bool>, selectedTab: Binding<Int>? = nil) {
         self._isPresented = isPresented
@@ -70,6 +78,9 @@ public struct LiquidGlassMiniDockView: View {
                 // 0. Genie Studio (Chat & Workflows) — Consolidated under the GENIE Blocks
                 genieStudioView
 
+                // 0b. Invisible / Glass Dock Chat Bar with live box updates
+                dockChatBarView
+
                 // 1. Finder Icon
                 if dockAlwaysShowFinder {
                     finderView
@@ -103,6 +114,12 @@ public struct LiquidGlassMiniDockView: View {
                 // 4. Trash
                 if dockAlwaysShowTrash {
                     trashView
+                }
+
+                // 5. Battery Status Indicator (Replaced screens in mini dock with battery)
+                if batteryEnabled {
+                    dockDivider
+                    batteryPillView
                 }
             }
             .padding(.horizontal, 14)
@@ -228,6 +245,110 @@ public struct LiquidGlassMiniDockView: View {
                 FinderChatWindowManager.shared.show(tab: .files)
             }
         }
+    }
+
+    // MARK: - 0b. Dock Chat Bar & Live Updates
+    private var dockChatBarView: some View {
+        HStack(spacing: 6) {
+            // Invisible / subtle chat prompt box
+            HStack(spacing: 5) {
+                Image(systemName: "sparkle")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.cyan)
+
+                TextField("Chat to dock...", text: $dockChatInput)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(.white)
+                    .focused($isDockChatFocused)
+                    .frame(width: isDockChatFocused || !dockChatInput.isEmpty ? 130 : 75)
+                    .animation(.spring(response: 0.25, dampingFraction: 0.82), value: isDockChatFocused)
+                    .onSubmit {
+                        submitDockChat()
+                    }
+
+                if !dockChatInput.isEmpty {
+                    Button(action: submitDockChat) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundColor(.cyan)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3.5)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(isDockChatFocused ? 0.12 : 0.04))
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(Color.cyan.opacity(isDockChatFocused ? 0.50 : 0.18), lineWidth: 0.7)
+            )
+
+            // Live Update Box in Dock (Shows latest response or generation & pulls up full chat)
+            if localModels.isGenerating || !localModels.currentResponse.isEmpty || (localModels.chatHistory.last?.role != "user" && localModels.chatHistory.last != nil) {
+                Button(action: pullUpFullChat) {
+                    HStack(spacing: 4) {
+                        if localModels.isGenerating {
+                            ProgressView()
+                                .scaleEffect(0.45)
+                                .frame(width: 10, height: 10)
+                            Text(localModels.currentResponse.isEmpty ? "Thinking..." : localModels.currentResponse)
+                                .lineLimit(1)
+                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .foregroundColor(.cyan)
+                                .frame(maxWidth: 130, alignment: .leading)
+                        } else if let last = localModels.chatHistory.last, last.role != "user" {
+                            Image(systemName: "bubble.left.fill")
+                                .font(.system(size: 8.5))
+                                .foregroundColor(.cyan.opacity(0.85))
+                            Text(last.content)
+                                .lineLimit(1)
+                                .font(.system(size: 10, weight: .regular, design: .rounded))
+                                .foregroundColor(.white.opacity(0.90))
+                                .frame(maxWidth: 130, alignment: .leading)
+                        }
+
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 7.5, weight: .bold))
+                            .foregroundColor(.cyan)
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3.5)
+                    .background(
+                        Capsule()
+                            .fill(Color.cyan.opacity(0.14))
+                    )
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(Color.cyan.opacity(0.35), lineWidth: 0.6)
+                    )
+                }
+                .buttonStyle(.plain)
+                .help("Click to pull up full chat")
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+    }
+
+    private func submitDockChat() {
+        let trimmed = dockChatInput.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        dockChatInput = ""
+        HapticFeedback.success()
+        localModels.generate(prompt: trimmed)
+    }
+
+    private func pullUpFullChat() {
+        HapticFeedback.selection()
+        if let selectedTab = selectedTab {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                selectedTab.wrappedValue = 0
+            }
+        }
+        NotificationCenter.default.post(name: NSNotification.Name("GeniePullUpFullChat"), object: nil)
     }
 
     // MARK: - 1. Finder View
@@ -592,6 +713,146 @@ public struct LiquidGlassMiniDockView: View {
         }
     }
 
+    // MARK: - 5. Settings Button (Page 2 of Dock)
+    private var settingsButtonView: some View {
+        let isHovered = hoveredItemId == "genie.dock.settings"
+        let isSettingsActive = windowManager.topDockPage == 1
+
+        return Button(action: {
+            HapticFeedback.selection()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                windowManager.topDockPage = (windowManager.topDockPage == 1 ? 0 : 1)
+            }
+        }) {
+            VStack(spacing: 2) {
+                ZStack {
+                    if isHovered {
+                        Circle()
+                            .fill(Color.purple.opacity(0.35))
+                            .frame(width: 38, height: 38)
+                            .blur(radius: 4)
+                    }
+
+                    if isSettingsActive {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.purple.opacity(0.85), lineWidth: 1.5)
+                            .frame(width: 34, height: 34)
+                    }
+
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(isSettingsActive ? .cyan : (isHovered ? .white : .white.opacity(0.85)))
+                        .frame(width: 30, height: 30)
+                        .scaleEffect(isHovered ? 1.15 : 1.0)
+                        .shadow(color: Color.purple.opacity(isHovered ? 0.6 : 0.2), radius: 3, y: 1.5)
+                }
+                .frame(width: 34, height: 34)
+
+                Circle()
+                    .fill(isSettingsActive ? Color.cyan : Color.clear)
+                    .frame(width: 3.5, height: 3.5)
+            }
+            .frame(width: 38, height: 42)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { h in
+            withAnimation(.spring(response: 0.20, dampingFraction: 0.75)) {
+                hoveredItemId = h ? "genie.dock.settings" : nil
+            }
+        }
+        .help("Settings (Page 2 of Dock)")
+        .contextMenu {
+            Button("Genie Settings (Page 2)") {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                    windowManager.topDockPage = 1
+                }
+            }
+            Divider()
+            Button("Return to Dock (Page 1)") {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                    windowManager.topDockPage = 0
+                }
+            }
+        }
+    }
+
+    // MARK: - 5. Battery Status Pill
+    private var batteryPillView: some View {
+        Button(action: {
+            HapticFeedback.selection()
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.battery") {
+                NSWorkspace.shared.open(url)
+            }
+        }) {
+            HStack(spacing: 5) {
+                // Battery Gauge Bar Icon
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                        .stroke(Color.white.opacity(0.40), lineWidth: 1.2)
+                        .frame(width: 22, height: 12)
+
+                    let pct = CGFloat(batteryMonitor.batteryPct ?? 100) / 100.0
+                    let fillW = max(2.0, min(18.0, 18.0 * pct))
+                    let fillColor: Color = batteryMonitor.isCharging ? .green : (pct <= 0.20 ? .red : (pct <= 0.40 ? .yellow : .green))
+
+                    RoundedRectangle(cornerRadius: 2.0, style: .continuous)
+                        .fill(fillColor)
+                        .frame(width: fillW, height: 8)
+                        .padding(.leading, 2)
+                }
+                .overlay(
+                    // Battery terminal nub
+                    RoundedRectangle(cornerRadius: 1.0, style: .continuous)
+                        .fill(Color.white.opacity(0.40))
+                        .frame(width: 1.8, height: 4.5)
+                        .offset(x: 12)
+                )
+
+                if showChargingBolt && batteryMonitor.isCharging {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 8.5, weight: .bold))
+                        .foregroundColor(.yellow)
+                }
+
+                Text("\(batteryMonitor.batteryPct ?? 100)%")
+                    .font(.system(size: 10.5, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundColor(.white.opacity(0.90))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4.5)
+            .background(
+                Capsule()
+                    .fill(isBatteryHovered ? Color.white.opacity(0.16) : Color.white.opacity(0.08))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(isBatteryHovered ? 0.30 : 0.15), lineWidth: 0.7)
+                    )
+            )
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { h in
+            isBatteryHovered = h
+            withAnimation(.spring(response: 0.20, dampingFraction: 0.75)) {
+                hoveredItemId = h ? "genie.dock.battery" : nil
+            }
+        }
+        .help("Battery: \(batteryMonitor.batteryPct ?? 100)% \(batteryMonitor.isCharging ? "(Charging ⚡)" : "")")
+        .contextMenu {
+            let bm = BatteryMonitor.shared
+            let pct = bm.batteryPct ?? 100
+            let pwrText = bm.isCharging ? "\(pct)% — Charging on Power Adapter ⚡" : (bm.isPluggedIn ? "\(pct)% — Power Adapter Connected 🔌" : "\(pct)% — On Battery Power 🔋")
+            Text(pwrText)
+
+            Button("macOS Battery Settings...") {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.battery") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+        }
+    }
+
     // MARK: - Divider
     private var dockDivider: some View {
         Rectangle()
@@ -610,6 +871,11 @@ public struct LiquidGlassMiniDockView: View {
             let count = trashMonitor.trashItemCount
             return count > 0 ? "Trash (\(count) items)" : "Trash"
         }
+        if id == "genie.dock.battery" {
+            let bm = BatteryMonitor.shared
+            return "Battery: \(bm.batteryPct ?? 100)% \(bm.isCharging ? "(Charging ⚡)" : "")"
+        }
+        if id == "genie.dock.settings" { return "Settings (Page 2 of Dock)" }
         if let match = displayItems.first(where: { $0.id == id }) {
             return match.name
         }

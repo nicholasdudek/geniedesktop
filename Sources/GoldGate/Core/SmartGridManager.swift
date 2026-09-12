@@ -9,6 +9,7 @@ public enum GridScreenChoice: String, CaseIterable, Identifiable {
     case halfScreens = "Halves"
     case single = "Full Screen"
     case quadrant2x2 = "2x2"
+    case quadrant3x3 = "3x3"
     case matrix9x9 = "9x9 Spatial (81 Slots)"
     case matrix4x3 = "4x3"
     case toDesktops = "To Desktops"
@@ -21,6 +22,7 @@ public enum GridScreenChoice: String, CaseIterable, Identifiable {
         case "Halves", "Half Screens", "Half": self = .halfScreens
         case "Full Screen", "1 Screen", "Single", "Full": self = .single
         case "2x2", "Quadrant 2x2": self = .quadrant2x2
+        case "3x3", "Quadrant 3x3", "3x3 Grid", "Thirds": self = .quadrant3x3
         case "9x9 Spatial (81 Slots)", "9x9 Spatial", "9x9", "81 Slots", "81": self = .matrix9x9
         case "4x3", "Matrix 4x3", "4x4": self = .matrix4x3
         case "To Desktops", "Desktops", "Sort to Desktops": self = .toDesktops
@@ -34,6 +36,7 @@ public enum GridScreenChoice: String, CaseIterable, Identifiable {
         case .halfScreens: return 2
         case .single: return 1
         case .quadrant2x2: return 2
+        case .quadrant3x3: return 3
         case .matrix9x9: return 9
         case .matrix4x3: return 4
         case .toDesktops: return 0 // Distributed across spaces
@@ -46,6 +49,7 @@ public enum GridScreenChoice: String, CaseIterable, Identifiable {
         case .halfScreens: return 1
         case .single: return 1
         case .quadrant2x2: return 2
+        case .quadrant3x3: return 3
         case .matrix9x9: return 9
         case .matrix4x3: return 3
         case .toDesktops: return 0
@@ -60,6 +64,7 @@ public enum GridScreenChoice: String, CaseIterable, Identifiable {
         case .halfScreens: return "rectangle.split.2x1.fill"
         case .single: return "rectangle.fill"
         case .quadrant2x2: return "square.grid.2x2.fill"
+        case .quadrant3x3: return "square.grid.3x3.fill"
         case .matrix9x9: return "circle.grid.3x3.fill"
         case .matrix4x3: return "rectangle.grid.3x2.fill"
         case .toDesktops: return "macwindow.on.rectangle"
@@ -72,6 +77,7 @@ public enum GridScreenChoice: String, CaseIterable, Identifiable {
         case .halfScreens: return "Half Screens (50/50 side-by-side split)"
         case .single: return "Full Screen (100% maximized work area)"
         case .quadrant2x2: return "4 Quadrants (2x2)"
+        case .quadrant3x3: return "9 Quadrants (3x3 Grid)"
         case .matrix9x9: return "81-Slot 9x9 Spatial Universe Matrix (9x9 Mega-Canvas Grid)"
         case .matrix4x3: return "12 Slots Matrix (4x3)"
         case .toDesktops: return "Sort & distribute open applications across Desktops 1–4"
@@ -640,6 +646,15 @@ public final class SmartGridManager: ObservableObject {
                 width: halfW,
                 height: halfH
             )
+        case .quadrant3x3:
+            let slotW = (workArea.width - 32) / 3
+            let slotH = (workArea.height - 32) / 3
+            targetFrameCocoa = CGRect(
+                x: workArea.minX + 8,
+                y: workArea.maxY - slotH - 8,
+                width: slotW,
+                height: slotH
+            )
 
         case .matrix9x9:
             let slotW = max(100, (workArea.width - 80) / 9)
@@ -680,9 +695,9 @@ public final class SmartGridManager: ObservableObject {
         let notchHeight: CGFloat = {
             if #available(macOS 12.0, *) {
                 let inset = screen.safeAreaInsets.top
-                return inset > 0 ? inset : (CustomMenuBarManager.shared.isEnabled ? 44.0 : 28.0)
+                return inset > 0 ? (inset + 14.0) : (CustomMenuBarManager.shared.isEnabled ? 48.0 : 34.0)
             }
-            return CustomMenuBarManager.shared.isEnabled ? 44.0 : 28.0
+            return CustomMenuBarManager.shared.isEnabled ? 48.0 : 34.0
         }()
         let sideMargin: CGFloat = 6.0
         let bottomMargin: CGFloat = 8.0

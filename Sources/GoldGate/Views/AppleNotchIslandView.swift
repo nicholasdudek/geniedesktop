@@ -91,7 +91,7 @@ public struct AppleNotchIslandView: View {
     }
 
     private var restingHeight: CGFloat {
-        notch.hasNotch ? max(32.0, notch.notchHeight) : 32.0
+        notch.hasNotch ? max(38.0, notch.notchHeight + 6.0) : 34.0
     }
 
     public var body: some View {

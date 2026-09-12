@@ -238,6 +238,9 @@ final class DesktopWindowManager: ObservableObject {
         }
     }
 
+    /// Page of the Top Dock (0: The Main Program / Dock, 1: The Stuffed Settings Window)
+    @Published public var topDockPage: Int = 0
+
     /// Shows the top dock, closing the menu bar dropdown on the way in.
     public func presentTopDock() {
         isTopDockPresented = true
@@ -246,6 +249,24 @@ final class DesktopWindowManager: ObservableObject {
     /// Hides the top dock. Safe to call when it is already hidden.
     public func dismissTopDock() {
         isTopDockPresented = false
+    }
+
+    /// Makes the Dock the actual program: activates and presents Page 1 of the Dock.
+    public func showTopDockProgram() {
+        topDockPage = 0
+        setPage(0)
+        UserDefaults.standard.set(0, forKey: PrefKey.appDisplayStage)
+        presentTopDock()
+        elevateForTopDashboard(isPopped: true)
+    }
+
+    /// Opens Page 2 of the Dock: stuffed with the full Settings Window.
+    public func showTopDockSettings() {
+        topDockPage = 1
+        setPage(0)
+        UserDefaults.standard.set(0, forKey: PrefKey.appDisplayStage)
+        presentTopDock()
+        elevateForTopDashboard(isPopped: true)
     }
 
     /// Toggles the Active Desktop (Application Matrix & Formation Canvas) directly from the Top Dock
@@ -477,7 +498,12 @@ final class DesktopWindowManager: ObservableObject {
         }
         for win in self.desktopWindows {
             if isPopped {
-                win.level = NSWindow.Level(Int(CGWindowLevelForKey(.popUpMenuWindow)) + 25)
+                let lockToTop = UserDefaults.standard.object(forKey: "genieTopDockLockToTopLayer") as? Bool ?? true
+                if lockToTop {
+                    win.level = NSWindow.Level(Int(CGWindowLevelForKey(.popUpMenuWindow)) + 25)
+                } else {
+                    win.level = .floating
+                }
                 win.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
                 win.ignoresMouseEvents = false
                 win.orderFrontRegardless()

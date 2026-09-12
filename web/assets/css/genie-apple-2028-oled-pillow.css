@@ -1,0 +1,80 @@
+/**
+ * ⏱️ GENIE APPLE 2028 OLED BLACKOUT PILLOW THEME
+ * Architected by Nicholas M. Dudek for Genie Haute Horology.
+ *
+ * Implements luxury dark-mode aesthetics:
+ * - True pitch-black OLED background (#000000)
+ * - Specular rim gradients with P3 wide-color highlights
+ * - Vitreous frosted glass cards with 30px blur
+ * - High-precision monospaced telemetry tags and gold/cyan accents
+ */
+
+[data-theme="apple-2028-oled-pillow"], body.theme-apple-2028-oled-pillow, :root[data-theme="apple-2028-oled-pillow"] {
+  --genie-bg: #000000;
+  --genie-bg-gradient: radial-gradient(circle at 50% 0%, #0d0f17 0%, #050608 50%, #000000 100%);
+  --genie-glass-card: rgba(12, 14, 20, 0.88);
+  --genie-glass-blur: blur(36px) saturate(180%);
+  --genie-border-rim: linear-gradient(135deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.06) 40%, rgba(56, 189, 248, 0.25) 100%);
+  --genie-border-subtle: rgba(255, 255, 255, 0.08);
+  --genie-accent-gold: #f4c375;
+  --genie-accent-cyan: #38bdf8;
+  --genie-accent-white: #ffffff;
+  --genie-text-primary: #ffffff;
+  --genie-text-secondary: #94a3b8;
+  --genie-text-muted: #52525b;
+  --genie-code-bg: #030305;
+  --genie-pillow-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+body.theme-apple-2028-oled-pillow {
+  background: var(--genie-bg);
+  background-image: var(--genie-bg-gradient);
+  color: var(--genie-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.genie-oled-pillow-card {
+  position: relative;
+  background: var(--genie-glass-card);
+  -webkit-backdrop-filter: var(--genie-glass-blur);
+  backdrop-filter: var(--genie-glass-blur);
+  border-radius: 26px;
+  border: 1px solid var(--genie-border-subtle);
+  box-shadow: var(--genie-pillow-shadow);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.genie-oled-pillow-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  padding: 1px;
+  background: var(--genie-border-rim);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.genie-oled-pillow-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.95), 0 0 40px rgba(255, 255, 255, 0.10);
+}
+
+.genie-oled-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--genie-accent-gold);
+  letter-spacing: 0.4px;
+}
