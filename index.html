@@ -1,0 +1,4145 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genie — Next-Generation Spatial Workspace for macOS</title>
+  <meta name="description" content="Genie is a native macOS spatial desktop workspace and application launcher engineered with Swift and Metal.">
+  <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+  
+  <style>
+    :root, [data-theme="dark"] {
+      --bg: #07090e;
+      --card-bg: rgba(255, 255, 255, 0.035);
+      --card-hover: rgba(255, 255, 255, 0.07);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(244, 195, 117, 0.3);
+      --gold: #f4c375;
+      --purple-glow: rgba(147, 95, 245, 0.35);
+      --blue-glow: rgba(56, 189, 248, 0.25);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --nav-bg: rgba(7, 9, 14, 0.75);
+      --dropdown-bg: rgba(16, 20, 30, 0.96);
+      --window-header: rgba(20, 23, 33, 0.9);
+      --window-body: #000000;
+      --footer-bg: rgba(10, 12, 18, 0.6);
+      --tag-bg: rgba(255, 255, 255, 0.04);
+      --tag-border: rgba(255, 255, 255, 0.1);
+      --tag-text: #cbd5e1;
+      --gradient-heading: linear-gradient(180deg, #ffffff 30%, #94a3b8 100%);
+      --arrow-bg: rgba(12, 15, 23, 0.85);
+      --arrow-color: #ffffff;
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --card-bg: rgba(255, 255, 255, 0.88);
+      --card-hover: #ffffff;
+      --border: rgba(0, 0, 0, 0.08);
+      --border-accent: rgba(217, 119, 6, 0.4);
+      --gold: #d97706;
+      --purple-glow: rgba(147, 95, 245, 0.12);
+      --blue-glow: rgba(56, 189, 248, 0.1);
+      --text: #0f172a;
+      --text-muted: #475569;
+      --nav-bg: rgba(255, 255, 255, 0.85);
+      --dropdown-bg: rgba(255, 255, 255, 0.98);
+      --window-header: #e2e8f0;
+      --window-body: #0f172a;
+      --footer-bg: #f1f5f9;
+      --tag-bg: rgba(0, 0, 0, 0.04);
+      --tag-border: rgba(0, 0, 0, 0.1);
+      --tag-text: #334155;
+      --gradient-heading: linear-gradient(180deg, #0f172a 30%, #475569 100%);
+      --arrow-bg: rgba(255, 255, 255, 0.9);
+      --arrow-color: #0f172a;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      background-image: 
+        radial-gradient(circle at 50% 0%, var(--purple-glow) 0%, transparent 60%),
+        radial-gradient(circle at 80% 20%, var(--blue-glow) 0%, transparent 50%);
+    }
+
+    /* Ambient glow elements */
+    .glow-sphere {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(244, 195, 117, 0.08) 0%, rgba(147, 95, 245, 0.05) 50%, transparent 70%);
+      top: -150px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    
+    
+    /* ==========================================================================
+       Ultra-Clean Top Navbar & Slide-Out Sidebar Drawer
+       ========================================================================== */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 28px;
+      height: 64px;
+      background: var(--nav-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s ease, border-color 0.3s ease;
+      box-sizing: border-box;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 1.22rem;
+      letter-spacing: -0.02em;
+      flex-shrink: 0;
+      white-space: nowrap !important;
+    }
+
+    .nav-brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+    }
+
+    /* Minimalist Desktop Quick Links (Only 3-4 clean items, NEVER wrapping) */
+    .nav-quick-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .nav-quick-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 999px;
+      white-space: nowrap !important;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.2;
+    }
+
+    .nav-quick-link:hover {
+      color: var(--text);
+      background: var(--tag-bg);
+    }
+
+    .nav-quick-link.highlight {
+      color: var(--gold);
+      background: rgba(244, 195, 117, 0.1);
+      border: 1px solid var(--border-accent);
+      font-weight: 600;
+    }
+
+    .nav-quick-link.highlight:hover {
+      background: rgba(244, 195, 117, 0.2);
+    }
+
+    /* Right Controls */
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-download-nav {
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      color: #0c0f17 !important;
+      font-weight: 600 !important;
+      padding: 8px 18px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      box-shadow: 0 2px 10px rgba(244, 195, 117, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+      white-space: nowrap !important;
+    }
+    .btn-download-nav:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 16px rgba(244, 195, 117, 0.4);
+    }
+
+    /* Sidebar Trigger Button (Clean pill button with 3-bar icon) */
+    .btn-sidebar-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      white-space: nowrap !important;
+      user-select: none;
+    }
+
+    .btn-sidebar-trigger:hover {
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+      color: var(--gold);
+      transform: translateY(-1px);
+    }
+
+    .sidebar-trigger-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 3.5px;
+      width: 14px;
+    }
+
+    .sidebar-trigger-bars span {
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: currentColor;
+      border-radius: 2px;
+      transition: all 0.2s ease;
+    }
+
+    /* ==========================================================================
+       Slide-Out Sidebar (Off-Canvas macOS Drawer)
+       ========================================================================== */
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.68);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s;
+    }
+
+    .sidebar-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .app-sidebar-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 380px;
+      max-width: 90vw;
+      background: var(--dropdown-bg);
+      border-left: 1px solid var(--border-accent);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+      box-shadow: -16px 0 48px rgba(0, 0, 0, 0.75);
+      z-index: 2001;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .app-sidebar-drawer.open {
+      transform: translateX(0);
+    }
+
+    /* Sidebar Header */
+    .sidebar-header {
+      padding: 22px 24px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-brand-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-brand-box img {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .sidebar-brand-text strong {
+      display: block;
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+
+    .sidebar-brand-text span {
+      font-size: 0.75rem;
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    .sidebar-close-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-close-btn:hover {
+      color: var(--text);
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+      transform: scale(1.05);
+    }
+
+    /* Sidebar Body & Sections */
+    .sidebar-body {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      flex: 1;
+    }
+
+    .sidebar-group-title {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+      padding-left: 4px;
+    }
+
+    .sidebar-nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar-nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 12px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      transition: all 0.18s ease;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .sidebar-nav-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border);
+      color: var(--gold);
+      transform: translateX(4px);
+    }
+
+    .sidebar-nav-item.highlight {
+      background: rgba(244, 195, 117, 0.1);
+      border-color: var(--border-accent);
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    .sidebar-nav-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-nav-icon {
+      font-size: 1.15rem;
+      width: 22px;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .sidebar-nav-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(244, 195, 117, 0.2);
+      color: var(--gold);
+      border: 1px solid var(--border-accent);
+      border-radius: 999px;
+      padding: 2px 8px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-nav-arrow {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      transition: transform 0.2s;
+    }
+    .sidebar-nav-item:hover .sidebar-nav-arrow {
+      transform: translateX(3px);
+      color: var(--gold);
+    }
+
+    /* Sidebar Footer */
+    .sidebar-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-btn-download {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      color: #0c0f17 !important;
+      font-weight: 700 !important;
+      padding: 13px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 0.94rem;
+      box-shadow: 0 4px 18px rgba(244, 195, 117, 0.35);
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
+    }
+
+    .sidebar-btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(244, 195, 117, 0.45);
+    }
+
+    .sidebar-footer-sub {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Responsive Queries */
+    @media (max-width: 960px) {
+      .nav-quick-links {
+        display: none !important;
+      }
+      .btn-download-nav {
+        display: none !important;
+      }
+      nav {
+        padding: 0 18px;
+      }
+    }
+
+    /* Right Controls */
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-download-nav {
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      color: #0c0f17 !important;
+      font-weight: 600 !important;
+      padding: 8px 18px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      box-shadow: 0 2px 10px rgba(244, 195, 117, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+      white-space: nowrap;
+    }
+    .btn-download-nav:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 16px rgba(244, 195, 117, 0.4);
+    }
+
+    /* Modern 3-Bar Morphing Hamburger Button */
+    .mobile-menu-btn {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 5px;
+      transition: all 0.25s ease;
+      z-index: 1002;
+      padding: 0;
+    }
+    .mobile-menu-btn:hover {
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+    }
+    .hamburger-bar {
+      width: 20px;
+      height: 2px;
+      background-color: var(--text);
+      border-radius: 2px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, background-color 0.2s ease;
+      display: block;
+    }
+    .mobile-menu-btn.active {
+      border-color: var(--border-accent);
+      background: rgba(244, 195, 117, 0.12);
+    }
+    .mobile-menu-btn.active .top-bar {
+      transform: translateY(7px) rotate(45deg);
+      background-color: var(--gold);
+    }
+    .mobile-menu-btn.active .mid-bar {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    .mobile-menu-btn.active .bot-bar {
+      transform: translateY(-7px) rotate(-45deg);
+      background-color: var(--gold);
+    }
+
+    /* Mobile Backdrop Overlay */
+    .mobile-nav-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 998;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s;
+    }
+    .mobile-nav-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Responsive Mobile Navigation Drawer (Screen <= 1080px) */
+    @media (max-width: 1080px) {
+      nav {
+        padding: 12px 20px;
+      }
+      .mobile-menu-btn {
+        display: flex;
+      }
+      .btn-download-nav {
+        display: none;
+      }
+
+      .nav-links {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 68px;
+        left: 12px;
+        right: 12px;
+        background: var(--dropdown-bg);
+        border: 1px solid var(--border-accent);
+        border-radius: 20px;
+        padding: 18px;
+        gap: 4px;
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-14px) scale(0.98);
+        transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                    visibility 0.25s;
+        pointer-events: none;
+        max-height: calc(100vh - 84px);
+        overflow-y: auto;
+        z-index: 999;
+      }
+
+      .nav-links.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
+
+      /* Mobile Drawer Header */
+      .nav-mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 12px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-mobile-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .nav-mobile-brand img {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+      }
+      .nav-mobile-brand strong {
+        font-size: 0.95rem;
+        display: block;
+        color: var(--text);
+      }
+      .nav-mobile-brand span {
+        font-size: 0.75rem;
+        color: var(--gold);
+        font-weight: 600;
+      }
+      .nav-mobile-close {
+        background: var(--tag-bg);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+      .nav-mobile-close:hover {
+        color: var(--text);
+        border-color: var(--border-accent);
+      }
+
+      .nav-links-scrollable {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .nav-link-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 14px;
+        border-radius: 12px;
+        color: var(--text);
+        font-size: 0.94rem;
+        font-weight: 500;
+        text-decoration: none;
+        background: transparent;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+      }
+
+      .nav-link-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .nav-link-icon {
+        display: inline-flex;
+        font-size: 1.15rem;
+        width: 22px;
+        justify-content: center;
+      }
+
+      .nav-link-text {
+        font-weight: 500;
+      }
+
+      .nav-link-arrow {
+        display: inline-block;
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        transition: transform 0.2s ease;
+      }
+
+      .nav-link-badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        background: rgba(244, 195, 117, 0.2);
+        color: var(--gold);
+        border: 1px solid var(--border-accent);
+        border-radius: 999px;
+        padding: 2px 8px;
+        text-transform: uppercase;
+      }
+
+      .nav-link-item:hover, .nav-link-item:active {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--border);
+        color: var(--gold);
+      }
+      .nav-link-item:hover .nav-link-arrow {
+        transform: translateX(3px);
+        color: var(--gold);
+      }
+
+      .nav-link-item.highlight-link {
+        background: rgba(244, 195, 117, 0.08);
+        border-color: rgba(244, 195, 117, 0.25);
+        color: var(--gold);
+        font-weight: 600;
+      }
+
+      .nav-mobile-divider {
+        display: block;
+        height: 1px;
+        background: var(--border);
+        margin: 6px 0;
+      }
+
+      /* Mobile Drawer Footer */
+      .nav-mobile-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+
+      .btn-mobile-download {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+        color: #0c0f17 !important;
+        font-weight: 700 !important;
+        padding: 12px 18px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-size: 0.92rem;
+        box-shadow: 0 4px 18px rgba(244, 195, 117, 0.35);
+        text-align: center;
+      }
+
+      .nav-mobile-subinfo {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    }
+
+    /* Right Controls */
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Language Nav Dropdown */
+    .lang-selector-nav {
+      position: relative;
+      display: inline-block;
+    }
+
+    .btn-lang-toggle {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-lang-toggle:hover {
+      border-color: var(--border-accent);
+    }
+
+    .lang-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--dropdown-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 6px;
+      min-width: 175px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      z-index: 1100;
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .lang-dropdown-menu.show {
+      display: flex;
+    }
+
+    .lang-dropdown-item {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.15s ease, color 0.15s ease;
+      user-select: none;
+      text-align: left;
+    }
+
+    .lang-dropdown-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+
+    .lang-dropdown-item.active {
+      background: rgba(244, 195, 117, 0.15);
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .theme-toggle-btn:hover {
+      transform: scale(1.08);
+      border-color: var(--border-accent);
+    }
+
+    .btn-download-nav {
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      color: #0c0f17 !important;
+      font-weight: 600 !important;
+      padding: 8px 18px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      box-shadow: 0 2px 10px rgba(244, 195, 117, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+      white-space: nowrap;
+    }
+
+    .btn-download-nav:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 16px rgba(244, 195, 117, 0.4);
+    }
+
+    /* Mobile Hamburger */
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      z-index: 1;
+      max-width: 1080px;
+      margin: 70px auto 40px;
+      padding: 0 24px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(244, 195, 117, 0.08);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-size: 0.86rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      letter-spacing: 0.03em;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+      line-height: 1.12;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 22px;
+      background: var(--gradient-heading);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 36px;
+      font-weight: 400;
+    }
+
+    .cta-group {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 50px;
+    }
+
+    .app-store-badge {
+      display: inline-flex;
+      text-decoration: none;
+      transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+      border-radius: 12px;
+    }
+
+    .app-store-badge:hover {
+      transform: translateY(-2px);
+      filter: drop-shadow(0 8px 24px rgba(244, 195, 117, 0.3));
+    }
+
+    .apple-badge-inner {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: #000000;
+      border: 1.5px solid #444444;
+      border-radius: 12px;
+      padding: 8px 20px 8px 16px;
+      min-height: 54px;
+      box-sizing: border-box;
+      color: #ffffff;
+    }
+
+    .apple-badge-logo {
+      flex-shrink: 0;
+      width: 22px;
+      height: 26px;
+      fill: #ffffff;
+    }
+
+    .apple-badge-text {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      line-height: 1.15;
+    }
+
+    .badge-subtext {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      font-size: 10px;
+      font-weight: 400;
+      color: #ffffff;
+      letter-spacing: 0.2px;
+    }
+
+    .badge-maintext {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.2px;
+    }
+
+    .version-callout {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .version-pill {
+      color: var(--gold);
+      font-weight: 700;
+      background: rgba(244, 195, 117, 0.1);
+      border: 1px solid var(--border-accent);
+      padding: 3px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+    }
+
+    .version-separator {
+      color: var(--border);
+    }
+
+    /* Video Showreel Container with Side Bars & Back/Forward */
+    .preview-container {
+      position: relative;
+      max-width: 1080px;
+      margin: 0 auto 90px;
+      padding: 0 24px;
+      z-index: 1;
+    }
+
+    .preview-tabs-wrapper {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .preview-tabs {
+      display: inline-flex;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 4px;
+      border-radius: 999px;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      gap: 4px;
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .preview-tabs::-webkit-scrollbar { display: none; }
+
+    .preview-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .preview-tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .preview-tab-btn.active {
+      color: #0c0f17;
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      box-shadow: 0 2px 14px rgba(244, 195, 117, 0.35);
+    }
+
+    .preview-frame {
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 
+        0 30px 80px rgba(0, 0, 0, 0.6),
+        0 0 100px var(--purple-glow);
+      background: var(--window-header);
+    }
+
+    .preview-mac-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: var(--window-header);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+    }
+
+    .mac-traffic-lights {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 70px;
+    }
+
+    .traffic-light {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .traffic-light.close { background: #ff5f56; border: 1px solid #e0443e; }
+    .traffic-light.minimize { background: #ffbd2e; border: 1px solid #dea123; }
+    .traffic-light.maximize { background: #27c93f; border: 1px solid #1aab29; }
+
+    .mac-window-title {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.02em;
+    }
+
+    .mac-header-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .preview-video-wrapper {
+      position: relative;
+      background: #000;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .preview-video-wrapper video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Video Side Bar Navigation (Back / Forward Buttons) */
+    .preview-nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--arrow-bg);
+      color: var(--arrow-color);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      user-select: none;
+      opacity: 0.75;
+    }
+
+    .preview-nav-arrow:hover {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.1);
+      border-color: var(--border-accent);
+      color: var(--gold);
+    }
+
+    .preview-nav-arrow.prev { left: 18px; }
+    .preview-nav-arrow.next { right: 18px; }
+
+    /* Floating Glass Video Controls */
+    .video-floating-bar {
+      position: absolute;
+      bottom: 16px;
+      right: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--arrow-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 12px;
+      z-index: 10;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .video-control-btn {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      transition: color 0.2s ease, transform 0.2s ease;
+    }
+    .video-control-btn:hover {
+      color: var(--gold);
+      transform: scale(1.15);
+    }
+    .video-badge-build {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--gold);
+      padding-right: 8px;
+      border-right: 1px solid var(--border);
+      letter-spacing: 0.04em;
+    }
+
+    /* Section Titles */
+    .section-title {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .section-title h2 {
+      font-size: clamp(2rem, 4vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: var(--gradient-heading);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* Engineering Stats & Speed Grid */
+    .stats-section {
+      max-width: 1120px;
+      margin: 0 auto 100px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 18px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px 18px;
+      text-align: center;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+    }
+
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 60%, #935ff5 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-unit {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--gold);
+    }
+
+    .stat-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .stat-subtext {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* Architecture Dissection Section */
+    .dissection-section {
+      max-width: 1120px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .dissection-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+      gap: 24px;
+    }
+
+    .dissection-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 30px;
+      transition: transform 0.25s ease, border-color 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .dissection-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-accent);
+    }
+
+    .dissection-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .dissection-icon {
+      font-size: 1.6rem;
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dissection-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .dissection-card p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    .tech-tag-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tech-tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--tag-border);
+      color: var(--tag-text);
+      font-size: 0.76rem;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    /* Features Grid */
+    .features {
+      max-width: 1120px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 34px;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      backdrop-filter: blur(16px);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      background: var(--card-hover);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+
+    .feature-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* App Store Showcase with Interactive Carousel & Side Bar */
+    .screenshots-section {
+      max-width: 1200px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+    }
+
+    .showcase-control-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .showcase-view-tabs {
+      display: inline-flex;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .showcase-view-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .showcase-view-btn.active {
+      background: var(--border-accent);
+      color: var(--gold);
+    }
+
+    .showcase-counter {
+      font-size: 0.88rem;
+      color: var(--gold);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    /* Interactive Showcase Carousel Wrapper with Side Bars */
+    .showcase-carousel-wrapper {
+      position: relative;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      overflow: hidden;
+      padding: 30px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    /* Showcase Side Bar Category List */
+    .showcase-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .showcase-sidebar-item {
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 500;
+      text-align: left;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .showcase-sidebar-item:hover {
+      background: var(--tag-bg);
+      color: var(--text);
+    }
+
+    .showcase-sidebar-item.active {
+      background: rgba(244, 195, 117, 0.12);
+      border-color: var(--border-accent);
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* Main Showcase Slide Viewport */
+    .showcase-viewport {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      border: 1px solid var(--border);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    }
+
+    .showcase-viewport img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      transition: opacity 0.3s ease;
+    }
+
+    .showcase-slide-desc {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, transparent 0%, rgba(7, 9, 14, 0.95) 40%, rgba(7, 9, 14, 0.98) 100%);
+      padding: 24px;
+      color: #fff;
+    }
+
+    .showcase-slide-desc h4 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .showcase-slide-desc p {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    /* Floating Back/Forward Side Buttons */
+    .showcase-nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--arrow-bg);
+      color: var(--arrow-color);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      user-select: none;
+    }
+
+    .showcase-nav-arrow:hover {
+      transform: translateY(-50%) scale(1.1);
+      border-color: var(--border-accent);
+      color: var(--gold);
+    }
+
+    .showcase-nav-arrow.prev { left: 14px; }
+    .showcase-nav-arrow.next { right: 14px; }
+
+    /* All 10 Grid View (Hidden in Carousel mode by default) */
+    .screenshots-grid {
+      display: none;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    .screenshots-grid.active-grid {
+      display: grid;
+    }
+
+    .screenshot-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screenshot-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .screenshot-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      background: #000;
+    }
+
+    .screenshot-info {
+      padding: 18px 20px;
+    }
+
+    .screenshot-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    .screenshot-info h4 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .screenshot-info p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    /* Languages & Internationalization Section */
+    .languages-section {
+      max-width: 1120px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .lang-tabs-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .lang-pill-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lang-pill-btn:hover {
+      color: var(--text);
+      border-color: var(--border-accent);
+    }
+
+    .lang-pill-btn.active {
+      color: #0c0f17;
+      background: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      border-color: var(--gold);
+      font-weight: 600;
+      box-shadow: 0 2px 12px rgba(244, 195, 117, 0.35);
+    }
+
+    .lang-showcase-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .lang-preview-info h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-preview-info p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .lang-preview-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .lang-preview-tag {
+      background: rgba(244, 195, 117, 0.08);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+
+    .lang-mockup-window {
+      background: var(--window-body);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+    }
+
+    .lang-mockup-header {
+      background: var(--window-header);
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .lang-mockup-body {
+      padding: 22px;
+    }
+
+    .lang-mockup-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    .lang-mockup-row:last-child { border-bottom: none; }
+    .lang-mockup-label { color: var(--text-muted); }
+    .lang-mockup-value { color: var(--text); font-weight: 600; }
+
+    /* Contact Section */
+    .contact-section {
+      max-width: 1120px;
+      margin: 0 auto 100px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .contact-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px 24px;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .contact-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.2);
+    }
+
+    .contact-icon {
+      font-size: 1.8rem;
+      margin-bottom: 14px;
+      display: inline-block;
+    }
+
+    .contact-card h4 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .contact-card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .contact-link-text {
+      color: var(--gold);
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Privacy Banner */
+    .privacy-banner {
+      max-width: 900px;
+      margin: 0 auto 120px;
+      padding: 48px;
+      background: linear-gradient(135deg, rgba(244, 195, 117, 0.05) 0%, rgba(147, 95, 245, 0.05) 100%);
+      border: 1px solid var(--border-accent);
+      border-radius: 24px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+    }
+
+    .privacy-banner h3 {
+      font-size: 1.75rem;
+      margin-bottom: 14px;
+      color: var(--gold);
+    }
+
+    .privacy-banner p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 640px;
+      margin: 0 auto 24px;
+    }
+
+    .privacy-banner a {
+      color: var(--gold);
+      text-decoration: underline;
+      font-weight: 500;
+    }
+
+    /* Enhanced Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 60px 24px 36px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      background: var(--footer-bg);
+    }
+
+    .footer-columns {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+      text-align: left;
+      max-width: 1120px;
+      margin: 0 auto 48px;
+    }
+
+    .footer-col h5 {
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    .footer-col ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .footer-col li {
+      margin-bottom: 10px;
+    }
+
+    .footer-col a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.86rem;
+      transition: color 0.2s ease;
+    }
+
+    .footer-col a:hover {
+      color: var(--text);
+    }
+
+    .footer-brand p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      max-width: 320px;
+      margin-top: 12px;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1120px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 0.82rem;
+    }
+
+    /* RTL Layout Modes */
+    body.rtl-mode {
+      direction: rtl;
+      text-align: right;
+    }
+    body.rtl-mode nav { direction: rtl; }
+    body.rtl-mode .footer-columns { direction: rtl; text-align: right; }
+    body.rtl-mode .lang-dropdown-menu { right: auto; left: 0; text-align: right; }
+    body.rtl-mode .contact-card { text-align: right; }
+    body.rtl-mode .dissection-card { text-align: right; }
+    body.rtl-mode .feature-card { text-align: right; }
+    body.rtl-mode .screenshot-card { text-align: right; }
+    body.rtl-mode .showcase-sidebar-item { text-align: right; }
+    body.rtl-mode .preview-mac-header { direction: ltr; }
+
+    /* Responsive Mobile Media Queries */
+    @media (max-width: 992px) {
+      .showcase-carousel-wrapper { grid-template-columns: 1fr; }
+      .showcase-sidebar { max-height: 200px; flex-direction: row; overflow-x: auto; }
+      .hero h1 { font-size: 3rem; }
+      .features-grid { grid-template-columns: 1fr; }
+      .lang-showcase-box { grid-template-columns: 1fr; }
+      .footer-columns { grid-template-columns: 1fr 1fr; gap: 32px; }
+    }
+
+    @media (max-width: 768px) {
+      nav { padding: 12px 16px; }
+      .hero { margin: 40px auto 20px; padding: 0 16px; }
+      .preview-container { padding: 0 16px; margin-bottom: 60px; }
+      .hero h1 { font-size: 2.2rem; }
+      .features { padding: 0 16px; margin-bottom: 60px; }
+      .screenshots-section { padding: 0 16px; }
+      .footer-columns { grid-template-columns: 1fr; }
+    }
+  
+    /* App-Matching Language Selector Styles */
+    .lang-item-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .lang-greeting-tag {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.06);
+      margin-left: auto;
+      margin-right: 6px;
+    }
+    .lang-check-icon {
+      font-size: 0.82rem;
+      color: var(--gold);
+      opacity: 0;
+      font-weight: 700;
+    }
+    .lang-dropdown-item.active .lang-check-icon,
+    .app-lang-card-item.active .lang-check-icon {
+      opacity: 1;
+    }
+    .app-lang-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 680px) {
+      .app-lang-grid { grid-template-columns: 1fr; }
+    }
+    .app-lang-card-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .app-lang-card-item:hover {
+      border-color: var(--border-accent);
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateY(-1px);
+    }
+    .app-lang-card-item.active {
+      border-color: var(--gold);
+      background: rgba(244, 195, 117, 0.12);
+      box-shadow: 0 0 16px rgba(244, 195, 117, 0.2);
+    }
+    .app-lang-card-item .lang-flag {
+      font-size: 1.25rem;
+    }
+    .app-lang-card-item .lang-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .app-lang-card-item.active .lang-title {
+      color: var(--gold);
+    }
+    .app-lang-card-item .lang-greeting-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-left: auto;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+
+    /* ==========================================================================
+       Menu Bar Studio Hub & Dynamic Battery Customizer Section
+       ========================================================================== */
+    .menubar-studio-section {
+      max-width: 1200px;
+      margin: 0 auto 120px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .menubar-hero-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 36px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      margin-bottom: 36px;
+    }
+
+    .menubar-tabs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 28px;
+      background: rgba(0, 0, 0, 0.28);
+      padding: 8px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .menubar-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 9px 18px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .menubar-tab-btn:hover {
+      color: var(--text);
+      background: var(--tag-bg);
+    }
+
+    .menubar-tab-btn.active {
+      background: var(--border-accent);
+      color: var(--gold);
+      border-color: var(--border-accent);
+      box-shadow: 0 2px 12px rgba(244, 195, 117, 0.2);
+    }
+
+    .menubar-display-stage {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    @media (max-width: 960px) {
+      .menubar-display-stage {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .menubar-screen-frame {
+      position: relative;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+      box-shadow: 0 20px 48px rgba(0,0,0,0.55);
+    }
+
+    .menubar-screen-frame img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      transition: opacity 0.3s ease;
+    }
+
+    .menubar-zoom-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--gold);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .menubar-details-pane h3 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .menubar-details-pane p {
+      color: var(--text-muted);
+      font-size: 0.96rem;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    .menubar-feature-bullets {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .menubar-feature-bullets li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .menubar-feature-bullets li span.bullet-icon {
+      color: var(--gold);
+      font-size: 1.15rem;
+      line-height: 1.1;
+      flex-shrink: 0;
+    }
+
+    .menubar-details-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(244, 195, 117, 0.15);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      padding: 10px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+    .menubar-details-cta:hover {
+      background: var(--gold);
+      color: #0c0f17;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(244, 195, 117, 0.3);
+    }
+
+    /* Battery Selections Cards */
+    .battery-selections-box {
+      margin-top: 48px;
+    }
+
+    .battery-selections-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .battery-selections-header h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .battery-selections-header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .battery-styles-showcase-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+
+    .battery-style-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 14px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .battery-style-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-accent);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+      background: var(--card-hover);
+    }
+
+    .battery-style-name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .battery-style-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .battery-style-tag {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--gold);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Live CSS Battery Mockups */
+    .idx-batt-liquid {
+      width: 126px;
+      height: 34px;
+      border-radius: 17px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    .idx-batt-liquid-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 88%;
+      background: linear-gradient(90deg, #34d399, #10b981);
+      border-radius: 17px 0 0 17px;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+    }
+    .idx-batt-liquid-text {
+      position: relative;
+      z-index: 2;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    }
+
+    .idx-batt-cyber {
+      width: 136px;
+      height: 32px;
+      background: #050811;
+      border: 1px solid #38bdf8;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      gap: 3px;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .idx-cyber-seg {
+      flex: 1;
+      height: 18px;
+      background: #38bdf8;
+      border-radius: 1.5px;
+      box-shadow: 0 0 6px #38bdf8;
+    }
+    .idx-cyber-seg.dim {
+      background: rgba(56, 189, 248, 0.18);
+      box-shadow: none;
+    }
+    .idx-cyber-txt {
+      font-family: ui-monospace, monospace;
+      font-size: 0.74rem;
+      color: #38bdf8;
+      font-weight: 700;
+      margin-left: 4px;
+    }
+
+    .idx-batt-mono {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .idx-mono-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+    }
+
+    .idx-batt-vert {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .idx-vert-box {
+      width: 20px;
+      height: 42px;
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      border-radius: 3.5px;
+      padding: 2px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 2px;
+      position: relative;
+    }
+    .idx-vert-box::before {
+      content: "";
+      position: absolute;
+      top: -4.5px;
+      left: 5.5px;
+      width: 6px;
+      height: 2.5px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 1px 1px 0 0;
+    }
+    .idx-vert-cell {
+      height: 6px;
+      background: #f4c375;
+      border-radius: 1px;
+    }
+    .idx-vert-cell.empty {
+      background: rgba(244, 195, 117, 0.15);
+    }
+    .idx-vert-txt {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .idx-batt-vision {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+    .idx-vision-ring {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #38bdf8;
+      border-top-color: transparent;
+      animation: spin 3s linear infinite;
+    }
+    .idx-vision-txt {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Telemetry strip */
+    .telemetry-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-top: 28px;
+    }
+    .telemetry-card {
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+    .telemetry-card:hover {
+      border-color: var(--border-accent);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .telemetry-num {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--gold);
+      margin-bottom: 4px;
+      font-feature-settings: "tnum";
+    }
+    .telemetry-lbl {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+    }
+    .telemetry-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+</style>
+</head>
+<body>
+  <div class="glow-sphere"></div>
+
+  <!-- Navigation Bar -->
+  <!-- Navigation Bar -->
+  <nav id="main-nav">
+    <a href="#" class="nav-brand">
+      <img src="assets/images/app_icon.png" alt="Genie Logo">
+      <span>Genie</span>
+    </a>
+
+    <!-- Minimalist Desktop Quick Links (Clean, No-Wrap) -->
+    <div class="nav-quick-links">
+      <a href="#menubar-studio" class="nav-quick-link highlight">
+        <span>⚡️ Battery & Menu Bar</span>
+      </a>
+      <a href="features.html" class="nav-quick-link">
+        <span>🧪 Studio Lab</span>
+      </a>
+      <a href="#screenshots" class="nav-quick-link">
+        <span>🖼️ Showcase</span>
+      </a>
+    </div>
+
+    <!-- Right Controls: Language, Theme, Download, and Sidebar Menu Toggle -->
+    <div class="nav-controls">
+      <!-- Language Dropdown -->
+      <div class="lang-selector-nav">
+        <button class="btn-lang-toggle" onclick="toggleLangDropdown(event)" id="current-lang-btn" title="Switch Language">
+          <span id="nav-lang-flag">🇺🇸</span>
+          <span id="nav-lang-code">EN</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="lang-dropdown-menu" id="lang-dropdown-menu">
+          <div class="lang-dropdown-item active" data-lang="en" onclick="setSiteLanguage('en')">
+            <div class="lang-item-left"><span>🇺🇸</span> <span>English (US)</span></div>
+            <span class="lang-greeting-tag">Hello</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="es" onclick="setSiteLanguage('es')">
+            <div class="lang-item-left"><span>🇪🇸</span> <span>Español</span></div>
+            <span class="lang-greeting-tag">Hola</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="fr" onclick="setSiteLanguage('fr')">
+            <div class="lang-item-left"><span>🇫🇷</span> <span>Français</span></div>
+            <span class="lang-greeting-tag">Bonjour</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="de" onclick="setSiteLanguage('de')">
+            <div class="lang-item-left"><span>🇩🇪</span> <span>Deutsch</span></div>
+            <span class="lang-greeting-tag">Hallo</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="ja" onclick="setSiteLanguage('ja')">
+            <div class="lang-item-left"><span>🇯🇵</span> <span>日本語</span></div>
+            <span class="lang-greeting-tag">こんにちは</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="zh" onclick="setSiteLanguage('zh')">
+            <div class="lang-item-left"><span>🇨🇳</span> <span>简体中文</span></div>
+            <span class="lang-greeting-tag">你好</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="it" onclick="setSiteLanguage('it')">
+            <div class="lang-item-left"><span>🇮🇹</span> <span>Italiano</span></div>
+            <span class="lang-greeting-tag">Ciao</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="ko" onclick="setSiteLanguage('ko')">
+            <div class="lang-item-left"><span>🇰🇷</span> <span>한국어</span></div>
+            <span class="lang-greeting-tag">안녕하세요</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="pt" onclick="setSiteLanguage('pt')">
+            <div class="lang-item-left"><span>🇧🇷</span> <span>Português</span></div>
+            <span class="lang-greeting-tag">Olá</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+          <div class="lang-dropdown-item" data-lang="ar" onclick="setSiteLanguage('ar')">
+            <div class="lang-item-left"><span>🇸🇦</span> <span>العربية (RTL)</span></div>
+            <span class="lang-greeting-tag">مرحبا</span>
+            <span class="lang-check-icon">✓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Theme Toggle (Light / Dark) -->
+      <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">
+        <span id="theme-icon">🌙</span>
+      </button>
+
+      <!-- App Store Button -->
+      <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-download-nav" data-i18n="nav_download">Mac App Store</a>
+
+      <!-- Slide-Out Sidebar Trigger Button -->
+      <button class="btn-sidebar-trigger" onclick="toggleSidebarDrawer()" id="sidebar-trigger-btn" aria-label="Open Navigation Sidebar">
+        <div class="sidebar-trigger-bars">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span>Menu</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Slide-Out Sidebar Drawer Backdrop Overlay -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebarDrawer()"></div>
+
+  <!-- Slide-Out Sidebar Drawer -->
+  <aside class="app-sidebar-drawer" id="app-sidebar-drawer" aria-label="Site Navigation Sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand-box">
+        <img src="assets/images/app_icon.png" alt="Genie App Icon">
+        <div class="sidebar-brand-text">
+          <strong>Genie Studio</strong>
+          <span>v1.0.0 (Build 12)</span>
+        </div>
+      </div>
+      <button class="sidebar-close-btn" onclick="closeSidebarDrawer()" aria-label="Close Sidebar">✕</button>
+    </div>
+
+    <div class="sidebar-body">
+      <!-- Group 1: Workspaces & Features -->
+      <div>
+        <div class="sidebar-group-title">Workspaces & Features</div>
+        <ul class="sidebar-nav-list">
+          <li>
+            <a href="#menubar-studio" class="sidebar-nav-item highlight" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">⚡️</span>
+                <span>Menu Bar & Battery</span>
+              </span>
+              <span class="sidebar-nav-tag">New</span>
+            </a>
+          </li>
+          <li>
+            <a href="features.html" class="sidebar-nav-item highlight" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🧪</span>
+                <span>Studio Lab & Gestures</span>
+              </span>
+              <span class="sidebar-nav-arrow">↗</span>
+            </a>
+          </li>
+          <li>
+            <a href="#demo" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">✨</span>
+                <span>Live Canvas Walkthrough</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#features" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🎛️</span>
+                <span>Core Features & Shaders</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#screenshots" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🖼️</span>
+                <span>Retina App Store Showcase</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Group 2: System Architecture -->
+      <div>
+        <div class="sidebar-group-title">System & Architecture</div>
+        <ul class="sidebar-nav-list">
+          <li>
+            <a href="#stats" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">📈</span>
+                <span>Speed & Benchmarks</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#architecture" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">📐</span>
+                <span>Deep Subsystem Specs</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#languages" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🌐</span>
+                <span>10 Native World Languages</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#privacy" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🛡️</span>
+                <span>Zero-Telemetry Privacy</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Group 3: Support & Contact -->
+      <div>
+        <div class="sidebar-group-title">Developer & Support</div>
+        <ul class="sidebar-nav-list">
+          <li>
+            <a href="#contact" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">💬</span>
+                <span>Founder Contact & Help</span>
+              </span>
+              <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">📦</span>
+                <span>GitHub Repository</span>
+              </span>
+              <span class="sidebar-nav-arrow">↗</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+      <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="sidebar-btn-download">
+        <span> Download on Mac App Store</span>
+      </a>
+      <div class="sidebar-footer-sub">
+        <span>Universal Binary • macOS Sonoma & Sequoia</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-badge" data-i18n="hero_badge">✨ Version 1.0.0 (Build 12) • Engineered for macOS Sonoma & Sequoia</div>
+    <h1 data-i18n="hero_title">Turn your Mac desktop into a high-performance spatial canvas.</h1>
+    <p data-i18n="hero_desc">Launch and organize your apps in 28+ living formations, 52+ real-time GPU Metal shaders, tactile audio feedback, and ambient desktop pets — with 0% idle CPU and zero telemetry.</p>
+    
+    <div class="cta-group">
+      <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="app-store-badge" aria-label="Download on the Mac App Store">
+        <div class="apple-badge-inner">
+          <svg class="apple-badge-logo" viewBox="0 0 170 170" width="22" height="26" fill="currentColor">
+            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.58-7.7-11.65-13.98-5.99-9.24-10.74-19.66-14.25-31.27-3.51-11.6-5.26-22.38-5.26-32.33 0-14.56 3.75-26.65 11.25-36.27 7.5-9.62 17.02-14.54 28.56-14.76 4.9.11 10.15 1.34 15.75 3.7 5.6 2.36 9.4 3.59 11.4 3.7 1.8-.11 5.75-1.39 11.85-3.85 6.1-2.46 11.27-3.6 15.5-3.43 13.06.87 23.36 5.68 30.9 14.42-11.53 7-17.18 16.63-16.96 28.9.22 9.68 4.02 17.7 11.4 24.06 4.47 3.82 9.58 6.43 15.34 7.84-2.5 7.42-5.77 15.03-9.82 22.84zM119.22 33.74c0-7.39 2.65-14.15 7.95-20.28 5.3-6.13 11.83-9.87 19.59-11.22.11 1.2.16 2.18.16 2.94 0 7.39-2.73 14.28-8.19 20.67-5.46 6.39-12.06 10.09-19.8 11.1-.11-1.09-.16-2.07-.16-2.94z"/>
+          </svg>
+          <div class="apple-badge-text">
+            <span class="badge-subtext">Download on the</span>
+            <span class="badge-maintext">Mac App Store</span>
+          </div>
+        </div>
+      </a>
+      <a href="features.html" style="display:inline-flex; align-items:center; gap:8px; background:rgba(244,195,117,0.12); border:1px solid rgba(244,195,117,0.4); color:var(--gold); padding:14px 22px; border-radius:12px; text-decoration:none; font-weight:600; font-size:0.95rem; transition:all 0.2s;">
+        <span>✨ Feature Studio & Gestures Lab →</span>
+      </a>
+      <div class="version-callout">
+        <span class="version-pill" data-i18n="hero_version">Current Build: 1.0.0 (Build 12)</span>
+        <span class="version-separator">•</span>
+        <span data-i18n="hero_universal">Universal Binary (Apple Silicon & Intel)</span>
+        <span class="version-separator">•</span>
+        <span data-i18n="hero_privacy">Zero Telemetry</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Video Showreel with Side Bars & Back/Forward Arrows -->
+  <div id="demo" class="preview-container">
+    <div class="preview-tabs-wrapper">
+      <div class="preview-tabs">
+        <button class="preview-tab-btn active" onclick="switchPreview(0, this)" data-i18n="tab_canvas">
+          <span>✨</span> Spatial Canvas
+        </button>
+        <button class="preview-tab-btn" onclick="switchPreview(1, this)" data-i18n="tab_themes">
+          <span>🎨</span> Living Themes
+        </button>
+        <button class="preview-tab-btn" onclick="switchPreview(2, this)" data-i18n="tab_formations">
+          <span>📐</span> Formations & Hub
+        </button>
+        <button class="preview-tab-btn" onclick="switchPreview(3, this)" data-i18n="tab_walkthrough">
+          <span>⚡️</span> Live Walkthrough
+        </button>
+      </div>
+    </div>
+
+    <div class="preview-frame">
+      <div class="preview-mac-header">
+        <div class="mac-traffic-lights">
+          <span class="traffic-light close"></span>
+          <span class="traffic-light minimize"></span>
+          <span class="traffic-light maximize"></span>
+        </div>
+        <div class="mac-window-title" id="mac-window-title">Genie 1.0.0 (Build 12) — Spatial Canvas & Gestures</div>
+        <div class="mac-header-badge">
+          <span class="live-dot"></span> 120 FPS
+        </div>
+      </div>
+      <div class="preview-video-wrapper">
+        <!-- Side Bar Back/Forward Arrows -->
+        <button class="preview-nav-arrow prev" onclick="prevPreviewVideo()" title="Previous Preview (‹)" aria-label="Previous Preview">‹</button>
+        <button class="preview-nav-arrow next" onclick="nextPreviewVideo()" title="Next Preview (›)" aria-label="Next Preview">›</button>
+
+        <video id="hero-preview-video" autoplay loop muted playsinline poster="assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png">
+          <source src="assets/video/App_Preview_1_Spatial_Canvas_1080p.mp4" type="video/mp4">
+        </video>
+        <div class="video-floating-bar">
+          <span class="video-badge-build">Build 12</span>
+          <button id="video-play-pause-btn" class="video-control-btn" onclick="togglePlayPause()" title="Play / Pause">
+            <svg id="play-icon" style="display:none;" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="pause-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+          <button id="video-mute-btn" class="video-control-btn" onclick="toggleMute()" title="Mute / Unmute">
+            <svg id="mute-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+            <svg id="unmute-icon" style="display:none;" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Engineering Stats & Speed Section -->
+  <section id="stats" class="stats-section">
+    <div class="section-title">
+      <h2 data-i18n="stats_title">Engineered for Extreme Speed & Efficiency</h2>
+      <p data-i18n="stats_desc">Precision-crafted in pure Swift & Metal. Zero Electron, zero WebKit, zero battery drain.</p>
+    </div>
+
+    <div class="stats-container">
+      <div class="stat-card">
+        <div class="stat-value">120 <span class="stat-unit">FPS</span></div>
+        <div class="stat-label" data-i18n="stat_fps_label">ProMotion Rendering</div>
+        <div class="stat-subtext" data-i18n="stat_fps_sub">Direct GPU Metal shaders synchronized with Apple ProMotion display refresh cycles.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">&lt; 4 <span class="stat-unit">ms</span></div>
+        <div class="stat-label" data-i18n="stat_lat_label">Gesture Latency</div>
+        <div class="stat-subtext" data-i18n="stat_lat_sub">Instant trackpad response via low-overhead global CoreGraphics event taps.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">0.0 <span class="stat-unit">%</span></div>
+        <div class="stat-label" data-i18n="stat_cpu_label">Idle CPU Overhead</div>
+        <div class="stat-subtext" data-i18n="stat_cpu_sub">Pure event-driven architecture. Sleeps completely when not in active interaction.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">38 <span class="stat-unit">MB</span></div>
+        <div class="stat-label" data-i18n="stat_ram_label">Resident Memory</div>
+        <div class="stat-subtext" data-i18n="stat_ram_sub">Ultra-light footprint engineered natively in Swift — instantaneous launch, zero bloat.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">15,991</div>
+        <div class="stat-label" data-i18n="stat_loc_label">Lines of Pure Swift</div>
+        <div class="stat-subtext" data-i18n="stat_loc_sub">22 handcrafted modules built specifically for macOS 14 Sonoma and 15 Sequoia.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">0 <span class="stat-unit">Bytes</span></div>
+        <div class="stat-label" data-i18n="stat_net_label">Network Traffic</div>
+        <div class="stat-subtext" data-i18n="stat_net_sub">Strictly offline. No analytics, no telemetry, no tracking, and zero outbound network calls.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture Dissection Section -->
+  <section id="architecture" class="dissection-section">
+    <div class="section-title">
+      <h2 data-i18n="dissection_title">Deep Architecture Dissection</h2>
+      <p data-i18n="dissection_desc">A technical breakdown of the 6 core subsystems powering Genie v1.0.0 (Build 12).</p>
+    </div>
+
+    <div class="dissection-grid">
+      <div class="dissection-card">
+        <div>
+          <div class="dissection-header">
+            <div class="dissection-icon">🪟</div>
+            <h3>Spatial Windowing Engine</h3>
+          </div>
+          <p>Direct macOS WindowServer level injection. Toggles seamlessly between clean desktop wallpaper layer (<code>.desktopIconWindow - 1</code>) and an elevated 120 FPS interactive spatial canvas without stealing menu bar focus.</p>
+        </div>
+        <div class="tech-tag-group">
+          <span class="tech-tag">NSWindow.Level</span>
+          <span class="tech-tag">DesktopWindowManager.swift</span>
+          <span class="tech-tag">Always-On Matrix</span>
+        </div>
+      </div>
+
+      <div class="dissection-card">
+        <div>
+          <div class="dissection-header">
+            <div class="dissection-icon">🎯</div>
+            <h3>Smart Retractor & Inset Avoidance</h3>
+          </div>
+          <p>Invisible top-edge cursor hover detector (<code>location.y &lt;= 6</code>) glides the canvas smoothly away without intrusive buttons. Includes an intelligent Dock inset protection engine with a 0.45s rest period.</p>
+        </div>
+        <div class="tech-tag-group">
+          <span class="tech-tag">onContinuousHover</span>
+          <span class="tech-tag">DockAndDesktopManager</span>
+          <span class="tech-tag">Zero Visual Clutter</span>
+        </div>
+      </div>
+
+      <div class="dissection-card">
+        <div>
+          <div class="dissection-header">
+            <div class="dissection-icon">🎛️</div>
+            <h3>11-Tab Studio Command Center</h3>
+          </div>
+          <p>An expansive menu bar hub controlling all parameters: Apps Matrix, Desktop Grid, Living Themes, Formations, Mouse & Trails, Entities & Pets, Spatial Sounds, Wallpaper FX, Motion Dynamics, Status Bar Styles, and VIP Packs.</p>
+        </div>
+        <div class="tech-tag-group">
+          <span class="tech-tag">MenuBarDropdownView</span>
+          <span class="tech-tag">11 Studio Tabs</span>
+          <span class="tech-tag">Dynamic Binding</span>
+        </div>
+      </div>
+
+      <div class="dissection-card">
+        <div>
+          <div class="dissection-header">
+            <div class="dissection-icon">🎨</div>
+            <h3>Living Metal Shaders</h3>
+          </div>
+          <p>Hardware-accelerated shader pipeline delivering 1:1 Wallpaper Camouflage (100% transparent pass-through layer directly over wallpaper), Frosted Aero Glass, Obsidian Velvet, and Cyber Horizons with zero CPU overhead.</p>
+        </div>
+        <div class="tech-tag-group">
+          <span class="tech-tag">Metal Pipeline</span>
+          <span class="tech-tag">1:1 Camouflage</span>
+          <span class="tech-tag">GPU Accelerate</span>
+        </div>
+      </div>
+
+      <div class="dissection-card">
+        <div>
+          <div class="dissection-header">
+            <div class="dissection-icon">📐</div>
+            <h3>Geometric Radial Formations</h3>
+          </div>
+          <p>Break free of rigid grids. Mathematically distributes icons in Fibonacci Galaxy spirals, Floating Lotus arrays, Halfpipe Arcs, and Bottom Shelf docks with dynamic angular distribution and custom scaling.</p>
+        </div>
+        <div class="tech-tag-group">
+          <span class="tech-tag">Fibonacci Golden Ratio</span>
+          <span class="tech-tag">Floating Lotus</span>
+          <span class="tech-tag">Radial Vectors</span>
+        </div>
+      </div>
+
+      <div class="dissection-card">
+        <div>
+          <div class="dissection-header">
+            <div class="dissection-icon">🔊</div>
+            <h3>Tactile Sounds & Force Haptics</h3>
+          </div>
+          <p>Sub-millisecond PCM audio synthesis for mechanical switches synchronized in real-time with Apple Force Touch trackpad micro-vibrations via NSHapticFeedbackManager.</p>
+        </div>
+        <div class="tech-tag-group">
+          <span class="tech-tag">NSHapticFeedback</span>
+          <span class="tech-tag">AVAudioEngine</span>
+          <span class="tech-tag">Sub-ms Audio</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  
+  <!-- Menu Bar Studio Hub & Dynamic Battery Customizer Showcase Section -->
+  <section id="menubar-studio" class="menubar-studio-section">
+    <div class="section-title">
+      <div class="hero-badge" style="margin-bottom: 12px; display: inline-flex;">⚡️ Real macOS Menu Bar Power</div>
+      <h2>Menu Bar Studio Hub & Dynamic Battery Customizer</h2>
+      <p>Take complete command of your workspace without ever minimizing your apps. Switch between 28+ living battery styles, monitor active wattage telemetry, and tweak all 11 studio subsystems directly from your macOS menu bar.</p>
+    </div>
+
+    <!-- Main Interactive Menu Showcase Card -->
+    <div class="menubar-hero-card">
+      <!-- Tab Switcher for Real Menu Bar Screenshots -->
+      <div class="menubar-tabs-bar" id="menubar-tabs-bar">
+        <button class="menubar-tab-btn active" onclick="switchMenubarTab('battery', this)">
+          <span>🔋 Battery Styles & Settings</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('status', this)">
+          <span>⚡️ Status Bar Customizer</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('hub', this)">
+          <span>🎛️ Studio Hub Command Center</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('themes', this)">
+          <span>🎨 Living Themes Menu</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('sounds', this)">
+          <span>🔊 Spatial Audio Engine</span>
+        </button>
+      </div>
+
+      <!-- Display Stage: Real Screenshot + Deep Feature Breakdown -->
+      <div class="menubar-display-stage">
+        <div class="menubar-screen-frame">
+          <img id="menubar-feature-img" src="assets/images/zoom_battery_styles.png" alt="Settings and Battery Styles Menu Bar Dropdown">
+          <span class="menubar-zoom-badge" id="menubar-feature-badge">Retina Menu Bar Capture</span>
+        </div>
+
+        <div class="menubar-details-pane">
+          <span class="hero-version-pill" id="menubar-pane-pill" style="margin-bottom:12px; display:inline-block;">Studio Hub Subsystem</span>
+          <h3 id="menubar-pane-title">28+ Living Battery Styles & Hardware Telemetry</h3>
+          <p id="menubar-pane-desc">Replace your static system battery icon with fluid living gauges. Genie connects directly to Apple Silicon power rails and the System Management Controller (SMC) to deliver millisecond-level telemetry right on your status bar.</p>
+
+          <ul class="menubar-feature-bullets" id="menubar-pane-bullets">
+            <li>
+              <span class="bullet-icon">⚡️</span>
+              <div><strong>Real-Time Wattage & Velocity:</strong> Live readouts of active power draw in watts (e.g. 14.2W), battery cycle count, and precise discharge speed.</div>
+            </li>
+            <li>
+              <span class="bullet-icon">✨</span>
+              <div><strong>5 Signature Gauge Families:</strong> Liquid Glass Capsule, Cyberpunk Digital HUD, VisionOS Pill, Vertical Energy Column, and Minimalist Monochrome.</div>
+            </li>
+            <li>
+              <span class="bullet-icon">🔋</span>
+              <div><strong>State-Aware Transitions:</strong> Fluid green charging bolts on AC power, ember amber in Low Power Mode, and red pulse below 20%.</div>
+            </li>
+            <li>
+              <span class="bullet-icon">🎛️</span>
+              <div><strong>Zero-Delay Hotkey Control:</strong> Open the Studio Hub dropdown instantaneously via global hotkey or top-edge hover without stealing active window focus.</div>
+            </li>
+          </ul>
+
+          <a href="features.html#battery-designs" class="menubar-details-cta">
+            <span>Test the Interactive Battery Lab & Simulator</span>
+            <span>→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- The 5 Signature Battery Selections Showcase -->
+    <div class="battery-selections-box">
+      <div class="battery-selections-header">
+        <h3>5 Signature Battery Selections — Built for Every Aesthetic</h3>
+        <p>Whether you want Cyberpunk HUD telemetry or an ultra-clean VisionOS glass pill, Genie gives your Mac status bar a bespoke look.</p>
+      </div>
+
+      <div class="battery-styles-showcase-grid">
+        <!-- 1. Liquid Glass Capsule -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Fluid Physics</span>
+          <div class="idx-batt-liquid">
+            <div class="idx-batt-liquid-fill"></div>
+            <span class="idx-batt-liquid-text">88%</span>
+          </div>
+          <div class="battery-style-name">Liquid Glass Capsule</div>
+          <div class="battery-style-desc">Frosted translucent glass with dynamic wave meniscus that sloshes on motion and glows emerald when charging.</div>
+        </div>
+
+        <!-- 2. Cyberpunk Digital HUD -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Telemetry HUD</span>
+          <div class="idx-batt-cyber">
+            <div class="idx-cyber-seg"></div>
+            <div class="idx-cyber-seg"></div>
+            <div class="idx-cyber-seg"></div>
+            <div class="idx-cyber-seg"></div>
+            <div class="idx-cyber-seg dim"></div>
+            <span class="idx-cyber-txt">88%</span>
+          </div>
+          <div class="battery-style-name">Cyberpunk Digital HUD</div>
+          <div class="battery-style-desc">Segmented neon energy bars with active watt draw readouts and glowing critical reserve alarms.</div>
+        </div>
+
+        <!-- 3. VisionOS Dynamic Pill -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Spatial Computing</span>
+          <div class="idx-batt-vision">
+            <div class="idx-vision-ring"></div>
+            <span class="idx-vision-txt">88% Charged</span>
+          </div>
+          <div class="battery-style-name">VisionOS Dynamic Pill</div>
+          <div class="battery-style-desc">Ultra-subtle acrylic glass pill inspired by Apple VisionOS with real-time radial charging pulse.</div>
+        </div>
+
+        <!-- 4. Minimalist Monochrome -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Apple Pure</span>
+          <div class="idx-batt-mono">
+            <span class="idx-mono-dot"></span>
+            <span>88% Battery</span>
+          </div>
+          <div class="battery-style-name">Minimalist Monochrome</div>
+          <div class="battery-style-desc">Distraction-free typographic pill tuned to match Apple's native San Francisco status bar typography.</div>
+        </div>
+
+        <!-- 5. Vertical Energy Column -->
+        <div class="battery-style-card">
+          <span class="battery-style-tag">Compact Density</span>
+          <div class="idx-batt-vert">
+            <div class="idx-vert-box">
+              <div class="idx-vert-cell"></div>
+              <div class="idx-vert-cell"></div>
+              <div class="idx-vert-cell"></div>
+              <div class="idx-vert-cell empty"></div>
+            </div>
+            <span class="idx-vert-txt">88% Power</span>
+          </div>
+          <div class="battery-style-name">Vertical Energy Column</div>
+          <div class="battery-style-desc">Dense vertical cell stack with individual cell discharge physics, perfect for crowded MacBook notches.</div>
+        </div>
+      </div>
+
+      <!-- Real-Time Telemetry Metrics -->
+      <div class="telemetry-strip">
+        <div class="telemetry-card">
+          <div class="telemetry-num">14.2W</div>
+          <div class="telemetry-lbl">Live SMC Wattage</div>
+          <div class="telemetry-sub">Hardware power-rail sampling</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">28+</div>
+          <div class="telemetry-lbl">Living Gauge Styles</div>
+          <div class="telemetry-sub">Dynamic SVG & CoreAnimation</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">100%</div>
+          <div class="telemetry-lbl">Cycle Health Telemetry</div>
+          <div class="telemetry-sub">Full battery wear & thermals</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">11 Tabs</div>
+          <div class="telemetry-lbl">Studio Hub Controls</div>
+          <div class="telemetry-sub">Total menu bar command center</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features -->
+  <section id="features" class="features">
+    <div class="section-title">
+      <h2 data-i18n="features_title">Crafted with Precision for macOS</h2>
+      <p data-i18n="features_desc">Native Swift performance, hardware-accelerated shaders, and zero bloat.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">✨</div>
+        <h3 data-i18n="feat_canvas_title">28+ Spatial App Formations</h3>
+        <p data-i18n="feat_canvas_desc">Break free of rigid grids. Arrange your apps in Fibonacci spirals, orbital rings, floating lotus arrays, or bottom docks that make launching apps feel effortless.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🎨</div>
+        <h3 data-i18n="feat_shaders_title">52+ Living Metal Shaders</h3>
+        <p data-i18n="feat_shaders_desc">Direct GPU acceleration renders Frosted Aero Glass, Tokyo Neon Rain, Cosmic Aurora, and real-time Wallpaper Chameleon Camouflage with 0% idle CPU.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔊</div>
+        <h3 data-i18n="feat_audio_title">Tactile Audio & Trackpad Haptics</h3>
+        <p data-i18n="feat_audio_desc">Experience physical satisfaction on every interaction with realistic mechanical switch clicks and crisp Apple Taptic feedback on hover and launch.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🐾</div>
+        <h3 data-i18n="feat_pets_title">Ambient Pets & Living Physics</h3>
+        <p data-i18n="feat_pets_desc">Interactive 120 FPS companions that orbit your cursor, bounce with zero-G physics, or play arcade pinball directly on your wallpaper.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <h3 data-i18n="feat_languages_title">10 Native World Languages</h3>
+        <p data-i18n="feat_languages_desc">Full native localization in 10 languages with bidirectional RTL Arabic support, instant 1-click switching, and light/dark theme modes.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3 data-i18n="feat_privacy_title">100% Offline & Zero Battery Drain</h3>
+        <p data-i18n="feat_privacy_desc">Strictly zero telemetry, zero analytics, and zero outbound network calls. Engineered in pure Swift with an ultra-lean 38MB memory footprint.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- App Store Showcase (Interactive Slider + Side Bar + Full Grid Toggle) -->
+  <section id="screenshots" class="screenshots-section">
+    <div class="section-title">
+      <h2 data-i18n="showcase_title">App Store Showcase</h2>
+      <p data-i18n="showcase_desc">Explore all 10 official Mac App Store showcases in full 2880×1800 Retina resolution.</p>
+    </div>
+
+    <div class="showcase-control-bar">
+      <div class="showcase-view-tabs">
+        <button class="showcase-view-btn active" id="btn-carousel-mode" onclick="setShowcaseView('carousel')" data-i18n="carousel_toggle_slides">✨ Interactive Slider</button>
+        <button class="showcase-view-btn" id="btn-grid-mode" onclick="setShowcaseView('grid')" data-i18n="carousel_toggle_grid">▦ View All 10 Grid</button>
+      </div>
+      <div class="showcase-counter" id="showcase-counter">SLIDE 01 / 10</div>
+    </div>
+
+    <!-- Interactive Carousel with Sidebar & Back/Forward Arrows -->
+    <div class="showcase-carousel-wrapper" id="showcase-carousel">
+      <!-- Side Bar Navigation List -->
+      <div class="showcase-sidebar" id="showcase-sidebar">
+        <!-- 10 Sidebar Buttons populated via JS -->
+      </div>
+
+      <!-- Main Slide Viewport with Back / Forward Arrows -->
+      <div class="showcase-viewport">
+        <button class="showcase-nav-arrow prev" onclick="prevShowcaseSlide()" title="Previous Slide (‹)" aria-label="Previous Slide">‹</button>
+        <button class="showcase-nav-arrow next" onclick="nextShowcaseSlide()" title="Next Slide (›)" aria-label="Next Slide">›</button>
+
+        <img id="showcase-main-img" src="assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png" alt="Showcase Slide">
+        <div class="showcase-slide-desc">
+          <h4 id="showcase-slide-title">Spatial Desktop Canvas</h4>
+          <p id="showcase-slide-caption">Summon your entire application library over your desktop with fluid 120 FPS spring physics.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complete 10 Grid View (Toggled via button) -->
+    <div class="screenshots-grid" id="showcase-grid">
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png" alt="Spatial Desktop Canvas" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 01</span>
+          <h4>Spatial Desktop Canvas</h4>
+          <p>Summon your entire application library over your desktop with fluid 120 FPS spring physics.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/02_App_Matrix_Navigation.png" alt="App Matrix Navigation" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 02</span>
+          <h4>App Matrix Navigation</h4>
+          <p>Clean multi-page desktop canvas with instant search and effortless categorization.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/03_Studio_Hub_Living_Themes.png" alt="Studio Hub Living Themes" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 03</span>
+          <h4>Menu Bar Studio Hub</h4>
+          <p>An expansive 11-tab command center for deep cosmetic and functional customization.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/04_Wallpaper_Camouflage_Mode.png" alt="Wallpaper Camouflage Mode" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 04</span>
+          <h4>1:1 Wallpaper Camouflage</h4>
+          <p>100% transparent pass-through layer seamlessly blending icons over active desktop windows.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/05_Geometric_Formations_Lotus.png" alt="Geometric Formations Lotus" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 05</span>
+          <h4>Floating Lotus Formation</h4>
+          <p>Break free from boring grids with 28+ handcrafted geometric and radial layouts.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/06_Fibonacci_Galaxy_Spiral.png" alt="Fibonacci Galaxy Spiral" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 06</span>
+          <h4>Fibonacci Galaxy Spiral</h4>
+          <p>Golden ratio mathematical spiral arrangement orbiting around your desktop center.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/07_Motion_Physics_And_Gestures.png" alt="Motion Physics and Gestures" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 07</span>
+          <h4>Motion Physics & Dynamics</h4>
+          <p>Interactive trackpad gestures, fluid spring responsiveness, and magnetic drag reordering.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/08_Spatial_Sound_Engine.png" alt="Spatial Sound Engine" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 08</span>
+          <h4>Spatial Sound Engine</h4>
+          <p>Tactile mechanical switch audio feedback synchronized with Apple Force Touch haptic pulses.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/09_Dynamic_Battery_Status_Bar.png" alt="Dynamic Battery Status Bar" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 09</span>
+          <h4>Dynamic Battery Status Bar</h4>
+          <p>28+ animated battery styles, VisionOS pill gauges, and real-time charging equalizers.</p>
+        </div>
+      </div>
+      <div class="screenshot-card">
+        <img src="assets/images/appstore_screenshots/10_VIP_Expansion_Store.png" alt="VIP Expansion Store" loading="lazy">
+        <div class="screenshot-info">
+          <span class="screenshot-badge">Showcase 10</span>
+          <h4>VIP Expansion Store</h4>
+          <p>StoreKit 2 powered expansion packs unlocking living desktop companions, 4K shaders, and VIP packs.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- International Languages & Localization Section -->
+  <section id="languages" class="languages-section">
+    <div class="section-title">
+      <h2 data-i18n="languages_title">Native Global Localization</h2>
+      <p data-i18n="languages_desc">Genie is handcrafted with native support for 10 world languages and bidirectional Right-to-Left (RTL) typography.</p>
+    </div>
+
+    <!-- Interactive App-Matching Language Selector Cards -->
+    <div class="app-lang-grid">
+      <div class="app-lang-card-item active" data-lang="en" onclick="setSiteLanguage('en')">
+        <span class="lang-flag">🇺🇸</span>
+        <span class="lang-title">English (US)</span>
+        <span class="lang-greeting-sub">Hello</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="es" onclick="setSiteLanguage('es')">
+        <span class="lang-flag">🇪🇸</span>
+        <span class="lang-title">Español</span>
+        <span class="lang-greeting-sub">Hola</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="fr" onclick="setSiteLanguage('fr')">
+        <span class="lang-flag">🇫🇷</span>
+        <span class="lang-title">Français</span>
+        <span class="lang-greeting-sub">Bonjour</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="de" onclick="setSiteLanguage('de')">
+        <span class="lang-flag">🇩🇪</span>
+        <span class="lang-title">Deutsch</span>
+        <span class="lang-greeting-sub">Hallo</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="ja" onclick="setSiteLanguage('ja')">
+        <span class="lang-flag">🇯🇵</span>
+        <span class="lang-title">日本語</span>
+        <span class="lang-greeting-sub">こんにちは</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="zh" onclick="setSiteLanguage('zh')">
+        <span class="lang-flag">🇨🇳</span>
+        <span class="lang-title">简体中文</span>
+        <span class="lang-greeting-sub">你好</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="it" onclick="setSiteLanguage('it')">
+        <span class="lang-flag">🇮🇹</span>
+        <span class="lang-title">Italiano</span>
+        <span class="lang-greeting-sub">Ciao</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="ko" onclick="setSiteLanguage('ko')">
+        <span class="lang-flag">🇰🇷</span>
+        <span class="lang-title">한국어</span>
+        <span class="lang-greeting-sub">안녕하세요</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="pt" onclick="setSiteLanguage('pt')">
+        <span class="lang-flag">🇧🇷</span>
+        <span class="lang-title">Português</span>
+        <span class="lang-greeting-sub">Olá</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+      <div class="app-lang-card-item" data-lang="ar" onclick="setSiteLanguage('ar')">
+        <span class="lang-flag">🇸🇦</span>
+        <span class="lang-title">العربية (RTL)</span>
+        <span class="lang-greeting-sub">مرحبا</span>
+        <span class="lang-check-icon">✓</span>
+      </div>
+    </div>
+
+    <div class="lang-showcase-box" id="lang-showcase-container">
+      <div class="lang-preview-info">
+        <h3 id="lang-heading">🇺🇸 English (US) • Native Localization</h3>
+        <p id="lang-description">Every button, slider, and system string in Genie is natively localized using Apple's <code>String(localized:)</code> and custom <code>LocalizedStrings.swift</code> runtime dictionaries. Zero network calls or external cloud APIs are ever required.</p>
+        <div class="lang-preview-pills">
+          <span class="lang-preview-tag" id="lang-greeting-badge">Greeting: "Hello"</span>
+          <span class="lang-preview-tag">UTF-8 Compliant</span>
+          <span class="lang-preview-tag" id="lang-direction-badge">LTR Layout</span>
+          <span class="lang-preview-tag">Zero Cloud Dependencies</span>
+        </div>
+      </div>
+
+      <div class="lang-mockup-window" id="lang-mockup-window">
+        <div class="lang-mockup-header">
+          <div class="mac-traffic-lights" style="width: 50px;">
+            <span class="traffic-light close" style="width:9px; height:9px;"></span>
+            <span class="traffic-light minimize" style="width:9px; height:9px;"></span>
+            <span class="traffic-light maximize" style="width:9px; height:9px;"></span>
+          </div>
+          <span id="lang-mockup-title">Genie Studio Hub — Localized Interface</span>
+        </div>
+        <div class="lang-mockup-body" id="lang-mockup-body">
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">System Greeting</span>
+            <span class="lang-mockup-value" id="mock-greeting">Hello</span>
+          </div>
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">Tab 1 (Apps)</span>
+            <span class="lang-mockup-value" id="mock-tab-apps">Apps</span>
+          </div>
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">Tab 2 (Desktop Grid)</span>
+            <span class="lang-mockup-value" id="mock-tab-desktop">Desktop</span>
+          </div>
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">Tab 3 (Living Themes)</span>
+            <span class="lang-mockup-value" id="mock-tab-themes">Themes</span>
+          </div>
+          <div class="lang-mockup-row">
+            <span class="lang-mockup-label">Tab 4 (Formations)</span>
+            <span class="lang-mockup-value" id="mock-tab-formations">Formations</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact & Developer Support Section -->
+  <section id="contact" class="contact-section">
+    <div class="section-title">
+      <h2 data-i18n="contact_title">Get in Touch & Developer Support</h2>
+      <p data-i18n="contact_desc">Direct communication with the engineer. Whether you have feedback, feature ideas, or enterprise inquiries, we respond personally.</p>
+    </div>
+
+    <div class="contact-grid">
+      <a href="mailto:nicholas.dudek@icloud.com" class="contact-card">
+        <div>
+          <span class="contact-icon">✉️</span>
+          <h4>Direct Engineering Support</h4>
+          <p>Reach out directly to Nicholas M. Dudek for technical questions, bug reports, and priority support.</p>
+        </div>
+        <span class="contact-link-text">nicholas.dudek@icloud.com →</span>
+      </a>
+
+      <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank" class="contact-card">
+        <div>
+          <span class="contact-icon">💻</span>
+          <h4>GitHub Repository & Issues</h4>
+          <p>Explore official releases, documentation, changelogs, and submit public issue tickets.</p>
+        </div>
+        <span class="contact-link-text">github.com/nicholasdudek/geniedesktop →</span>
+      </a>
+
+      <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="contact-card">
+        <div>
+          <span class="contact-icon">🍏</span>
+          <h4>Mac App Store</h4>
+          <p>View the verified Apple Mac App Store listing, read verified user reviews, and check for updates.</p>
+        </div>
+        <span class="contact-link-text">App Store Listing (Build 12) →</span>
+      </a>
+
+      <div class="contact-card" style="cursor: default;">
+        <div>
+          <span class="contact-icon">🌉</span>
+          <h4>Genie Core Labs</h4>
+          <p>Proudly designed, architected, and built in the San Francisco Bay Area at the Golden Gate.</p>
+        </div>
+        <span class="contact-link-text" style="color: #10b981;">● Guaranteed Response &lt; 24h</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy Commitment -->
+  <div class="privacy-banner">
+    <h3 data-i18n="privacy_title">Built for Privacy-First Creators</h3>
+    <p data-i18n="privacy_desc">Genie strictly omits network client entitlements. By design, macOS prohibits Genie from making outbound connections. Your apps, files, and workspace stay yours.</p>
+    <a href="privacy.html" data-i18n="privacy_link">Read our Zero-Telemetry Privacy Policy →</a>
+  </div>
+
+  <!-- Enhanced Multi-Column Footer -->
+  <footer>
+    <div class="footer-columns">
+      <div class="footer-brand">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 700; color: var(--text);">
+          <img src="assets/images/app_icon.png" alt="Genie Logo" style="width: 28px; height: 28px; border-radius: 6px;">
+          <span>Genie</span>
+        </div>
+        <p data-i18n="footer_brand_desc">Next-generation spatial workspace and application launcher for macOS. Engineered natively with Swift and Metal shaders with absolute offline privacy.</p>
+        <p style="margin-top: 10px; font-size: 0.82rem; color: var(--gold); font-weight: 600;">Version 1.0.0 (Build 12) • Universal Binary</p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#demo" data-i18n="nav_demo">Demo</a></li>
+          <li><a href="#stats" data-i18n="nav_stats">Speed & Stats</a></li>
+          <li><a href="#architecture" data-i18n="nav_architecture">Architecture</a></li>
+          <li><a href="#features" data-i18n="nav_features">Features</a></li>
+          <li><a href="#screenshots" data-i18n="nav_showcase">Showcase</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Languages</h5>
+        <ul>
+          <li><a href="#languages" onclick="setSiteLanguage('en')">English (US)</a></li>
+          <li><a href="#languages" onclick="setSiteLanguage('es')">Español</a></li>
+          <li><a href="#languages" onclick="setSiteLanguage('fr')">Français</a></li>
+          <li><a href="#languages" onclick="setSiteLanguage('de')">Deutsch</a></li>
+          <li><a href="#languages" onclick="setSiteLanguage('ja')">日本語</a></li>
+          <li><a href="#languages" onclick="setSiteLanguage('zh')">简体中文</a></li>
+          <li><a href="#languages" onclick="setSiteLanguage('ar')">العربية (RTL)</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Contact & Legal</h5>
+        <ul>
+          <li><a href="mailto:nicholas.dudek@icloud.com">Email Nicholas M. Dudek</a></li>
+          <li><a href="https://github.com/nicholasdudek/geniedesktop" target="_blank">GitHub Repository</a></li>
+          <li><a href="https://apps.apple.com/app/id6808165534" target="_blank">Mac App Store</a></li>
+          <li><a href="privacy.html" data-i18n="nav_privacy">Privacy Policy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div data-i18n="footer_copyright">Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.</div>
+      <div data-i18n="footer_apple">Designed with precision in California. macOS, Apple Silicon, and App Store are trademarks of Apple Inc.</div>
+    </div>
+  </footer>
+
+  <script>
+    // 1. Language Data Dictionary
+    const SITE_TRANSLATIONS = {"en": {"nav_demo": "Live Demo", "nav_stats": "Speed & Benchmarks", "nav_architecture": "Architecture", "nav_features": "Features", "nav_showcase": "Retina Showcase", "nav_languages": "Languages", "nav_support": "Support & Contact", "nav_privacy": "Privacy", "nav_download": "Mac App Store", "hero_badge": "✨ Version 1.0.0 (Build 12) • Engineered for macOS Sonoma & Sequoia", "hero_title": "Turn your Mac desktop into a high-performance spatial canvas.", "hero_desc": "Launch and organize your apps in 28+ living formations, 52+ real-time GPU Metal shaders, tactile audio feedback, and ambient pets — with 0% idle CPU and zero telemetry.", "hero_version": "Current Build: 1.0.0 (Build 12)", "hero_universal": "Universal Binary (Apple Silicon & Intel)", "hero_privacy": "Zero Telemetry", "tab_canvas": "✨ Spatial Canvas", "tab_themes": "🎨 Living Themes", "tab_formations": "📐 Formations & Hub", "tab_walkthrough": "⚡️ Live Walkthrough", "stats_title": "Engineered for Extreme Speed & Efficiency", "stats_desc": "Precision-crafted in pure Swift & Metal. Zero Electron, zero WebKit, zero battery drain.", "stat_fps_label": "ProMotion Rendering", "stat_fps_sub": "Direct GPU Metal shaders synchronized with Apple ProMotion display refresh cycles.", "stat_lat_label": "Gesture Latency", "stat_lat_sub": "Instant trackpad response via low-overhead global CoreGraphics event taps.", "stat_cpu_label": "Idle CPU Overhead", "stat_cpu_sub": "Pure event-driven architecture. Sleeps completely when not in active interaction.", "stat_ram_label": "Resident Memory", "stat_ram_sub": "Ultra-light footprint engineered natively in Swift — instantaneous launch, zero bloat.", "stat_loc_label": "Lines of Pure Swift", "stat_loc_sub": "22 handcrafted modules built specifically for macOS 14 Sonoma and 15 Sequoia.", "stat_net_label": "Network Traffic", "stat_net_sub": "Strictly offline. No analytics, no telemetry, no tracking, and zero outbound network calls.", "dissection_title": "Deep Architecture Dissection", "dissection_desc": "A technical breakdown of the 6 core subsystems powering Genie v1.0.0 (Build 12).", "features_title": "Crafted with Precision for macOS", "features_desc": "Native Swift performance, hardware-accelerated shaders, and zero bloat.", "showcase_title": "App Store Showcase", "showcase_desc": "Explore all 10 official Mac App Store showcases in full 2880×1800 Retina resolution.", "carousel_toggle_slides": "✨ Interactive Slider", "carousel_toggle_grid": "▦ View All 10 Grid", "languages_title": "Native Global Localization", "languages_desc": "Genie is handcrafted with native support for 10 world languages and bidirectional Right-to-Left (RTL) typography.", "contact_title": "Get in Touch & Developer Support", "contact_desc": "Direct communication with the engineer. Whether you have feedback, feature ideas, or enterprise inquiries, we respond personally.", "privacy_title": "Built for Privacy-First Creators", "privacy_desc": "Genie strictly omits network client entitlements. By design, macOS prohibits Genie from making outbound connections. Your apps, files, and workspace stay yours.", "privacy_link": "Read our Zero-Telemetry Privacy Policy →", "footer_brand_desc": "Next-generation spatial workspace and application launcher for macOS. Engineered natively with Swift and Metal shaders with absolute offline privacy.", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.", "footer_apple": "Designed with precision in California. macOS, Apple Silicon, and App Store are trademarks of Apple Inc.", "feat_canvas_title": "28+ Spatial App Formations", "feat_canvas_desc": "Break free of rigid grids. Arrange your apps in Fibonacci spirals, orbital rings, floating lotus arrays, or bottom docks that make launching apps feel effortless.", "feat_shaders_title": "52+ Living Metal Shaders", "feat_shaders_desc": "Direct GPU acceleration renders Frosted Aero Glass, Tokyo Neon Rain, Cosmic Aurora, and real-time Wallpaper Chameleon Camouflage with 0% idle CPU.", "feat_audio_title": "Tactile Audio & Trackpad Haptics", "feat_audio_desc": "Experience physical satisfaction on every interaction with realistic mechanical switch clicks and crisp Apple Taptic feedback on hover and launch.", "feat_pets_title": "Ambient Pets & Living Physics", "feat_pets_desc": "Interactive 120 FPS companions that orbit your cursor, bounce with zero-G physics, or play arcade pinball directly on your wallpaper.", "feat_languages_title": "10 Native World Languages", "feat_languages_desc": "Full native localization in 10 languages with bidirectional RTL Arabic support, instant 1-click switching, and light/dark theme modes.", "feat_privacy_title": "100% Offline & Zero Battery Drain", "feat_privacy_desc": "Strictly zero telemetry, zero analytics, and zero outbound network calls. Engineered in pure Swift with an ultra-lean 38MB memory footprint."}, "es": {"nav_demo": "Demostración", "nav_stats": "Rendimiento y Métricas", "nav_architecture": "Arquitectura", "nav_features": "Funciones", "nav_showcase": "Galería Retina", "nav_languages": "Idiomas", "nav_support": "Soporte y Contacto", "nav_privacy": "Privacidad", "nav_download": "Descargar en App Store", "hero_badge": "✨ Versión 1.0.0 (Build 12) • Diseñado para macOS Sonoma y Sequoia", "hero_title": "Transforma tu escritorio Mac en un lienzo espacial de alto rendimiento.", "hero_desc": "Inicia y organiza tus aplicaciones en más de 28 formaciones vivas, 52 shaders Metal por GPU, sonido táctil y mascotas interactivas: con 0% CPU en reposo y cero telemetría.", "hero_version": "Versión Actual: 1.0.0 (Build 12)", "hero_universal": "Binario Universal (Apple Silicon e Intel)", "hero_privacy": "Cero Telemetría", "tab_canvas": "✨ Lienzo Espacial", "tab_themes": "🎨 Temas Metal Vivos", "tab_formations": "📐 Formaciones y Hub", "tab_walkthrough": "⚡️ Demostración en Vivo", "stats_title": "Diseñado para Máxima Velocidad y Eficiencia", "stats_desc": "Construido con precisión en Swift y Metal puro. Sin Electron, sin WebKit y sin consumo de batería.", "stat_fps_label": "Renderizado ProMotion", "stat_fps_sub": "Shaders Metal de GPU sincronizados directamente con los ciclos de refresco ProMotion.", "stat_lat_label": "Latencia de Gestos", "stat_lat_sub": "Respuesta instantánea del trackpad mediante interceptores globales CoreGraphics.", "stat_cpu_label": "Consumo CPU en Reposo", "stat_cpu_sub": "Arquitectura orientada a eventos. Duerme por completo cuando no está en interacción.", "stat_ram_label": "Memoria Residente", "stat_ram_sub": "Huella ultraligera nativa en Swift: inicio instantáneo y cero sobrecarga.", "stat_loc_label": "Líneas de Código Swift", "stat_loc_sub": "22 módulos artesanales desarrollados específicamente para macOS Sonoma y Sequoia.", "stat_net_label": "Tráfico de Red", "stat_net_sub": "Totalmente desconectado. Sin analíticas, sin rastreo y sin permisos de red saliente.", "dissection_title": "Disección Profunda de la Arquitectura", "dissection_desc": "Análisis técnico de los 6 subsistemas principales que impulsan Genie v1.0.0 (Build 12).", "features_title": "Creado con Precisión para macOS", "features_desc": "Rendimiento nativo en Swift, aceleración por hardware con Metal y cero sobrecarga.", "showcase_title": "Muestra del Mac App Store", "showcase_desc": "Explora las 10 muestras oficiales del Mac App Store en resolución Retina completa de 2880×1800.", "carousel_toggle_slides": "✨ Modo Interactivo", "carousel_toggle_grid": "▦ Ver Cuadrícula (10)", "languages_title": "Localización Global Nativa", "languages_desc": "Genie está creado con soporte nativo para 10 idiomas del mundo y tipografía bidireccional de derecha a izquierda (RTL).", "contact_title": "Contacto y Soporte al Desarrollador", "contact_desc": "Comunicación directa con el ingeniero. Para comentarios, ideas o consultas empresariales, respondemos personalmente.", "privacy_title": "Creado para Creadores que Valoran la Privacidad", "privacy_desc": "Genie omite estrictamente los permisos de cliente de red. Por diseño, macOS prohíbe que Genie realice conexiones salientes.", "privacy_link": "Lee nuestra Política de Privacidad de Cero Telemetría →", "footer_brand_desc": "Espacio de trabajo espacial y lanzador de aplicaciones de última generación para macOS. Creado nativamente con Swift y Metal.", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. Todos los derechos reservados.", "footer_apple": "Diseñado con precisión en California. macOS, Apple Silicon y App Store son marcas registradas de Apple Inc.", "feat_canvas_title": "Más de 28 Formaciones Espaciales", "feat_canvas_desc": "Libérate de las cuadrículas rígidas. Organiza tus aplicaciones en espirales Fibonacci, anillos orbitales o docks inferiores para un acceso instantáneo.", "feat_shaders_title": "Más de 52 Shaders Metal Vivos", "feat_shaders_desc": "Aceleración directa por GPU con vidrio aero esmerilado, lluvia neón de Tokio, auroras cósmicas y camuflaje camaleónico en tiempo real.", "feat_audio_title": "Audio Táctil y Háptica de Trackpad", "feat_audio_desc": "Siente la satisfacción física en cada acción con clics mecánicos hiperrealistas y vibraciones Taptic de Apple al posar o pulsar.", "feat_pets_title": "Mascotas Vivas y Física 120 FPS", "feat_pets_desc": "Compañeros interactivos que orbitan tu cursor, rebotan con gravedad cero o juegan al pinball arcade directamente en tu fondo de pantalla.", "feat_languages_title": "10 Idiomas Nativos del Mundo", "feat_languages_desc": "Localización nativa completa en 10 idiomas con soporte árabe de derecha a izquierda (RTL), cambio en 1 clic y modos claro/oscuro.", "feat_privacy_title": "100% Desconectado y Sin Gasto de Batería", "feat_privacy_desc": "Cero telemetría, cero analíticas y cero permisos de red. Desarrollado en Swift puro con un consumo ligero de solo 38 MB de RAM."}, "fr": {"nav_demo": "Démo interactive", "nav_stats": "Performances & Métriques", "nav_architecture": "Architecture", "nav_features": "Fonctionnalités", "nav_showcase": "Galerie Retina", "nav_languages": "Langues", "nav_support": "Assistance & Contact", "nav_privacy": "Confidentialité", "nav_download": "Télécharger sur le Mac App Store", "hero_badge": "✨ Version 1.0.0 (Build 12) • Conçu pour macOS Sonoma & Sequoia", "hero_title": "Transformez votre bureau Mac en une toile spatiale haute performance.", "hero_desc": "Lancez et organisez vos applications avec 28+ formations géométriques, 52+ shaders Metal sur GPU, retour audio tactile et créatures interactives — 0% processeur au repos et zéro télémétrie.", "hero_version": "Version Actuelle : 1.0.0 (Build 12)", "hero_universal": "Binaire Universel (Apple Silicon & Intel)", "hero_privacy": "Zéro Télémétrie", "tab_canvas": "✨ Toile Spatiale", "tab_themes": "🎨 Thèmes GPU Vivants", "tab_formations": "📐 Formations & Hub", "tab_walkthrough": "⚡️ Démonstration Pratique", "stats_title": "Conçu pour une Vitesse et une Efficacité Extrêmes", "stats_desc": "Fabriqué avec précision en pur Swift et Metal. Zéro Electron, zéro WebKit, zéro perte de batterie.", "stat_fps_label": "Rendu ProMotion", "stat_fps_sub": "Shaders GPU Metal synchronisés avec les cycles de rafraîchissement Apple ProMotion.", "stat_lat_label": "Latence des Gestes", "stat_lat_sub": "Réponse instantanée du pavé tactile grâce aux écoutes d'événements CoreGraphics.", "stat_cpu_label": "Charge Processeur au Repos", "stat_cpu_sub": "Architecture pilotée par événements. S'endort complètement hors interaction.", "stat_ram_label": "Mémoire Résidente", "stat_ram_sub": "Empreinte ultra-légère native en Swift — démarrage instantané sans surcharge.", "stat_loc_label": "Lignes de Code Swift", "stat_loc_sub": "22 modules artisanaux conçus spécialement pour macOS 14 Sonoma et 15 Sequoia.", "stat_net_label": "Trafic Réseau", "stat_net_sub": "Strictement hors ligne. Aucune analyse, aucun pistage et aucun appel réseau.", "dissection_title": "Analyse Approfondie de l'Architecture", "dissection_desc": "Détails techniques des 6 sous-systèmes principaux de Genie v1.0.0 (Build 12).", "features_title": "Façonné avec Précision pour macOS", "features_desc": "Performances Swift natives, shaders accélérés par le matériel et zéro fioriture.", "showcase_title": "Vitrine Mac App Store", "showcase_desc": "Explorez les 10 aperçus officiels du Mac App Store en résolution Retina 2880×1800.", "carousel_toggle_slides": "✨ Mode Diaporama", "carousel_toggle_grid": "▦ Voir la Grille Complète (10)", "languages_title": "Localisation Globale Native", "languages_desc": "Genie prend en charge 10 langues mondiales avec typographie bidirectionnelle droite-à-gauche (RTL).", "contact_title": "Contact & Support Développeur", "contact_desc": "Communication directe avec l'ingénieur créateur. Réponse personnalisée sous 24 heures garantie.", "privacy_title": "Pensé pour les Créateurs Soucieux de Confidentialité", "privacy_desc": "Genie omet volontairement les autorisations de client réseau. Vos fichiers et votre bureau restent vôtres.", "privacy_link": "Lire notre politique de confidentialité zéro télémétrie →", "footer_brand_desc": "Espace de travail spatial et lanceur d'applications de nouvelle génération pour macOS.", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. Tous droits réservés.", "footer_apple": "Conçu avec précision en Californie. macOS, Apple Silicon et App Store sont des marques d'Apple Inc.", "feat_canvas_title": "28+ Formations Spatiales", "feat_canvas_desc": "Libérez-vous des grilles figées. Disposez vos apps en spirales de Fibonacci, anneaux orbitaux ou docks étagères pour un accès fluide et immédiat.", "feat_shaders_title": "52+ Shaders Metal Vivants", "feat_shaders_desc": "Accélération GPU directe : verre aéro dépoli, pluie néon de Tokyo, aurore cosmique et camouflage caméléon sans perte de batterie.", "feat_audio_title": "Audio Tactile & Retours Haptiques", "feat_audio_desc": "Ressentez une véritable satisfaction physique avec des clics mécaniques authentiques et des impulsions Apple Taptic au survol et à l'ouverture.", "feat_pets_title": "Créatures Ambiantes & Physique 120 FPS", "feat_pets_desc": "Des compagnons interactifs qui gravitent autour de votre curseur, rebondissent en apesanteur ou jouent au flipper arcade sur votre bureau.", "feat_languages_title": "10 Langues Mondiales Natives", "feat_languages_desc": "Prise en charge native de 10 langues avec affichage bidirectionnel arabe (RTL), bascule en 1 clic et thèmes clair et sombre.", "feat_privacy_title": "100% Hors Ligne & Zéro Consommation", "feat_privacy_desc": "Zéro télémétrie, zéro pistage et zéro appel réseau. Conçu en pur Swift avec une empreinte ultra-légère de 38 Mo de mémoire."}, "de": {"nav_demo": "Live-Demo", "nav_stats": "Geschwindigkeit & Benchmarks", "nav_architecture": "System-Architektur", "nav_features": "Hauptfunktionen", "nav_showcase": "Retina-Galerie", "nav_languages": "Sprachen", "nav_support": "Support & Kontakt", "nav_privacy": "Datenschutz", "nav_download": "Im Mac App Store laden", "hero_badge": "✨ Version 1.0.0 (Build 12) • Entwickelt für macOS Sonoma & Sequoia", "hero_title": "Verwandeln Sie Ihren Mac-Schreibtisch in eine räumliche Hochleistungs-Arbeitsfläche.", "hero_desc": "Starten und ordnen Sie Ihre Apps in 28+ lebendigen Formationen, 52+ GPU-Metal-Shadern, taktilem Audio-Feedback und interaktiven Begleitern — bei 0% CPU-Last und null Telemetrie.", "hero_version": "Aktueller Build: 1.0.0 (Build 12)", "hero_universal": "Universal-Binary (Apple Silicon & Intel)", "hero_privacy": "Null Telemetrie", "tab_canvas": "✨ Räumliche Leinwand", "tab_themes": "🎨 Lebendige Metal-Designs", "tab_formations": "📐 Formationen & Hub", "tab_walkthrough": "⚡️ Live-Rundgang", "stats_title": "Entwickelt für Extreme Geschwindigkeit & Effizienz", "stats_desc": "Präzise in reinem Swift & Metal gefertigt. Kein Electron, kein WebKit, kein Akkuverbrauch.", "stat_fps_label": "ProMotion-Rendering", "stat_fps_sub": "Direkte GPU-Metal-Shader, synchronisiert mit Apple ProMotion-Bildwiederholraten.", "stat_lat_label": "Gesten-Latenz", "stat_lat_sub": "Sofortige Trackpad-Reaktion durch ressourcenschonende globale CoreGraphics-Hooks.", "stat_cpu_label": "CPU-Last im Leerlauf", "stat_cpu_sub": "Ereignisgesteuerte Architektur. Schläft im Hintergrund vollständig ohne Last.", "stat_ram_label": "Arbeitsspeicher (RAM)", "stat_ram_sub": "Ultraleichter nativer Swift-Fußabdruck — blitzschneller Start ohne Ballast.", "stat_loc_label": "Zeilen Swift-Code", "stat_loc_sub": "22 handgefertigte Module, speziell für macOS 14 Sonoma und 15 Sequoia optimiert.", "stat_net_label": "Netzwerkverkehr", "stat_net_sub": "Vollständig offline. Keine Analysen, kein Tracking und null ausgehende Verbindungen.", "dissection_title": "Architektur-Tiefenanalyse", "dissection_desc": "Technische Aufschlüsselung der 6 Kern-Subsysteme von Genie v1.0.0 (Build 12).", "features_title": "Mit Schweizer Präzision für macOS", "features_desc": "Native Swift-Leistung, hardwarebeschleunigte Shader und null Ballast.", "showcase_title": "Mac App Store Präsentation", "showcase_desc": "Entdecken Sie alle 10 offiziellen Mac App Store Showcases in voller 2880×1800 Retina-Auflösung.", "carousel_toggle_slides": "✨ Interaktiver Slider", "carousel_toggle_grid": "▦ Alle 10 in Rasteransicht", "languages_title": "Native Globale Lokalisierung", "languages_desc": "Genie unterstützt 10 Weltsprachen nativ inklusive bidirektionaler Rechts-nach-Links-Typografie (RTL).", "contact_title": "Kontakt & Entwickler-Support", "contact_desc": "Direkter Draht zum leitenden Ingenieur. Garantierte persönliche Antwort innerhalb von 24 Stunden.", "privacy_title": "Gebaut für Datenschutz-Liebhaber", "privacy_desc": "Genie besitzt keinerlei Netzwerkberechtigungen. macOS verbietet Genie technisch das Senden von Daten.", "privacy_link": "Datenschutzerklärung ohne Telemetrie lesen →", "footer_brand_desc": "Räumlicher Arbeitsbereich und App-Starter der nächsten Generation für macOS.", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. Alle Rechte vorbehalten.", "footer_apple": "Mit Präzision in Kalifornien entworfen. macOS, Apple Silicon und App Store sind Marken von Apple Inc.", "feat_canvas_title": "28+ Räumliche App-Formationen", "feat_canvas_desc": "Befreien Sie sich von starren Rastern. Ordnen Sie Ihre Apps in Fibonacci-Spiralen, Umlaufringen oder schwebenden Lotus-Mustern für mühelosen Schnellzugriff.", "feat_shaders_title": "52+ Lebendige Metal-Shader", "feat_shaders_desc": "Direkte GPU-Hardwarebeschleunigung liefert mattes Aero-Glas, Tokyo-Neonregen, kosmische Polarlichter und Chamäleon-Hintergrundtarnung ohne Akkuverbrauch.", "feat_audio_title": "Taktiles Audio & Trackpad-Haptik", "feat_audio_desc": "Erleben Sie echte mechanische Haptik bei jeder Interaktion mit akustischen Schalter-Klicks und spürbaren Apple Taptic-Vibrationen.", "feat_pets_title": "Interaktive Wesen & 120-FPS-Physik", "feat_pets_desc": "Dynamische Gefährten, die Ihren Mauszeiger umkreisen, mit Schwerelosigkeit federn oder Arcade-Flipper direkt auf Ihrem Wallpaper spielen.", "feat_languages_title": "10 Native Weltsprachen", "feat_languages_desc": "Vollständige native Lokalisierung in 10 Sprachen inklusive arabischer Rechts-nach-Links-Typografie (RTL), 1-Klick-Wechsel und Hell/Dunkel-Modus.", "feat_privacy_title": "100% Offline & Null Batterieverbrauch", "feat_privacy_desc": "Keinerlei Telemetrie, keine Analysen und null Netzwerkverbindungen. In reinem Swift mit sparsamen 38 MB RAM-Bedarf umgesetzt."}, "ja": {"nav_demo": "実機デモ", "nav_stats": "速度とベンチマーク", "nav_architecture": "アーキテクチャ", "nav_features": "主要機能", "nav_showcase": "Retina ギャラリー", "nav_languages": "対応言語", "nav_support": "サポート・お問い合わせ", "nav_privacy": "プライバシー保護", "nav_download": "Mac App Store で入手", "hero_badge": "✨ バージョン 1.0.0 (Build 12) • macOS Sonoma & Sequoia 完全対応", "hero_title": "Macのデスクトップを高性能な空間キャンバスへ。", "hero_desc": "28種以上の幾何学フォーメーション、52種のMetal GPUシェーダー、触覚オーディオ、動的ペットでアプリを起動・整理。アイドル時CPU使用率0%、完全オフライン。", "hero_version": "現在のビルド: 1.0.0 (Build 12)", "hero_universal": "ユニバーサルバイナリ (Apple Silicon & Intel)", "hero_privacy": "外部通信ゼロ", "tab_canvas": "✨ 空間キャンバス", "tab_themes": "🎨 ライブシェーダーテーマ", "tab_formations": "📐 フォーメーションと設定", "tab_walkthrough": "⚡️ 実機ツアー", "stats_title": "極限の速度と効率性を追求した設計", "stats_desc": "ピュアSwiftとMetalで高精度に構築。Electron不使用、WebKit不使用、バッテリー消費ゼロ。", "stat_fps_label": "ProMotion描画", "stat_fps_sub": "Apple ProMotionディスプレイのリフレッシュレートに完全同期するMetalシェーダー。", "stat_lat_label": "ジェスチャー遅延", "stat_lat_sub": "CoreGraphicsイベントタップによる低負荷・極小遅延のトラックパッド応答。", "stat_cpu_label": "アイドル時CPU使用率", "stat_cpu_sub": "完全イベント駆動型アーキテクチャ。操作していない時は完全に休止します。", "stat_ram_label": "常駐メモリ使用量", "stat_ram_sub": "Swiftネイティブの超軽量フットプリント。瞬時に起動し、無駄がありません。", "stat_loc_label": "純Swiftコード行数", "stat_loc_sub": "macOS 14 Sonomaおよび15 Sequoia専用に手作業で構築された22個のモジュール。", "stat_net_label": "ネットワーク通信量", "stat_net_sub": "完全オフライン。追跡なし、解析なし、外部接続権限なし。", "dissection_title": "詳細なアーキテクチャ解剖", "dissection_desc": "Genie v1.0.0 (Build 12)を支える6つのコアサブシステムを徹底解説。", "features_title": "macOSのために磨き抜かれた精度", "features_desc": "Swiftのネイティブパフォーマンス、ハードウェアアクセラレーション、徹底した無駄の排除。", "showcase_title": "Mac App Store ショーケース", "showcase_desc": "2880×1800 Retina解像度の公式App Storeスクリーンショット全10点をご覧ください。", "carousel_toggle_slides": "✨ スライドショー表示", "carousel_toggle_grid": "▦ 10枚全グリッド表示", "languages_title": "ネイティブ多言語ローカライズ", "languages_desc": "Genieは日本語を含む世界10言語、および右横書き(RTL)タイポグラフィに完全対応しています。", "contact_title": "開発者お問い合わせ・サポート", "contact_desc": "エンジニアへ直接お問い合わせいただけます。機能リクエストやご相談に24時間以内にお答えします。", "privacy_title": "プライバシーを最重視するクリエイターへ", "privacy_desc": "Genieにはネットワーク権限が一切ありません。macOSの仕様上、外部へのデータ送信は不可能です。", "privacy_link": "外部通信ゼロのプライバシーポリシーを読む →", "footer_brand_desc": "macOSのための次世代空間ワークスペース＆アプリランチャー。SwiftとMetalで構築。", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.", "footer_apple": "Designed with precision in California. macOS, Apple Silicon, App StoreはApple Inc.の商標です。", "feat_canvas_title": "28種以上の空間フォーメーション", "feat_canvas_desc": "固定グリッドから解放。フィボナッチ螺旋や軌道リング、フローティングロータス配置で、アプリ起動がかつてないほど直感的に。", "feat_shaders_title": "52種以上のライブMetalシェーダー", "feat_shaders_desc": "GPU直接描画によるすりガラス、東京ネオンレイン、極光オーロラ、リアルタイム壁紙カメレオン同化をバッテリー消費ゼロで実現。", "feat_audio_title": "触覚サウンド＆トラックパッド触覚", "feat_audio_desc": "心地よいメカニカルクリック音とApple Tapticの触覚フィードバックにより、すべての操作が確かな感触となって指先に伝わります。", "feat_pets_title": "動的ペット＆120FPS物理シミュレーション", "feat_pets_desc": "カーソルを追従して軌道を描くコンパニオン、無重力バウンス、壁紙の上で遊べるアーケードピンボールを搭載。", "feat_languages_title": "世界10言語ネイティブ対応", "feat_languages_desc": "日本語を含む世界10言語、アラビア語の右横書き(RTL)レイアウト、ワンクリック言語切替、ライト/ダークモードに完全対応。", "feat_privacy_title": "完全オフライン＆通信ゼロ", "feat_privacy_desc": "解析なし、追跡なし、外部ネットワーク接続権限なし。純粋なSwiftで構築され、常駐メモリわずか38MBの超軽量設計。"}, "zh": {"nav_demo": "实机演示", "nav_stats": "性能与基准", "nav_architecture": "底层架构", "nav_features": "核心功能", "nav_showcase": "Retina 画廊", "nav_languages": "全球多语言", "nav_support": "技术支持与联络", "nav_privacy": "纯离线隐私", "nav_download": "前往 Mac App Store 下载", "hero_badge": "✨ 版本 1.0.0 (Build 12) • 专为 macOS Sonoma 与 Sequoia 深度优化", "hero_title": "将您的 Mac 桌面进化为高性能空间数字画布。", "hero_desc": "以 28+ 种灵动几何阵列、52+ 组 GPU Metal 实时着色器、物理触感音效与桌面陪伴宠物启动应用 — 闲置 CPU 占用为 0%，纯本地零遥测。", "hero_version": "当前版本: 1.0.0 (Build 12)", "hero_universal": "通用二进制 (Apple Silicon & Intel)", "hero_privacy": "纯本地零遥测", "tab_canvas": "✨ 空间动态画布", "tab_themes": "🎨 实时着色器主题", "tab_formations": "📐 图标阵列与中枢", "tab_walkthrough": "⚡️ 真实桌面漫游实录", "stats_title": "极致性能与能效设计", "stats_desc": "纯 Swift 与 Metal 原生打造。无 Electron、无 WebKit 渲染容器，全天候零耗电。", "stat_fps_label": "ProMotion 原生帧率", "stat_fps_sub": "GPU Metal 着色器直接同步 Apple ProMotion 动态刷新率。", "stat_lat_label": "触控手势延迟", "stat_lat_sub": "底层 CoreGraphics 全局事件挂钩，触控板微秒级响应。", "stat_cpu_label": "闲置 CPU 占用", "stat_cpu_sub": "完全事件驱动架构。无交互时深度休眠，完全不耗电。", "stat_ram_label": "常驻内存占用", "stat_ram_sub": "Swift 编译型超轻内存占用，毫秒级瞬时启动，毫无冗余。", "stat_loc_label": "原生 Swift 代码行数", "stat_loc_sub": "针对 macOS 14 Sonoma 与 15 Sequoia 匠心打造的 22 个架构模块。", "stat_net_label": "网络流量消耗", "stat_net_sub": "严格离线运行。零分析上报、零追踪代码、零外部网络访问权限。", "dissection_title": "深度架构拆解", "dissection_desc": "剖析驱动 Genie v1.0.0 (Build 12) 的 6 大核心子系统设计。", "features_title": "为 macOS 量身定制的精细工艺", "features_desc": "Swift 原生性能表现，硬件加速粒子着色器，绝无冗余。", "showcase_title": "Mac App Store 官方图赏", "showcase_desc": "浏览官方上架的全部 10 张 2880×1800 完整超清 Retina 视网膜展图。", "carousel_toggle_slides": "✨ 交互轮播画廊", "carousel_toggle_grid": "▦ 完整 10 张网格", "languages_title": "原生全球多语言支持", "languages_desc": "Genie 原生内置 10 种国际语言支持，并完美兼容从右至左 (RTL) 排版格式。", "contact_title": "开发者联系与支持", "contact_desc": "直接与系统架构师沟通。无论是功能建议、技术咨询还是企业定制，24小时内必定回复。", "privacy_title": "专为重视隐私的创作者设计", "privacy_desc": "Genie 严格移除了所有网络通信权限。在 macOS 沙盒防护机制下，Genie 无法向外界发送任何数据。", "privacy_link": "阅读我们的零遥测隐私政策 →", "footer_brand_desc": "面向 macOS 的次世代空间桌面工作区与应用启动中枢。由 Swift 与 Metal 纯原生驱动。", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. 保留所有权利。", "footer_apple": "加州精工设计。macOS, Apple Silicon, App Store 为 Apple Inc. 的注册商标。", "feat_canvas_title": "28+ 种空间几何阵列", "feat_canvas_desc": "打破呆板网格约束。支持黄金斐波那契螺旋、星系轨道环、漂浮莲花与底部抽屉模式，让应用触手可及。", "feat_shaders_title": "52+ 款动态 Metal 着色器", "feat_shaders_desc": "GPU 底层硬件加速渲染磨砂航空玻璃、东京霓虹雨夜、深空极光与实时壁纸变色龙伪装，全天候运行毫无功耗负担。", "feat_audio_title": "触感机械音效与触控板震动", "feat_audio_desc": "纯正机械键盘轴体清脆声音反馈与 Apple Taptic 引擎微触震动，让每一次悬停与启动都极具机械质感。", "feat_pets_title": "灵动宠物与 120 FPS 物理模拟", "feat_pets_desc": "跟随光标游动的互动小伙伴、零重力弹性漂浮，还可直接在壁纸上畅玩复古街机弹珠台。", "feat_languages_title": "原生全球 10 种语言支持", "feat_languages_desc": "原生内置 10 种国际语言，全面支持从右至左 (RTL) 阿拉伯语排版，一键即时切换与明暗主题切换。", "feat_privacy_title": "100% 离线运行与零功耗开销", "feat_privacy_desc": "严禁一切数据上传，无遥测、无分析、无外部网络连接权限。纯 Swift 原生打造，常驻内存仅 38MB。"}, "it": {"nav_demo": "Dimostrazione", "nav_stats": "Velocità & Prestazioni", "nav_architecture": "Architettura", "nav_features": "Funzionalità", "nav_showcase": "Galleria Retina", "nav_languages": "Lingue", "nav_support": "Supporto & Contatti", "nav_privacy": "Massima Privacy", "nav_download": "Scarica su Mac App Store", "hero_badge": "✨ Versione 1.0.0 (Build 12) • Ottimizzato per macOS Sonoma & Sequoia", "hero_title": "Trasforma il tuo desktop Mac in una tela spaziale ad alte prestazioni.", "hero_desc": "Avvia e organizza le tue app in 28+ formazioni viventi, 52+ shader Metal GPU in tempo reale, audio tattile e animali interattivi — 0% CPU a riposo e zero telemetria.", "hero_version": "Build Attuale: 1.0.0 (Build 12)", "hero_universal": "Binario Universale (Apple Silicon & Intel)", "hero_privacy": "Zero Telemetria", "tab_canvas": "✨ Tela Spaziale", "tab_themes": "🎨 Temi Dinamici Metal", "tab_formations": "📐 Formazioni & Hub", "tab_walkthrough": "⚡️ Panoramica dal Vivo", "stats_title": "Ingegnerizzato per Massima Velocità ed Efficienza", "stats_desc": "Sviluppato in puro Swift e Metal. Zero Electron, zero WebKit, nessun consumo di batteria.", "stat_fps_label": "Rendering ProMotion", "stat_fps_sub": "Shader Metal GPU sincronizzati con i cicli di aggiornamento Apple ProMotion.", "stat_lat_label": "Latenza Gesti", "stat_lat_sub": "Risposta istantanea del trackpad tramite intercettori globali CoreGraphics.", "stat_cpu_label": "Carico CPU a Riposo", "stat_cpu_sub": "Architettura guidata da eventi. Sospensione completa in assenza di interazione.", "stat_ram_label": "Memoria Residente", "stat_ram_sub": "Impronta ultraleggera in Swift nativo — avvio immediato senza appesantimenti.", "stat_loc_label": "Righe di Codice Swift", "stat_loc_sub": "22 moduli artigianali ottimizzati per macOS 14 Sonoma e 15 Sequoia.", "stat_net_label": "Traffico di Rete", "stat_net_sub": "Completamente offline. Nessuna analisi, nessun tracciamento né connessioni esterne.", "dissection_title": "Dissezione dell'Architettura", "dissection_desc": "Analisi tecnica dei 6 sottosistemi principali che animano Genie v1.0.0 (Build 12).", "features_title": "Creazione di Precisione per macOS", "features_desc": "Prestazioni Swift native, shader accelerati via hardware e zero bloatware.", "showcase_title": "Galleria Mac App Store", "showcase_desc": "Visualizza tutte le 10 schermate ufficiali del Mac App Store in piena risoluzione Retina 2880×1800.", "carousel_toggle_slides": "✨ Vista Presentazione", "carousel_toggle_grid": "▦ Vista Completa a Griglia", "languages_title": "Localizzazione Globale Nativa", "languages_desc": "Genie supporta nativamente 10 lingue con supporto bidirezionale per testi da destra a sinistra (RTL).", "contact_title": "Contatto & Supporto Sviluppatore", "contact_desc": "Comunicazione diretta con l'ingegnere fondatore. Risposta garantita entro 24 ore.", "privacy_title": "Creato per Chi Esige Massima Privacy", "privacy_desc": "Genie esclude rigorosamente i permessi di rete. macOS impedisce a Genie qualsiasi trasmissione dati.", "privacy_link": "Leggi la nostra politica di privacy a zero telemetria →", "footer_brand_desc": "Spazio di lavoro spaziale e launcher di nuova generazione per macOS.", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. Tutti i diritti riservati.", "footer_apple": "Progettato con precisione in California. macOS, Apple Silicon e App Store sono marchi di Apple Inc.", "feat_canvas_title": "28+ Formazioni Spaziali", "feat_canvas_desc": "Supera le solite griglie rigide. Disponi le app in spirali di Fibonacci, anelli orbitali o dock a scaffale per un'esperienza visiva straordinaria.", "feat_shaders_title": "52+ Shader Metal Dinamici", "feat_shaders_desc": "Accelerazione hardware GPU con vetro satinato aero, pioggia neon di Tokyo, aurore cosmiche e mimetizzazione camaleontica in tempo reale.", "feat_audio_title": "Audio Tattile & Feedback Aptico", "feat_audio_desc": "Vivi la massima soddisfazione tattile con autentici clic meccanici e impulsi Apple Taptic al passaggio del cursore e all'avvio.", "feat_pets_title": "Animali d'Ambiente & Fisica a 120 FPS", "feat_pets_desc": "Compagni interattivi che orbitano attorno al cursore, rimbalzano a gravità zero o ti permettono di giocare a flipper direttamente sullo sfondo.", "feat_languages_title": "10 Lingue Mondiali Native", "feat_languages_desc": "Localizzazione nativa completa in 10 lingue con supporto bidirezionale per l'arabo (RTL), cambio rapido con 1 clic e modalità chiara/scura.", "feat_privacy_title": "100% Offline & Nessun Consumo", "feat_privacy_desc": "Zero telemetria, zero analisi e nessuna chiamata di rete. Sviluppato in puro Swift con un'impronta ultraleggera di soli 38 MB."}, "ko": {"nav_demo": "실시간 데모", "nav_stats": "속도 및 성능 지표", "nav_architecture": "시스템 아키텍처", "nav_features": "핵심 기능", "nav_showcase": "레티나 쇼케이스", "nav_languages": "지원 언어", "nav_support": "고객 지원 및 문의", "nav_privacy": "개인정보 보호", "nav_download": "Mac App Store에서 다운로드", "hero_badge": "✨ 버전 1.0.0 (Build 12) • macOS Sonoma & Sequoia 완벽 지원", "hero_title": "당신의 Mac 데스크탑을 고성능 공간 캔버스로 진화시키세요.", "hero_desc": "28개 이상의 기하학적 배열, 52개 이상의 실시간 GPU Metal 셰이더, 촉각 오디오 및 인터랙티브 펫으로 앱을 실행하세요 — 유휴 CPU 0%, 완전 오프라인.", "hero_version": "현재 빌드: 1.0.0 (Build 12)", "hero_universal": "유니버설 바이너리 (Apple Silicon & Intel)", "hero_privacy": "완전 오프라인", "tab_canvas": "✨ 공간 캔버스", "tab_themes": "🎨 실시간 메탈 테마", "tab_formations": "📐 기하학적 배치 & 허브", "tab_walkthrough": "⚡️ 실시간 데스크탑 투어", "stats_title": "극강의 속도와 효율성을 위한 엔지니어링", "stats_desc": "순수 Swift와 Metal로 정밀하게 제작되었습니다. Electron 및 WebKit 미사용으로 배터리 소모가 없습니다.", "stat_fps_label": "ProMotion 렌더링", "stat_fps_sub": "Apple ProMotion 디스플레이 주사율과 완벽하게 동기화되는 Metal GPU 셰이더.", "stat_lat_label": "제스처 반응 지연", "stat_lat_sub": "저지연 글로벌 CoreGraphics 이벤트 탭을 통한 즉각적인 트랙패드 응답.", "stat_cpu_label": "유휴 시 CPU 점유율", "stat_cpu_sub": "완전한 이벤트 구동 방식. 조작하지 않을 때는 완벽히 대기 상태를 유지합니다.", "stat_ram_label": "상주 메모리 사용량", "stat_ram_sub": "Swift 네이티브의 초경량 메모리 점유 — 불필요한 군더더기 없이 즉각 구동.", "stat_loc_label": "순수 Swift 코드 라인", "stat_loc_sub": "macOS 14 Sonoma 및 15 Sequoia를 위해 세심하게 제작된 22개 모듈.", "stat_net_label": "네트워크 데이터 전송", "stat_net_sub": "완전한 오프라인. 외부 분석, 사용자 추적 및 네트워크 권한이 일절 없습니다.", "dissection_title": "심층 아키텍처 해부", "dissection_desc": "Genie v1.0.0 (Build 12)을 구동하는 6대 핵심 하위 시스템 기술 명세.", "features_title": "macOS만을 위한 정교한 만듦새", "features_desc": "Swift 네이티브 퍼포먼스, 하드웨어 가속 셰이더, 완벽한 최적화.", "showcase_title": "Mac App Store 공식 쇼케이스", "showcase_desc": "2880×1800 전체 Retina 해상도로 제공되는 10장의 공식 App Store 쇼케이스를 확인하세요.", "carousel_toggle_slides": "✨ 슬라이드 모드", "carousel_toggle_grid": "▦ 10장 전체 그리드", "languages_title": "네이티브 글로벌 다국어 지원", "languages_desc": "Genie는 한국어를 비롯한 10개 언어 및 우측에서 좌측으로 읽는(RTL) 레이아웃을 네이티브로 지원합니다.", "contact_title": "개발자 문의 및 지원", "contact_desc": "핵심 엔지니어와 직접 소통하세요. 기능 제안이나 기업 문의에 24시간 이내에 직접 답변드립니다.", "privacy_title": "프라이버시를 중시하는 창작자를 위해", "privacy_desc": "Genie는 네트워크 클라이언트 권한을 엄격히 배제했습니다. macOS 샌드박스 보안 규칙에 따라 데이터가 유출되지 않습니다.", "privacy_link": "원격 측정 제로 개인정보 보호정책 보기 →", "footer_brand_desc": "macOS를 위한 차세대 공간 데스크탑 워크스페이스 및 앱 런처. Swift와 Metal로 제작.", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. All rights reserved.", "footer_apple": "Designed with precision in California. macOS, Apple Silicon 및 App Store는 Apple Inc.의 상표입니다.", "feat_canvas_title": "28+ 공간 앱 포메이션", "feat_canvas_desc": "경직된 사각 그리드에서 벗어나 피보나치 나선, 궤도 링, 플로팅 로터스 배치로 원하는 앱을 가장 우아하게 실행하세요.", "feat_shaders_title": "52+ 실시간 Metal 셰이더", "feat_shaders_desc": "GPU 하드웨어 가속으로 구현된 반투명 에어로 글래스, 도쿄 네온 레인, 오로라, 실시간 배경화면 카멜레온 동화를 배터리 소모 없이 즐기세요.", "feat_audio_title": "촉각 사운드 및 트랙패드 햅틱", "feat_audio_desc": "실제 기계식 스위치 클릭음과 Apple Taptic 피드백이 결합되어 커서를 올리고 앱을 띄울 때 손끝에 짜릿한 만족감을 선사합니다.", "feat_pets_title": "인터랙티브 펫 & 120 FPS 물리 엔진", "feat_pets_desc": "마우스 커서를 따라 궤도를 도는 데스크탑 친구, 무중력 탄성 물리학, 배경화면 위에서 즐기는 아케이드 핀볼 모드 탑재.", "feat_languages_title": "글로벌 10개 언어 완벽 지원", "feat_languages_desc": "한국어를 포함한 10개 언어 네이티브 지원, 아랍어 우→좌(RTL) 타이포그래피, 원클릭 즉시 전환 및 라이트/다크 모드 제공.", "feat_privacy_title": "100% 오프라인 & 배터리 무소모", "feat_privacy_desc": "외부 원격 측정 및 네트워크 권한이 완전히 차단되어 있습니다. 순수 Swift로 제작되어 단 38MB의 초경량 메모리만 차지합니다."}, "pt": {"nav_demo": "Demonstração", "nav_stats": "Velocidade & Desempenho", "nav_architecture": "Arquitetura", "nav_features": "Funcionalidades", "nav_showcase": "Galeria Retina", "nav_languages": "Idiomas", "nav_support": "Suporte & Contato", "nav_privacy": "Privacidade Offline", "nav_download": "Baixar na Mac App Store", "hero_badge": "✨ Versão 1.0.0 (Build 12) • Otimizado para macOS Sonoma & Sequoia", "hero_title": "Transforme sua área de trabalho do Mac em uma tela espacial de alto desempenho.", "hero_desc": "Abra e organize seus apps em 28+ disposições vivas, 52+ shaders Metal por GPU, áudio tátil e mascotes interativos — 0% de uso de CPU inativo e zero telemetria.", "hero_version": "Build Atual: 1.0.0 (Build 12)", "hero_universal": "Binário Universal (Apple Silicon & Intel)", "hero_privacy": "Zero Telemetria", "tab_canvas": "✨ Tela Espacial", "tab_themes": "🎨 Temas Vivos em Metal", "tab_formations": "📐 Formações e Hub", "tab_walkthrough": "⚡️ Demonstração em Tempo Real", "stats_title": "Projetado para Velocidade Extrema e Eficiência", "stats_desc": "Precisão artesanal em Swift e Metal puros. Sem Electron, sem WebKit e sem gasto de bateria.", "stat_fps_label": "Renderização ProMotion", "stat_fps_sub": "Shaders Metal de GPU sincronizados com as taxas de atualização Apple ProMotion.", "stat_lat_label": "Latência de Gestos", "stat_lat_sub": "Resposta instantânea do trackpad através de monitores globais CoreGraphics.", "stat_cpu_label": "Uso de CPU em Repouso", "stat_cpu_sub": "Arquitetura orientada a eventos. Entra em repouso profundo quando inativo.", "stat_ram_label": "Memória Residente", "stat_ram_sub": "Consumo ultraleve nativo em Swift — inicialização instantânea sem bloatware.", "stat_loc_label": "Linhas de Código Swift", "stat_loc_sub": "22 módulos artesanais criados especialmente para macOS Sonoma e Sequoia.", "stat_net_label": "Tráfego de Rede", "stat_net_sub": "Totalmente offline. Sem análises, sem rastreamento e sem conexões de rede.", "dissection_title": "Análise Técnica da Arquitetura", "dissection_desc": "Detalhamento dos 6 principais subsistemas que alimentam o Genie v1.0.0 (Build 12).", "features_title": "Feito com Precisão para macOS", "features_desc": "Desempenho Swift nativo, shaders acelerados por hardware e zero sobrecarga.", "showcase_title": "Vitrine da Mac App Store", "showcase_desc": "Explore as 10 telas oficiais da Mac App Store em resolução Retina completa de 2880×1800.", "carousel_toggle_slides": "✨ Modo Apresentação", "carousel_toggle_grid": "▦ Ver Grade Completa (10)", "languages_title": "Localização Global Nativa", "languages_desc": "O Genie possui suporte nativo a 10 idiomas mundiais e tipografia bidirecional da direita para a esquerda (RTL).", "contact_title": "Contato & Suporte ao Desenvolvedor", "contact_desc": "Fale diretamente com o engenheiro principal. Resposta pessoal garantida em menos de 24 horas.", "privacy_title": "Feito para Criadores que Valorizam a Privacidade", "privacy_desc": "O Genie omite estritamente permissões de cliente de rede. O macOS impede o envio de dados.", "privacy_link": "Leia nossa política de privacidade com zero telemetria →", "footer_brand_desc": "Área de trabalho espacial e inicializador de aplicativos de última geração para macOS.", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. Todos os direitos reservados.", "footer_apple": "Projetado com precisão na Califórnia. macOS, Apple Silicon e App Store são marcas da Apple Inc.", "feat_canvas_title": "28+ Disposições Espaciais de Apps", "feat_canvas_desc": "Livre-se de grades engessadas. Organize seus aplicativos em espirais de Fibonacci, anéis orbitais ou docks inferiores com extrema fluidez.", "feat_shaders_title": "52+ Shaders Metal Vivos", "feat_shaders_desc": "Aceleração direta por GPU que renderiza vidro aero fosco, chuva neon de Tóquio, auroras cósmicas e camuflagem camaleônica sem drenar bateria.", "feat_audio_title": "Áudio Tátil e Háptica de Trackpad", "feat_audio_desc": "Sinta a resposta física com cliques mecânicos nítidos e pulsações Apple Taptic ao passar o mouse e acionar seus aplicativos.", "feat_pets_title": "Mascotes Interativos e Física 120 FPS", "feat_pets_desc": "Companheiros que orbitam seu cursor, reagem com gravidade zero ou permitem jogar pinball arcade diretamente sobre seu papel de parede.", "feat_languages_title": "10 Idiomas Globais Nativos", "feat_languages_desc": "Suporte nativo a 10 idiomas com layout bidirecional para árabe (RTL), alternância instantânea em 1 clique e modos claro/escuro.", "feat_privacy_title": "100% Offline e Sem Consumo de Bateria", "feat_privacy_desc": "Rigorosamente sem telemetria, sem métricas e sem permissões de rede. Criado em Swift puro com consumo mínimo de 38 MB de memória."}, "ar": {"nav_demo": "عرض حي تفاعلي", "nav_stats": "السرعة ومؤشرات الأداء", "nav_architecture": "البنية المعمارية للنظام", "nav_features": "أبرز الميزات والوظائف", "nav_showcase": "معرض ريتنا الرسمي", "nav_languages": "اللغات العالمية", "nav_support": "الدعم والتواصل المباشر", "nav_privacy": "الخصوصية دون اتصال", "nav_download": "تنزيل من Mac App Store", "hero_badge": "✨ الإصدار 1.0.0 (البناء 12) • مُصمم بدقة لأنظمة macOS Sonoma و Sequoia", "hero_title": "حوّل سطح مكتب جهاز ماك إلى مساحة مكانية فائقة الأداء.", "hero_desc": "شغّل تطبيقاتك ونظمها عبر 28 تشكيلاً هندسياً حياً، و52 مؤثراً بصرياً لمعالج الرسوميات Metal، مع ردود فعل صوتية ولمسية — واستهلاك 0% للمعالج وبدون أي جمع للبيانات.", "hero_version": "البناء الحالي: 1.0.0 (البناء 12)", "hero_universal": "حزمة شاملة (Apple Silicon و Intel)", "hero_privacy": "بدون أي اتصال خارجي", "tab_canvas": "✨ المساحة المكانية", "tab_themes": "🎨 السمات الحية التفاعلية", "tab_formations": "📐 التشكيلات المكانية والمركز", "tab_walkthrough": "⚡️ جولة واقعية حية", "stats_title": "مُهندس لأقصى درجات السرعة والكفاءة", "stats_desc": "مبني بدقة متناهية بلغة Swift و Metal النقية. بدون Electron وبدون WebKit وبدون استنزاف للبطارية.", "stat_fps_label": "عرض ProMotion بمعدل 120 إطاراً", "stat_fps_sub": "تأثيرات بصرية لمعالج الرسوميات متزامنة مباشرة مع معدل تحديث شاشات Apple ProMotion.", "stat_lat_label": "زمن استجابة الإيماءات", "stat_lat_sub": "استجابة فورية للوحة التتبع عبر مراقبات أحداث CoreGraphics منخفضة العبء.", "stat_cpu_label": "استهلاك المعالج أثناء الخمول", "stat_cpu_sub": "بنية معمارية قائمة على الأحداث. تسكن تماماً دون استهلاك أي طاقة أثناء عدم الاستخدام.", "stat_ram_label": "الذاكرة العشوائية المستخدمة", "stat_ram_sub": "بصمة ذاكرة فائقة الخفة بلغة Swift — تشغيل فوري دون أي بطء أو تكدس.", "stat_loc_label": "أسطر كود Swift الأصيل", "stat_loc_sub": "22 وحدة برمجية صُممت خصيصاً لأنظمة macOS 14 Sonoma و 15 Sequoia.", "stat_net_label": "حركة مرور الشبكة", "stat_net_sub": "يعمل دون اتصال بالإنترنت تماماً. لا توجد تحليلات أو تتبع أو أي أذونات شبكة.", "dissection_title": "تشريح معماري عميق للتطبيق", "dissection_desc": "تحليل تقني للأنظمة الفرعية الستة الأساسية التي تُشغل Genie v1.0.0 (البناء 12).", "features_title": "حِرفية فائقة خُصصت لنظام macOS", "features_desc": "أداء Swift الأصيل، تأثيرات مسرّعة عتادياً، وبدون أي برمجيات زائدة.", "showcase_title": "معرض متجر تطبيقات ماك", "showcase_desc": "استكشف لقطات الشاشة الرسمية العشر بدقة ريتنا الكاملة 2880×1800.", "carousel_toggle_slides": "✨ عرض الشرائح التفاعلي", "carousel_toggle_grid": "▦ عرض الشبكة الكاملة (10)", "languages_title": "دعم لغوي عالمي أصيل", "languages_desc": "يحتوي Genie على دعم أصيل لعشر لغات عالمية مع محاذاة تلقائية للنصوص من اليمين إلى اليسار (RTL).", "contact_title": "التواصل والدعم الفني المباشر", "contact_desc": "تواصل مباشر مع مهندس النظام ومؤسس التطبيق. نضمن الرد الشخصي في أقل من 24 ساعة.", "privacy_title": "مُصمم للمبدعين الذين يضعون الخصوصية أولاً", "privacy_desc": "يستثني Genie أذونات الاتصال بالإنترنت تماماً. بموجب نظام macOS، يستحيل على التطبيق إرسال البيانات للخارج.", "privacy_link": "اقرأ سياسة الخصوصية الخالية من التتبع ←", "footer_brand_desc": "بيئة عمل مكانية ومشغل تطبيقات من الجيل التالي لنظام macOS. مبني بلغة Swift و Metal.", "footer_copyright": "Genie — Desktop Workspace © 2026 Nicholas M. Dudek. جميع الحقوق محفوظة.", "footer_apple": "صُمم بدقة في كاليفورنيا. macOS و Apple Silicon و App Store هي علامات تجارية لشركة Apple Inc.", "feat_canvas_title": "28+ تشكيلاً مكانياً للتطبيقات", "feat_canvas_desc": "تحرر من الشبكات التقليدية الجامدة. وزّع تطبيقاتك في حلزونات فيبوناتشي، أو حلقات مدارية، أو أرصفة سفلية للوصول الخاطف.", "feat_shaders_title": "52+ مؤثراً بصرياً حياً لمعالج Metal", "feat_shaders_desc": "تسريع عتادي مباشر يعرض الزجاج الشفاف، وأمطار طوكيو النيونية، والشفق الكوني، والتمويه المتطابق مع الخلفية دون استنزاف للبطارية.", "feat_audio_title": "أصوات ميكانيكية وردود فعل لمسية", "feat_audio_desc": "استمتع بإحساس مادي واقعي مع كل نقرة عبر أصوات المفاتيح الميكانيكية ونبضات Taptic الدقيقة من Apple عند التمرير والتشغيل.", "feat_pets_title": "كائنات تفاعلية وفيزياء بمعدل 120 إطاراً", "feat_pets_desc": "كائنات مرحة تدور حول المؤشر، وترتد بفيزياء انعدام الجاذبية، وتتيح لك لعب كرة الدبابيس الكلاسيكية على خلفية الشاشة مباشرة.", "feat_languages_title": "10 لغات عالمية أصلية", "feat_languages_desc": "دعم أصيل كامل لعشر لغات مع محاذاة تلقائية للنصوص العربية من اليمين إلى اليسار (RTL)، والتبديل بنقرة واحدة مع الوضعين الفاتح والداكن.", "feat_privacy_title": "يعمل دون إنترنت بنسبة 100% ودون استهلاك للبطارية", "feat_privacy_desc": "لا توجد تحليلات أو تتبع أو أذونات اتصال بالإنترنت نهائياً. مبني بلغة Swift النقية مع استهلاك ضئيل للذاكرة يبلغ 38 ميغابايت فقط."}};
+
+    const LANG_FLAGS = {
+      en: "🇺🇸", es: "🇪🇸", fr: "🇫🇷", de: "🇩🇪", ja: "🇯🇵",
+      zh: "🇨🇳", it: "🇮🇹", ko: "🇰🇷", pt: "🇧🇷", ar: "🇸🇦"
+    };
+
+    const LANG_CODES = {
+      en: "EN", es: "ES", fr: "FR", de: "DE", ja: "JA",
+      zh: "ZH", it: "IT", ko: "KO", pt: "PT", ar: "AR"
+    };
+
+    let currentLang = "en";
+
+    function setSiteLanguage(lang) {
+      if (!SITE_TRANSLATIONS[lang]) lang = "en";
+      currentLang = lang;
+      localStorage.setItem("genie_lang", lang);
+
+      // HTML lang and dir
+      document.documentElement.lang = lang;
+      if (lang === "ar") {
+        document.documentElement.dir = "rtl";
+        document.body.classList.add("rtl-mode");
+      } else {
+        document.documentElement.dir = "ltr";
+        document.body.classList.remove("rtl-mode");
+      }
+
+      // Update nav button flag and code
+      document.getElementById("nav-lang-flag").textContent = LANG_FLAGS[lang] || "🌐";
+      document.getElementById("nav-lang-code").textContent = LANG_CODES[lang] || lang.toUpperCase();
+
+      // Update active in dropdown
+      document.querySelectorAll(".lang-dropdown-item").forEach(el => {
+        const itemLang = el.getAttribute("data-lang") || (el.getAttribute("onclick")?.includes(`'${lang}'`) ? lang : "");
+        el.classList.toggle("active", itemLang === lang);
+      });
+      // Close dropdown
+      document.getElementById("lang-dropdown-menu")?.classList.remove("show");
+
+      // Update active in app language card grid
+      document.querySelectorAll(".app-lang-card-item").forEach(el => {
+        const itemLang = el.getAttribute("data-lang");
+        el.classList.toggle("active", itemLang === lang);
+      });
+
+      // Apply translations to all data-i18n elements
+      const t = SITE_TRANSLATIONS[lang] || SITE_TRANSLATIONS["en"];
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (t[key]) el.textContent = t[key];
+      });
+
+      // Sync the interactive language showcase mockup
+      syncMockupWindow(lang);
+    }
+
+    function toggleLangDropdown(e) {
+      e.stopPropagation();
+      document.getElementById("lang-dropdown-menu").classList.toggle("show");
+    }
+
+    document.addEventListener("click", () => {
+      document.getElementById("lang-dropdown-menu")?.classList.remove("show");
+    });
+
+    // 2. Light / Dark / System Theme Toggle
+    function toggleTheme() {
+      const savedMode = localStorage.getItem("genie_theme_mode") || "system";
+      let nextMode = "system";
+      if (savedMode === "system") {
+        nextMode = "light";
+      } else if (savedMode === "light") {
+        nextMode = "dark";
+      } else {
+        nextMode = "system";
+      }
+      applyThemeMode(nextMode);
+    }
+
+    function applyThemeMode(mode) {
+      localStorage.setItem("genie_theme_mode", mode);
+      let effectiveTheme = mode;
+      if (mode === "system") {
+        effectiveTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      document.documentElement.setAttribute("data-theme", effectiveTheme);
+      updateThemeIcon(mode, effectiveTheme);
+    }
+
+    function updateThemeIcon(mode, effectiveTheme) {
+      const icon = document.getElementById("theme-icon");
+      const btn = document.getElementById("theme-toggle-btn");
+      if (mode === "system") {
+        if (icon) icon.textContent = "💻";
+        if (btn) btn.title = `Theme: System (${effectiveTheme.toUpperCase()}). Click for Light.`;
+      } else if (mode === "light") {
+        if (icon) icon.textContent = "☀️";
+        if (btn) btn.title = "Theme: Light. Click for Dark.";
+      } else {
+        if (icon) icon.textContent = "🌙";
+        if (btn) btn.title = "Theme: Dark. Click for System Auto.";
+      }
+    }
+
+    // Auto-listen to OS system color scheme changes
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      const currentMode = localStorage.getItem("genie_theme_mode") || "system";
+      if (currentMode === "system") {
+        applyThemeMode("system");
+      }
+    });
+
+        // Slide-Out Sidebar Drawer Functions
+    function toggleSidebarDrawer() {
+      const drawer = document.getElementById("app-sidebar-drawer");
+      const backdrop = document.getElementById("sidebar-backdrop");
+      const isOpen = drawer?.classList.contains("open");
+      if (isOpen) {
+        closeSidebarDrawer();
+      } else {
+        openSidebarDrawer();
+      }
+    }
+
+    function openSidebarDrawer() {
+      const drawer = document.getElementById("app-sidebar-drawer");
+      const backdrop = document.getElementById("sidebar-backdrop");
+      drawer?.classList.add("open");
+      backdrop?.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeSidebarDrawer() {
+      const drawer = document.getElementById("app-sidebar-drawer");
+      const backdrop = document.getElementById("sidebar-backdrop");
+      drawer?.classList.remove("open");
+      backdrop?.classList.remove("open");
+      document.body.style.overflow = "";
+    }
+
+    // Dismiss sidebar on Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeSidebarDrawer();
+      }
+    });
+
+    // 4. Video Showreel with Back / Forward Side Arrows
+    let currentPreviewIndex = 0;
+    const previewSources = [
+      {
+        title: "Genie 1.0.0 (Build 12) — Spatial Canvas & Gestures",
+        src: "assets/video/App_Preview_1_Spatial_Canvas_1080p.mp4",
+        poster: "assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png"
+      },
+      {
+        title: "Genie 1.0.0 (Build 12) — Living Themes & Metal Shaders",
+        src: "assets/video/App_Preview_2_Living_Themes_1080p.mp4",
+        poster: "assets/images/appstore_screenshots/03_Studio_Hub_Living_Themes.png"
+      },
+      {
+        title: "Genie 1.0.0 (Build 12) — Geometric Formations & Studio Hub",
+        src: "assets/video/App_Preview_3_Formations_And_Controls_1080p.mp4",
+        poster: "assets/images/appstore_screenshots/05_Geometric_Formations_Lotus.png"
+      },
+      {
+        title: "Genie 1.0.0 (Build 12) — Live Physical Desktop Walkthrough",
+        src: "assets/video/genie_live_demo_today.mp4",
+        poster: "assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png"
+      }
+    ];
+
+    function switchPreview(index, btn) {
+      currentPreviewIndex = index;
+      document.querySelectorAll('.preview-tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', i === index);
+      });
+
+      const video = document.getElementById('hero-preview-video');
+      const titleEl = document.getElementById('mac-window-title');
+      const item = previewSources[index];
+
+      if (titleEl) titleEl.textContent = item.title;
+
+      video.src = item.src;
+      video.poster = item.poster;
+      video.play().then(() => updatePlayIcons(true)).catch(() => updatePlayIcons(false));
+    }
+
+    function prevPreviewVideo() {
+      let idx = (currentPreviewIndex - 1 + previewSources.length) % previewSources.length;
+      switchPreview(idx);
+    }
+
+    function nextPreviewVideo() {
+      let idx = (currentPreviewIndex + 1) % previewSources.length;
+      switchPreview(idx);
+    }
+
+    function togglePlayPause() {
+      const video = document.getElementById('hero-preview-video');
+      if (video.paused) {
+        video.play();
+        updatePlayIcons(true);
+      } else {
+        video.pause();
+        updatePlayIcons(false);
+      }
+    }
+
+    function updatePlayIcons(isPlaying) {
+      const playIcon = document.getElementById('play-icon');
+      const pauseIcon = document.getElementById('pause-icon');
+      if (playIcon && pauseIcon) {
+        playIcon.style.display = isPlaying ? 'none' : 'block';
+        pauseIcon.style.display = isPlaying ? 'block' : 'none';
+      }
+    }
+
+    function toggleMute() {
+      const video = document.getElementById('hero-preview-video');
+      video.muted = !video.muted;
+      const muteIcon = document.getElementById('mute-icon');
+      const unmuteIcon = document.getElementById('unmute-icon');
+      if (muteIcon && unmuteIcon) {
+        muteIcon.style.display = video.muted ? 'block' : 'none';
+        unmuteIcon.style.display = video.muted ? 'none' : 'block';
+      }
+    }
+
+    document.getElementById('hero-preview-video')?.addEventListener('click', togglePlayPause);
+
+    // 5. App Store Showcase Carousel & Sidebar Navigation
+    const showcaseData = [
+      {
+        id: 1,
+        title: "Spatial Desktop Canvas",
+        caption: "Summon your entire application library over your desktop with fluid 120 FPS spring physics.",
+        img: "assets/images/appstore_screenshots/01_Spatial_Canvas_Launch.png"
+      },
+      {
+        id: 2,
+        title: "App Matrix Navigation",
+        caption: "Clean multi-page desktop canvas with instant search and effortless categorization.",
+        img: "assets/images/appstore_screenshots/02_App_Matrix_Navigation.png"
+      },
+      {
+        id: 3,
+        title: "Menu Bar Studio Hub",
+        caption: "An expansive 11-tab command center for deep cosmetic and functional customization.",
+        img: "assets/images/appstore_screenshots/03_Studio_Hub_Living_Themes.png"
+      },
+      {
+        id: 4,
+        title: "1:1 Wallpaper Camouflage",
+        caption: "100% transparent pass-through layer seamlessly blending icons over active desktop windows.",
+        img: "assets/images/appstore_screenshots/04_Wallpaper_Camouflage_Mode.png"
+      },
+      {
+        id: 5,
+        title: "Floating Lotus Formation",
+        caption: "Break free from boring grids with 28+ handcrafted geometric and radial layouts.",
+        img: "assets/images/appstore_screenshots/05_Geometric_Formations_Lotus.png"
+      },
+      {
+        id: 6,
+        title: "Fibonacci Galaxy Spiral",
+        caption: "Golden ratio mathematical spiral arrangement orbiting around your desktop center.",
+        img: "assets/images/appstore_screenshots/06_Fibonacci_Galaxy_Spiral.png"
+      },
+      {
+        id: 7,
+        title: "Motion Physics & Dynamics",
+        caption: "Interactive trackpad gestures, fluid spring responsiveness, and magnetic drag reordering.",
+        img: "assets/images/appstore_screenshots/07_Motion_Physics_And_Gestures.png"
+      },
+      {
+        id: 8,
+        title: "Spatial Sound Engine",
+        caption: "Tactile mechanical switch audio feedback synchronized with Apple Force Touch haptic pulses.",
+        img: "assets/images/appstore_screenshots/08_Spatial_Sound_Engine.png"
+      },
+      {
+        id: 9,
+        title: "Dynamic Battery Status Bar",
+        caption: "28+ animated battery styles, VisionOS pill gauges, and real-time charging equalizers.",
+        img: "assets/images/appstore_screenshots/09_Dynamic_Battery_Status_Bar.png"
+      },
+      {
+        id: 10,
+        title: "VIP Expansion Store",
+        caption: "StoreKit 2 powered expansion packs unlocking living desktop companions, 4K shaders, and VIP packs.",
+        img: "assets/images/appstore_screenshots/10_VIP_Expansion_Store.png"
+      }
+    ];
+
+    let currentShowcaseSlide = 0;
+
+    function initShowcaseSidebar() {
+      const sidebar = document.getElementById("showcase-sidebar");
+      if (!sidebar) return;
+      sidebar.innerHTML = "";
+      showcaseData.forEach((item, index) => {
+        const btn = document.createElement("button");
+        btn.className = `showcase-sidebar-item ${index === 0 ? "active" : ""}`;
+        btn.innerHTML = `<span><b>${String(item.id).padStart(2, '0')}</b> · ${item.title}</span> <span>›</span>`;
+        btn.onclick = () => goToShowcaseSlide(index);
+        sidebar.appendChild(btn);
+      });
+    }
+
+    function goToShowcaseSlide(index) {
+      currentShowcaseSlide = index;
+      const item = showcaseData[index];
+      const img = document.getElementById("showcase-main-img");
+      const title = document.getElementById("showcase-slide-title");
+      const caption = document.getElementById("showcase-slide-caption");
+      const counter = document.getElementById("showcase-counter");
+
+      if (img) img.src = item.img;
+      if (title) title.textContent = item.title;
+      if (caption) caption.textContent = item.caption;
+      if (counter) counter.textContent = `SLIDE ${String(index + 1).padStart(2, '0')} / 10`;
+
+      document.querySelectorAll(".showcase-sidebar-item").forEach((el, i) => {
+        el.classList.toggle("active", i === index);
+      });
+    }
+
+    function prevShowcaseSlide() {
+      let idx = (currentShowcaseSlide - 1 + showcaseData.length) % showcaseData.length;
+      goToShowcaseSlide(idx);
+    }
+
+    function nextShowcaseSlide() {
+      let idx = (currentShowcaseSlide + 1) % showcaseData.length;
+      goToShowcaseSlide(idx);
+    }
+
+    function setShowcaseView(mode) {
+      const carousel = document.getElementById("showcase-carousel");
+      const grid = document.getElementById("showcase-grid");
+      const btnCarousel = document.getElementById("btn-carousel-mode");
+      const btnGrid = document.getElementById("btn-grid-mode");
+
+      if (mode === "grid") {
+        carousel.style.display = "none";
+        grid.classList.add("active-grid");
+        btnGrid.classList.add("active");
+        btnCarousel.classList.remove("active");
+      } else {
+        carousel.style.display = "grid";
+        grid.classList.remove("active-grid");
+        btnCarousel.classList.add("active");
+        btnGrid.classList.remove("active");
+      }
+    }
+
+    // 6. Interactive Language Showcase Mockup
+    const mockLangData = {
+      en: { greeting: "Hello", apps: "Apps", desktop: "Desktop", themes: "Themes", formations: "Formations", dir: "ltr", desc: "Every button, slider, and system string in Genie is natively localized using Apple's String(localized:) and custom LocalizedStrings.swift runtime dictionaries." },
+      es: { greeting: "Hola", apps: "Aplicaciones", desktop: "Escritorio", themes: "Temas", formations: "Formaciones", dir: "ltr", desc: "Totalmente traducido al español con terminología nativa de macOS y soporte completo para cambio instantáneo de modo claro y oscuro." },
+      fr: { greeting: "Bonjour", apps: "Applications", desktop: "Bureau", themes: "Thèmes", formations: "Formations", dir: "ltr", desc: "Entièrement traduit en français avec une typographie raffinée, respect des conventions macOS et commutation fluide." },
+      de: { greeting: "Hallo", apps: "Apps", desktop: "Schreibtisch", themes: "Designs", formations: "Formationen", dir: "ltr", desc: "Präzise deutsche Lokalisierung nach Apple-Standards: Menüleiste, Zeiger & Spuren, Desktop-Begleiter und reines Swift ohne Ballast." },
+      ja: { greeting: "こんにちは", apps: "アプリ", desktop: "デスクトップ", themes: "テーマ", formations: "フォーメーション", dir: "ltr", desc: "macOSの日本語環境に完全ネイティブ対応。メニューバーから設定画面、カーソル軌跡まで美しくローカライズされています。" },
+      zh: { greeting: "你好", apps: "应用程序", desktop: "桌面布局", themes: "主题风格", formations: "阵列布局", dir: "ltr", desc: "深度适配 macOS 中文环境，提供地道的菜单栏控制、桌面阵列、灵动宠物与极速应用检索体验。" },
+      it: { greeting: "Ciao", apps: "Applicazioni", desktop: "Scrivania", themes: "Temi", formations: "Formazioni", dir: "ltr", desc: "Localizzazione completa e curata in italiano con supporto per Apple ProMotion a 120 FPS e feedback aptico su misura." },
+      ko: { greeting: "안녕하세요", apps: "앱", desktop: "데스크탑", themes: "테마", formations: "포메이션", dir: "ltr", desc: "macOS 한국어 환경에 맞춘 직관적인 메뉴 막대, 커서 궤적, 인터랙티브 펫과 초고속 앱 검색을 지원합니다." },
+      pt: { greeting: "Olá", apps: "Aplicativos", desktop: "Área de Trabalho", themes: "Temas", formations: "Formações", dir: "ltr", desc: "Adaptado integralmente para português seguindo as diretrizes nativas do macOS, com controle gestual instantâneo." },
+      ar: { greeting: "مرحبا", apps: "التطبيقات", desktop: "سطح المكتب", themes: "السمات", formations: "التشكيلات المكانية", dir: "rtl", desc: "دعم أصيل كامل للغة العربية مع محاذاة تلقائية للنصوص من اليمين إلى اليسار (RTL) وتصميم مخصص لشاشات ريتنا." }
+    };
+
+    function syncMockupWindow(lang) {
+      const data = mockLangData[lang] || mockLangData["en"];
+      const headingEl = document.getElementById('lang-heading');
+      const descEl = document.getElementById('lang-description');
+      const greetingBadge = document.getElementById('lang-greeting-badge');
+      const directionBadge = document.getElementById('lang-direction-badge');
+      const mockupWindow = document.getElementById('lang-mockup-window');
+
+      const flag = LANG_FLAGS[lang] || "🌐";
+      const name = {
+        en: "English (US)", es: "Español", fr: "Français", de: "Deutsch", ja: "日本語",
+        zh: "简体中文", it: "Italiano", ko: "한국어", pt: "Português", ar: "العربية"
+      }[lang] || lang;
+
+      if (headingEl) headingEl.textContent = `${flag} ${name} • Native Localization`;
+      if (descEl) descEl.textContent = data.desc;
+      if (greetingBadge) greetingBadge.textContent = `Greeting: "${data.greeting}"`;
+      if (directionBadge) directionBadge.textContent = data.dir === 'rtl' ? 'RTL Layout (Right-to-Left)' : 'LTR Layout';
+
+      const mockGreeting = document.getElementById('mock-greeting');
+      const mockApps = document.getElementById('mock-tab-apps');
+      const mockDesktop = document.getElementById('mock-tab-desktop');
+      const mockThemes = document.getElementById('mock-tab-themes');
+      const mockFormations = document.getElementById('mock-tab-formations');
+
+      if (mockGreeting) mockGreeting.textContent = data.greeting;
+      if (mockApps) mockApps.textContent = data.apps;
+      if (mockDesktop) mockDesktop.textContent = data.desktop;
+      if (mockThemes) mockThemes.textContent = data.themes;
+      if (mockFormations) mockFormations.textContent = data.formations;
+
+      if (mockupWindow) mockupWindow.style.direction = data.dir;
+    }
+
+    // 7. Initialization
+    window.addEventListener("DOMContentLoaded", () => {
+      // Restore Theme (System / Light / Dark)
+      const savedMode = localStorage.getItem("genie_theme_mode") || "system";
+      applyThemeMode(savedMode);
+
+      // Restore Language or Detect Browser Language
+      let savedLang = localStorage.getItem("genie_lang");
+      if (!savedLang) {
+        const browserPrefix = navigator.language ? navigator.language.slice(0, 2).toLowerCase() : "en";
+        savedLang = SITE_TRANSLATIONS[browserPrefix] ? browserPrefix : "en";
+      }
+      setSiteLanguage(savedLang);
+
+      // Initialize Showcase Sidebar & Carousel
+      initShowcaseSidebar();
+    });
+
+    // Keyboard Arrow Navigation for Slides
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") prevShowcaseSlide();
+      if (e.key === "ArrowRight") nextShowcaseSlide();
+    });
+  
+    // Menu Bar Studio Hub Screenshot Switcher
+    const MENUBAR_DATA = {
+      battery: {
+        img: 'assets/images/zoom_battery_styles.png',
+        badge: '🔍 Zoomed UI Detail • Battery Styles & HUD',
+        pill: 'Studio Hub • Battery & Status',
+        title: '28+ Living Battery Styles & Hardware Telemetry',
+        desc: 'Close-up inspection of Genie\'s dynamic battery gauges. Connects directly to Apple Silicon power rails and the System Management Controller (SMC) to deliver millisecond-level telemetry right on your status bar.',
+        bullets: [
+          { icon: '⚡️', title: 'Real-Time Wattage & Velocity:', desc: 'Live readouts of active power draw in watts (e.g. 14.2W), battery cycle count, and precise discharge speed.' },
+          { icon: '✨', title: '5 Signature Gauge Families:', desc: 'Liquid Glass Capsule, Cyberpunk Digital HUD, VisionOS Pill, Vertical Energy Column, and Minimalist Monochrome.' },
+          { icon: '🔋', title: 'State-Aware Transitions:', desc: 'Fluid green charging bolts on AC power, ember amber in Low Power Mode, and red pulse below 20%.' },
+          { icon: '🎛️', title: 'Zero-Delay Hotkey Control:', desc: 'Open the Studio Hub dropdown instantaneously via global hotkey or top-edge hover without stealing active window focus.' }
+        ]
+      },
+      status: {
+        img: 'assets/images/appstore_screenshots/09_Dynamic_Battery_Status_Bar.png',
+        badge: '✨ Full Retina Status Bar Showcase',
+        pill: 'Status Bar Customizer',
+        title: 'Deep Status Bar Customization & Date Formatting',
+        desc: 'Configure exactly how your macOS status bar looks and behaves. Fine-tune date formats, toggle percentage text, calibrate battery health warnings, and adjust gauge opacity on the fly.',
+        bullets: [
+          { icon: '📅', title: 'Flexible Clock & Date Formats:', desc: 'Switch between ISO 8601, military 24h, natural language dates, or clean minimalist timestamps.' },
+          { icon: '📊', title: 'Percentage & Voltage Modes:', desc: 'Show percentage, remaining battery runtime (e.g. 8h 42m), or direct rail voltage.' },
+          { icon: '💡', title: 'Dynamic Contrast Shifting:', desc: 'Automatic color inversion ensures perfect legibility over light and dark menu bar backgrounds.' },
+          { icon: '🚀', title: 'Instant Live Apply:', desc: 'Every slider and toggle updates the menu bar in real-time with zero restart required.' }
+        ]
+      },
+      hub: {
+        img: 'assets/images/zoom_menubar_hub.png',
+        badge: '🔍 Zoomed UI Detail • 11 Studio Tabs',
+        pill: 'Studio Hub Command Center',
+        title: '11-Tab Full Desktop Workspace Command Center',
+        desc: 'Close-up look at every workspace subsystem: Apps Matrix, Desktop Screen Modes, Living Themes, Formations, Mouse Trails, Entities, Sounds, Wallpaper, Motion, Status Bar, and VIP Packs.',
+        bullets: [
+          { icon: '📐', title: 'Formations & Matrix Grid:', desc: 'Adjust grid dimensions, launchpad layouts, and spatial formations directly from the dropdown.' },
+          { icon: '⚡️', title: 'Fast App Launcher:', desc: 'Search and launch all installed macOS applications with keyboard navigation and instant filter.' },
+          { icon: '🎯', title: 'Always Accessible:', desc: 'Click the Genie status icon or use ⌃⌥Space to instantly unveil the complete studio interface.' },
+          { icon: '🛡️', title: 'Zero CPU Overhead:', desc: 'Engineered in native Swift and AppKit. Uses 0% CPU when closed and dismisses on click-away.' }
+        ]
+      },
+      themes: {
+        img: 'assets/images/zoom_living_themes.png',
+        badge: '🔍 Zoomed UI Detail • Metal 3 Shaders',
+        pill: 'Living GPU Themes Menu',
+        title: '52+ Real-Time Living Metal Shaders in One Click',
+        desc: 'Close-up view of 52+ hardware-accelerated themes. Preview real-time shaders like Frosted Aero Glass, Tokyo Neon Rain, Cosmic Aurora, and Wallpaper Camouflage with rich lighting and refraction.',
+        bullets: [
+          { icon: '🎨', title: 'Instant Shader Previews:', desc: 'Live thumbnail previews of all 52+ shaders render directly inside the dropdown menu.' },
+          { icon: '🪟', title: '1:1 Wallpaper Camouflage:', desc: 'Engage 100% transparent pass-through mode to blend your app matrix directly over your desktop.' },
+          { icon: '⚙️', title: 'Blur & Refraction Controls:', desc: 'Adjust blur radius, frosted saturation, and color tints with real-time slider updates.' },
+          { icon: '🔋', title: 'Energy-Optimized GPU Execution:', desc: 'Shaders run on Apple Metal 3 and pause completely when the workspace is idle.' }
+        ]
+      },
+      sounds: {
+        img: 'assets/images/zoom_sound_engine.png',
+        badge: '🔍 Zoomed UI Detail • Tactile Audio Engine',
+        pill: 'Spatial Sound & Haptics Menu',
+        title: 'Mechanical Audio Profiles & Apple Force Touch Haptics',
+        desc: 'Close-up inspection of tactile sound feedback. Select from authentic mechanical keyboard profiles (Cherry MX Blue, Brown, Red, Topre, Modern Cyber) and calibrate sub-millisecond Apple Taptic trackpad pulses.',
+        bullets: [
+          { icon: '🔊', title: 'PCM Synthesized Audio:', desc: 'Sub-millisecond audio engine delivers ultra-crisp tactile feedback on app selection and launch.' },
+          { icon: '🎚️', title: 'Independent Volume Sliders:', desc: 'Fine-tune volume levels for hover sounds, click sounds, formation switches, and retractions.' },
+          { icon: '📳', title: 'Apple Force Touch Feedback:', desc: 'Physical micro-vibrations synchronized to your trackpad via NSHapticFeedbackManager.' },
+          { icon: '🔇', title: 'Smart Mute Engine:', desc: 'Automatically mutes when audio output is routed to microphones or during screen recordings.' }
+        ]
+      }
+    };
+
+    function switchMenubarTab(tabKey, btnElement) {
+      const data = MENUBAR_DATA[tabKey];
+      if (!data) return;
+
+      // Update button active states
+      const allBtns = document.querySelectorAll('.menubar-tab-btn');
+      allBtns.forEach(b => b.classList.remove('active'));
+      if (btnElement) btnElement.classList.add('active');
+
+      // Update image with smooth fade
+      const img = document.getElementById('menubar-feature-img');
+      const badge = document.getElementById('menubar-feature-badge');
+      if (img) {
+        img.style.opacity = '0.3';
+        setTimeout(() => {
+          img.src = data.img;
+          img.alt = data.title;
+          img.style.opacity = '1';
+        }, 150);
+      }
+      if (badge) badge.textContent = data.badge;
+
+      // Update text pane
+      const pill = document.getElementById('menubar-pane-pill');
+      const title = document.getElementById('menubar-pane-title');
+      const desc = document.getElementById('menubar-pane-desc');
+      const bulletsList = document.getElementById('menubar-pane-bullets');
+
+      if (pill) pill.textContent = data.pill;
+      if (title) title.textContent = data.title;
+      if (desc) desc.textContent = data.desc;
+
+      if (bulletsList) {
+        bulletsList.innerHTML = data.bullets.map(b => `
+          <li>
+            <span class="bullet-icon">${b.icon}</span>
+            <div><strong>${b.title}</strong> ${b.desc}</div>
+          </li>
+        `).join('');
+      }
+    }
+
+</script>
+</body>
+</html>
