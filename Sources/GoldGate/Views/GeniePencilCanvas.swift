@@ -1,3 +1,4 @@
+#if targetEnvironment(macCatalyst) || os(iOS)
 import SwiftUI
 import PencilKit
 
@@ -69,3 +70,4 @@ class GenieArtEngine {
         canvas.drawing.strokes.append(aiStroke)
     }
 }
+#endif
