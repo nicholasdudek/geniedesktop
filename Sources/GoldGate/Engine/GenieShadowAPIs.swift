@@ -64,7 +64,6 @@ public class GenieShadowAPIs {
         sqlite3_finalize(statement)
         return results
     }
-}
 
     // MARK: - Semantic Personal Memory (Vector Search)
     
@@ -138,7 +137,6 @@ public class GenieShadowAPIs {
             "executed_script": scriptSource
         ]
     }
-}
 
     // MARK: - Final Cut Pro X (FCPXML) Editing Genius
     
@@ -202,7 +200,22 @@ public class GenieShadowAPIs {
         
         return [
             "status": success ? "success" : "failed",
-            "message": "Successfully generated and pushed timeline \\(timelineName) to Final Cut Pro.",
+            "message": "Successfully generated and pushed timeline \(timelineName) to Final Cut Pro.",
             "fcpxml_path": tempURL.path
         ]
     }
+
+    // MARK: - Aliases for Autonomous Agent & Tool Engine
+    public func queryLocalIMessageHistory(searchTerm: String, limit: Int = 50) -> [[String: Any]] {
+        return queryLocalMessages(searchTerm: searchTerm, limit: limit)
+    }
+
+    public func adobeSuiteInjection(appName: String, action: String, assetPath: String? = nil) -> [String: Any] {
+        return injectIntoAdobeSuite(targetApp: appName, action: action, assetPath: assetPath)
+    }
+
+    public func finalCutProGeniusEdit(timelineName: String, assets: [String] = []) -> [String: Any] {
+        return executeFinalCutGenius(action: "assemble_rough_cut", assets: assets, timelineName: timelineName)
+    }
+}
+

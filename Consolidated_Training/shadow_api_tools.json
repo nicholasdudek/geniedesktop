@@ -5,10 +5,17 @@
         "parameters": {
             "type": "object",
             "properties": {
-                "search_term": {"type": "string"},
-                "limit": {"type": "integer", "default": 50}
+                "search_term": {
+                    "type": "string"
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 50
+                }
             },
-            "required": ["search_term"]
+            "required": [
+                "search_term"
+            ]
         }
     },
     {
@@ -17,11 +24,23 @@
         "parameters": {
             "type": "object",
             "properties": {
-                "concept": {"type": "string"},
-                "file_types": {"type": "array", "items": {"type": "string"}},
-                "limit": {"type": "integer", "default": 5}
+                "concept": {
+                    "type": "string"
+                },
+                "file_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 5
+                }
             },
-            "required": ["concept"]
+            "required": [
+                "concept"
+            ]
         }
     },
     {
@@ -30,11 +49,27 @@
         "parameters": {
             "type": "object",
             "properties": {
-                "target_app": {"type": "string", "enum": ["Photoshop", "Illustrator", "Premiere", "AfterEffects"]},
-                "action": {"type": "string"},
-                "asset_path": {"type": "string", "description": "Absolute path to a local asset to manipulate or inject."}
+                "target_app": {
+                    "type": "string",
+                    "enum": [
+                        "Photoshop",
+                        "Illustrator",
+                        "Premiere",
+                        "AfterEffects"
+                    ]
+                },
+                "action": {
+                    "type": "string"
+                },
+                "asset_path": {
+                    "type": "string",
+                    "description": "Absolute path to a local asset to manipulate or inject."
+                }
             },
-            "required": ["target_app", "action"]
+            "required": [
+                "target_app",
+                "action"
+            ]
         }
     },
     {
@@ -43,11 +78,26 @@
         "parameters": {
             "type": "object",
             "properties": {
-                "action": {"type": "string", "description": "The style of edit, e.g., 'assemble_hype_trailer'"},
-                "assets": {"type": "array", "items": {"type": "string"}, "description": "Array of absolute file paths to video/audio assets."},
-                "timeline_name": {"type": "string"}
+                "action": {
+                    "type": "string",
+                    "description": "The style of edit, e.g., 'assemble_hype_trailer'"
+                },
+                "assets": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Array of absolute file paths to video/audio assets."
+                },
+                "timeline_name": {
+                    "type": "string"
+                }
             },
-            "required": ["action", "assets", "timeline_name"]
+            "required": [
+                "action",
+                "assets",
+                "timeline_name"
+            ]
         }
     },
     {
@@ -58,11 +108,19 @@
             "properties": {
                 "category": {
                     "type": "string",
-                    "enum": ["gui", "terminal", "filesystem", "browser", "all"],
+                    "enum": [
+                        "gui",
+                        "terminal",
+                        "filesystem",
+                        "browser",
+                        "all"
+                    ],
                     "description": "Category of tools to inspect"
                 }
             },
-            "required": ["category"]
+            "required": [
+                "category"
+            ]
         }
     },
     {
@@ -79,11 +137,106 @@
         "parameters": {
             "type": "object",
             "properties": {
-                "x": {"type": "number", "description": "The absolute X coordinate on the screen"},
-                "y": {"type": "number", "description": "The absolute Y coordinate on the screen"},
-                "button": {"type": "string", "enum": ["left", "right"], "description": "Which mouse button to click"}
+                "x": {
+                    "type": "number",
+                    "description": "The absolute X coordinate on the screen"
+                },
+                "y": {
+                    "type": "number",
+                    "description": "The absolute Y coordinate on the screen"
+                },
+                "button": {
+                    "type": "string",
+                    "enum": [
+                        "left",
+                        "right"
+                    ],
+                    "description": "Which mouse button to click"
+                }
             },
-            "required": ["x", "y"]
+            "required": [
+                "x",
+                "y"
+            ]
+        }
+    },
+    {
+        "name": "mouse_double_click",
+        "description": "Moves the cursor to absolute coordinates (x, y) and performs a double-click.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number",
+                    "description": "The absolute X coordinate on the screen"
+                },
+                "y": {
+                    "type": "number",
+                    "description": "The absolute Y coordinate on the screen"
+                },
+                "button": {
+                    "type": "string",
+                    "enum": [
+                        "left",
+                        "right"
+                    ],
+                    "description": "Which mouse button to click"
+                }
+            },
+            "required": [
+                "x",
+                "y"
+            ]
+        }
+    },
+    {
+        "name": "mouse_drag",
+        "description": "Performs a click and drag operation from start coordinates to end coordinates.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "from_x": {
+                    "type": "number",
+                    "description": "Starting X coordinate"
+                },
+                "from_y": {
+                    "type": "number",
+                    "description": "Starting Y coordinate"
+                },
+                "to_x": {
+                    "type": "number",
+                    "description": "Ending X coordinate"
+                },
+                "to_y": {
+                    "type": "number",
+                    "description": "Ending Y coordinate"
+                }
+            },
+            "required": [
+                "from_x",
+                "from_y",
+                "to_x",
+                "to_y"
+            ]
+        }
+    },
+    {
+        "name": "mouse_scroll",
+        "description": "Scrolls the mouse wheel by delta pixels horizontally and vertically.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "delta_x": {
+                    "type": "number",
+                    "description": "Horizontal scroll offset",
+                    "default": 0
+                },
+                "delta_y": {
+                    "type": "number",
+                    "description": "Vertical scroll offset",
+                    "default": 0
+                }
+            }
         }
     },
     {
@@ -92,9 +245,150 @@
         "parameters": {
             "type": "object",
             "properties": {
-                "text": {"type": "string", "description": "The exact text to type"}
+                "text": {
+                    "type": "string",
+                    "description": "The exact text to type"
+                }
             },
-            "required": ["text"]
+            "required": [
+                "text"
+            ]
+        }
+    },
+    {
+        "name": "keyboard_hotkey",
+        "description": "Sends key combination or hotkey shortcut (e.g. key: 'space', modifiers: ['command']).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "description": "Key identifier or character (e.g. 'c', 'space', 'Return')"
+                },
+                "modifiers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "command",
+                            "shift",
+                            "option",
+                            "control"
+                        ]
+                    },
+                    "description": "Modifier keys held down during keystroke"
+                }
+            },
+            "required": [
+                "key"
+            ]
+        }
+    },
+    {
+        "name": "dump_accessibility_tree",
+        "description": "Dumps the accessibility UI element tree of the focused window or application.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "max_depth": {
+                    "type": "integer",
+                    "description": "Maximum depth to traverse",
+                    "default": 3
+                }
+            }
+        }
+    },
+    {
+        "name": "find_ui_elements",
+        "description": "Searches for interactive UI elements matching a text label, title, or accessibility description.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Label or description of the UI element to locate"
+                }
+            },
+            "required": [
+                "query"
+            ]
+        }
+    },
+    {
+        "name": "get_active_window",
+        "description": "Retrieves metadata, title, application name, and bounding rect of the currently active/frontmost window.",
+        "parameters": {
+            "type": "object",
+            "properties": {}
+        }
+    },
+    {
+        "name": "bash_execute",
+        "description": "Executes an allowlisted terminal command safely inside the VM environment.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "Bash command line to execute"
+                }
+            },
+            "required": [
+                "command"
+            ]
+        }
+    },
+    {
+        "name": "list_directory",
+        "description": "Lists contents and file sizes for a directory in the VM filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Directory path"
+                }
+            },
+            "required": [
+                "path"
+            ]
+        }
+    },
+    {
+        "name": "read_file",
+        "description": "Reads raw textual content from a local file in the VM filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "File path to read"
+                }
+            },
+            "required": [
+                "path"
+            ]
+        }
+    },
+    {
+        "name": "write_file",
+        "description": "Writes or overwrites content into a file in the VM filesystem.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "File path to write"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Content string to save"
+                }
+            },
+            "required": [
+                "path",
+                "content"
+            ]
         }
     }
 ]

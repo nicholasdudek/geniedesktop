@@ -281,9 +281,181 @@ public final class GenieNativeToolEngine: @unchecked Sendable {
         case "sort_desktop", "organize_desktop", "refactor_sort", "desktop_organize", "organize_files":
             return await runSortDesktopTool(argument: argument)
 
+        // MARK: - OS Agent & Input Control
+        case "discover_system_tools", "tool_discovery":
+            let res = GenieOSAgent.shared.discoverSystemTools(category: argument.isEmpty ? "all" : argument)
+            if let data = try? JSONSerialization.data(withJSONObject: res, options: .prettyPrinted),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return "{\"status\": \"available\"}"
+
+        case "capture_screen", "screenshot":
+            let path = argument.isEmpty ? "/tmp/agent_screen.png" : argument
+            if let captured = GenieOSAgent.shared.captureScreen(outputPath: path) {
+                return "{\"status\": \"success\", \"image_path\": \"\(captured)\"}"
+            }
+            return "{\"status\": \"error\", \"message\": \"Failed to capture screen\"}"
+
+        case "mouse_click":
+            let (x, y, button) = parseCoordinates(arg: argument, payload: payload)
+            GenieOSAgent.shared.mouseClick(x: x, y: y, button: button)
+            return "{\"status\": \"success\", \"action\": \"click\", \"x\": \(x), \"y\": \(y)}"
+
+        case "mouse_double_click":
+            let (x, y, button) = parseCoordinates(arg: argument, payload: payload)
+            GenieOSAgent.shared.mouseDoubleClick(x: x, y: y, button: button)
+            return "{\"status\": \"success\", \"action\": \"double_click\", \"x\": \(x), \"y\": \(y)}"
+
+        case "mouse_drag":
+            let (fromX, fromY, toX, toY) = parseDrag(arg: argument, payload: payload)
+            GenieOSAgent.shared.mouseDrag(fromX: fromX, fromY: fromY, toX: toX, toY: toY)
+            return "{\"status\": \"success\", \"action\": \"drag\", \"from\": [\(fromX), \(fromY)], \"to\": [\(toX), \(toY)]}"
+
+        case "mouse_scroll":
+            let (deltaX, deltaY) = parseScroll(arg: argument, payload: payload)
+            GenieOSAgent.shared.mouseScroll(deltaX: deltaX, deltaY: deltaY)
+            return "{\"status\": \"success\", \"action\": \"scroll\", \"delta_x\": \(deltaX), \"delta_y\": \(deltaY)}"
+
+        case "keyboard_type":
+            let text = payload.isEmpty ? argument : payload
+            GenieOSAgent.shared.typeText(text)
+            return "{\"status\": \"success\", \"typed_length\": \(text.count)}"
+
+        case "keyboard_hotkey":
+            let (key, modifiers) = parseHotkey(arg: argument, payload: payload)
+            GenieOSAgent.shared.keyboardHotkey(key: key, modifiers: modifiers)
+            return "{\"status\": \"success\", \"hotkey\": \"\(key)\", \"modifiers\": \(modifiers)}"
+
+        case "get_active_window":
+            let res = GenieOSAgent.shared.getActiveWindow()
+            if let data = try? JSONSerialization.data(withJSONObject: res, options: .prettyPrinted),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return "{\"status\": \"error\"}"
+
+        case "dump_accessibility_tree":
+            let depth = Int(argument) ?? 3
+            let res = GenieOSAgent.shared.dumpAccessibilityTree(maxDepth: depth)
+            if let data = try? JSONSerialization.data(withJSONObject: res, options: .prettyPrinted),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return "{\"status\": \"error\"}"
+
+        case "find_ui_elements":
+            let res = GenieOSAgent.shared.findUIElements(query: argument)
+            if let data = try? JSONSerialization.data(withJSONObject: res, options: .prettyPrinted),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return "[]"
+
+        // MARK: - Shadow APIs
+        case "query_local_imessage_history":
+            let results = GenieShadowAPIs.shared.queryLocalIMessageHistory(searchTerm: argument)
+            if let data = try? JSONSerialization.data(withJSONObject: results, options: .prettyPrinted),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return "[]"
+
+        case "semantic_local_file_search":
+            let results = GenieShadowAPIs.shared.semanticSearchLocalFiles(concept: argument)
+            if let data = try? JSONSerialization.data(withJSONObject: results, options: .prettyPrinted),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return "[]"
+
+        case "adobe_suite_expert_injection":
+            let res = GenieShadowAPIs.shared.adobeSuiteInjection(appName: argument, action: payload)
+            if let data = try? JSONSerialization.data(withJSONObject: res, options: .prettyPrinted),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return "{\"status\": \"success\"}"
+
+        case "final_cut_pro_genius_edit":
+            let res = GenieShadowAPIs.shared.finalCutProGeniusEdit(timelineName: argument)
+            if let data = try? JSONSerialization.data(withJSONObject: res, options: .prettyPrinted),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return "{\"status\": \"success\"}"
+
         default:
-            return "Unknown tool: '\(name)'. Available tools: find_project, crawl_files, drop_worker, trash_airlock_promote, read_file, write_file, compile, drive_xcode, test_drag_and_drop, browse_web, siri, tail, iphone_simulator, iphone_browser, duo_simulator, iphone_mirror, android_package, sort_desktop."
+            return "Unknown tool: '\(name)'. Available tools: find_project, crawl_files, drop_worker, trash_airlock_promote, read_file, write_file, compile, drive_xcode, test_drag_and_drop, browse_web, siri, tail, iphone_simulator, iphone_browser, duo_simulator, iphone_mirror, android_package, sort_desktop, discover_system_tools, capture_screen, mouse_click, mouse_double_click, mouse_drag, mouse_scroll, keyboard_type, keyboard_hotkey, get_active_window, dump_accessibility_tree, find_ui_elements, query_local_imessage_history, semantic_local_file_search, adobe_suite_expert_injection, final_cut_pro_genius_edit."
         }
+    }
+
+    // MARK: - OS Agent Parsing Helpers
+    private func parseCoordinates(arg: String, payload: String) -> (x: CGFloat, y: CGFloat, button: String) {
+        let raw = payload.isEmpty ? arg : payload
+        if let data = raw.data(using: .utf8),
+           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let x = (obj["x"] as? NSNumber)?.doubleValue ?? 0.0
+            let y = (obj["y"] as? NSNumber)?.doubleValue ?? 0.0
+            let btn = obj["button"] as? String ?? "left"
+            return (CGFloat(x), CGFloat(y), btn)
+        }
+        let parts = arg.replacingOccurrences(of: ",", with: " ").split(separator: " ").compactMap { Double($0) }
+        if parts.count >= 2 {
+            return (CGFloat(parts[0]), CGFloat(parts[1]), "left")
+        }
+        return (0, 0, "left")
+    }
+
+    private func parseDrag(arg: String, payload: String) -> (fromX: CGFloat, fromY: CGFloat, toX: CGFloat, toY: CGFloat) {
+        let raw = payload.isEmpty ? arg : payload
+        if let data = raw.data(using: .utf8),
+           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let fx = (obj["from_x"] as? NSNumber)?.doubleValue ?? 0.0
+            let fy = (obj["from_y"] as? NSNumber)?.doubleValue ?? 0.0
+            let tx = (obj["to_x"] as? NSNumber)?.doubleValue ?? 0.0
+            let ty = (obj["to_y"] as? NSNumber)?.doubleValue ?? 0.0
+            return (CGFloat(fx), CGFloat(fy), CGFloat(tx), CGFloat(ty))
+        }
+        let parts = arg.replacingOccurrences(of: ",", with: " ").split(separator: " ").compactMap { Double($0) }
+        if parts.count >= 4 {
+            return (CGFloat(parts[0]), CGFloat(parts[1]), CGFloat(parts[2]), CGFloat(parts[3]))
+        }
+        return (0, 0, 0, 0)
+    }
+
+    private func parseScroll(arg: String, payload: String) -> (deltaX: Int32, deltaY: Int32) {
+        let raw = payload.isEmpty ? arg : payload
+        if let data = raw.data(using: .utf8),
+           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let dx = (obj["delta_x"] as? NSNumber)?.int32Value ?? 0
+            let dy = (obj["delta_y"] as? NSNumber)?.int32Value ?? 0
+            return (dx, dy)
+        }
+        let parts = arg.replacingOccurrences(of: ",", with: " ").split(separator: " ").compactMap { Int32($0) }
+        if parts.count >= 2 {
+            return (parts[0], parts[1])
+        } else if parts.count == 1 {
+            return (0, parts[0])
+        }
+        return (0, 0)
+    }
+
+    private func parseHotkey(arg: String, payload: String) -> (key: String, modifiers: [String]) {
+        let raw = payload.isEmpty ? arg : payload
+        if let data = raw.data(using: .utf8),
+           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let key = obj["key"] as? String ?? ""
+            let mods = obj["modifiers"] as? [String] ?? []
+            return (key, mods)
+        }
+        let parts = arg.split(separator: "+").map { String($0).trimmingCharacters(in: .whitespaces) }
+        if parts.count > 1 {
+            let key = parts.last ?? ""
+            let mods = Array(parts.dropLast())
+            return (key, mods)
+        }
+        return (arg, [])
     }
 
     // MARK: - Tool Implementations
