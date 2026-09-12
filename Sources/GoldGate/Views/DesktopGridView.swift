@@ -170,7 +170,6 @@ struct DesktopGridView: View {
     @State private var isSearchBarTyping: Bool = false
     @AppStorage("genieZenModeEnabled") var isZenModeEnabled: Bool = false
     @AppStorage(PrefKey.bottomEdgeCursorTrigger) var bottomEdgeCursorTrigger: Bool = false
-    @AppStorage(PrefKey.topEdgeCursorTrigger) var topEdgeCursorTrigger: Bool = false
     @AppStorage(PrefKey.swipeSensitivity) var swipeSensitivity: String = "Deliberate (Firm Swipe)"
     @AppStorage(PrefKey.swipeTriggerZone) var swipeTriggerZone: String = "Both (Top & Bottom)"
     @AppStorage(PrefKey.dockAvoidanceEnabled) var dockAvoidanceEnabled: Bool = true
@@ -665,14 +664,6 @@ struct DesktopGridView: View {
                                     }
                                     DesktopWindowManager.shared.setPage(1)
                                     NotificationCenter.default.post(name: NSNotification.Name("NexusDesktopPageChanged"), object: 1)
-                                }
-                            }
-                            // 3. Top edge: reveal Desktop Widget Bar
-                            else if (location.y <= 6 || location.y <= 14) && topEdgeCursorTrigger {
-                                lastPageSwitchTime = now
-                                HapticFeedback.selection()
-                                withAnimation(.spring(response: 0.36, dampingFraction: 0.70)) {
-                                    showDesktopWidgetBar = true
                                 }
                             }
                             // 3b. Right Edge: bumping right edge of the screen reveals right dock / activates right edge tabs
@@ -1194,12 +1185,6 @@ struct DesktopGridView: View {
                                 self.mouseLocation = loc
                                 if self.cursorFxType != "None" {
                                     self.updateCursorTrail(loc)
-                                }
-                            }
-                            let topEdgeTrigger = UserDefaults.standard.object(forKey: PrefKey.topEdgeCursorTrigger) as? Bool ?? false
-                            if topEdgeTrigger && localY <= 14.0 && !self.showDesktopWidgetBar && abs(loc.x - currentScreen.frame.width / 2.0) <= currentScreen.frame.width * 0.45 {
-                                withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
-                                    self.showDesktopWidgetBar = true
                                 }
                             }
                         }

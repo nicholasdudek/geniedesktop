@@ -45,6 +45,7 @@ public enum DuoFoldPage2Content: String, CaseIterable, Identifiable {
     case codeEditor = "Code Editor"
     case iphoneSimulator = "iPhone Simulator"
     case splitEditorAndSimulator = "Split: Edit + Movie"
+    case appShades = "App Shades"
 
     public var id: String { rawValue }
 
@@ -53,6 +54,7 @@ public enum DuoFoldPage2Content: String, CaseIterable, Identifiable {
         case .codeEditor: return "curlybraces"
         case .iphoneSimulator: return "iphone"
         case .splitEditorAndSimulator: return "rectangle.split.2x1.fill"
+        case .appShades: return "square.3.layers.3d.top.filled"
         }
     }
 }
@@ -352,6 +354,7 @@ public struct GenieDuoFoldContainerView<ChatContent: View>: View {
                     page2TabButton(.codeEditor, title: "Code Editor", icon: "curlybraces")
                     page2TabButton(.iphoneSimulator, title: "iPhone Movie Sim", icon: "iphone")
                     page2TabButton(.splitEditorAndSimulator, title: "Split (Edit + Movie)", icon: "rectangle.split.2x1.fill")
+                    page2TabButton(.appShades, title: "App Shades", icon: "square.3.layers.3d.top.filled")
                 }
                 .padding(2.5)
                 .background(Capsule().fill(Color.white.opacity(0.08)))
@@ -387,6 +390,9 @@ public struct GenieDuoFoldContainerView<ChatContent: View>: View {
 
                 case .iphoneSimulator:
                     GenieiPhoneDuoSimulatorView()
+
+                case .appShades:
+                    GenieAppShadeStackPage()
 
                 case .splitEditorAndSimulator:
                     HStack(spacing: 0) {

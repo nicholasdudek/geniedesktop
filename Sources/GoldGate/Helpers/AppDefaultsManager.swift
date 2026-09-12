@@ -30,6 +30,7 @@ public final class AppDefaultsManager {
             PrefKey.desktopPlaneEnabled: true,
             PrefKey.appFormation: "Responsive Grid",
             PrefKey.chatGridPadding: 48.0,
+            PrefKey.showDesktopWidgetBar: false,
             PrefKey.attachWorldClockWidget: false,
             PrefKey.attachAnimatedChatWidget: false,
             PrefKey.activeSubscriptionPlan: "Genie Annual Pass",

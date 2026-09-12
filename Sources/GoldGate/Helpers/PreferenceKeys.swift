@@ -331,6 +331,10 @@ public enum PrefKey {
     public static let windowGlassVibrancy = "nexus.windowGlassVibrancy"
     public static let windowGraphicsEnabled = "nexus.windowGraphicsEnabled"
     public static let windowShaderFxEnabled = "nexus.windowShaderFxEnabled"
+
+    // App Shade Stack: every running app is a translucent layer you can activate.
+    public static let appShadeStackEnabled = "nexus.appShadeStackEnabled"
+    public static let appShadeClarity = "nexus.appShadeClarity"
     public static let windowSizeMode = "nexus.windowSizeMode"
     public static let unifiedCommandWindowEnabled = "nexus.unifiedCommandWindowEnabled"
     public static let unifiedCommandWindowOrigin = "nexus.unifiedCommandWindowOrigin"
