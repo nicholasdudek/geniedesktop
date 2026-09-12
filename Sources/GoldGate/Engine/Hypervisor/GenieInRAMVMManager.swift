@@ -32,8 +32,8 @@ public final class GenieInRAMVMManager: ObservableObject {
     }
 
     /// Default mount point name for the ephemeral APFS RAM volume
-    public static let ramDiskVolumeName = "GenieInRAMVM"
-    public static let ramDiskDefaultMountURL = URL(fileURLWithPath: "/Volumes/\(ramDiskVolumeName)")
+    public nonisolated static let ramDiskVolumeName = "GenieInRAMVM"
+    public nonisolated static let ramDiskDefaultMountURL = URL(fileURLWithPath: "/Volumes/\(ramDiskVolumeName)")
 
     /// The sovereign local server endpoint URL
     public var serverEndpointURL: URL {
