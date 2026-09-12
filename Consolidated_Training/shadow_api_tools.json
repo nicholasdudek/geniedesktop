@@ -52,6 +52,38 @@
           ]
         }
       }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "adobe_suite_expert_injection",
+        "description": "Acts as an Adobe Expert. Injects assets, creates layers, and executes complex edits directly inside Adobe applications (Photoshop, Illustrator, Premiere) on the user's Mac. Use this when the user wants to manipulate an image or file and send it directly into their active Adobe project.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "target_app": {
+              "type": "string",
+              "description": "The target Adobe application (e.g., 'Photoshop', 'Illustrator', 'Premiere Pro')."
+            },
+            "action": {
+              "type": "string",
+              "description": "The specific expert action to take (e.g., 'import_as_new_layer', 'apply_mask', 'export_active_artboard')."
+            },
+            "asset_path": {
+              "type": "string",
+              "description": "The local file path of the asset to inject (if applicable)."
+            },
+            "parameters": {
+              "type": "object",
+              "description": "Additional expert parameters (e.g., blending modes, hex colors, scale percentages)."
+            }
+          },
+          "required": [
+            "target_app",
+            "action"
+          ]
+        }
+      }
     }
   ]
 }
