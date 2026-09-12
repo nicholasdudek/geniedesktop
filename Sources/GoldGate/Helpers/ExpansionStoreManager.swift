@@ -64,14 +64,14 @@ public final class ExpansionStoreManager: ObservableObject {
         GenieSubscriptionPlan(
             id: planOneYearID,
             name: "Genie Annual Pass",
-            priceDisplay: "$120.00",
-            billingCadence: "Billed annually at $120.00/year",
-            badge: "RECOMMENDED · SAVE 50%",
+            priceDisplay: "$29.00",
+            billingCadence: "Billed annually at $29.00/year",
+            badge: "RECOMMENDED · SAVE 19%",
             trialText: "30-Day Free Trial included",
-            effectiveMonthlyRate: "$10.00 / mo",
+            effectiveMonthlyRate: "$2.42 / mo",
             features: [
                 "Full access to 81-Screen Spatial Canvas Matrix",
-                "Save 50% vs. Monthly ($10.00/mo vs $19.99/mo)",
+                "Save 19% vs. Monthly ($2.42/mo vs $2.99/mo)",
                 "30-Day Free Trial included — cancel anytime",
                 "Neural Bloom shaders & living 4K Metal backdrops",
                 "The Brick Wall Context Firewall & AST code synthesis",
@@ -85,28 +85,28 @@ public final class ExpansionStoreManager: ObservableObject {
         GenieSubscriptionPlan(
             id: planMonthlyID,
             name: "Genie Pro Monthly",
-            priceDisplay: "$19.99",
-            billingCadence: "Billed monthly ($239.88/yr)",
+            priceDisplay: "$2.99",
+            billingCadence: "Billed monthly ($35.88/yr)",
             badge: "FLEXIBLE",
             trialText: "30-Day Free Trial included",
-            effectiveMonthlyRate: "$19.99 / mo",
+            effectiveMonthlyRate: "$2.99 / mo",
             features: [
                 "30-Day Free Trial included — zero risk",
                 "Month-to-month cancel anytime flexibility",
                 "Full access to AI Chat, Code Studio, and Widgets",
                 "Active continuous cloud & local model routing",
-                "Switch to Annual anytime to save $119.88/yr"
+                "Switch to Annual anytime to save $6.88/yr"
             ],
             isPopular: false
         ),
         GenieSubscriptionPlan(
             id: planTwoYearFounderID,
             name: "Founder's 2-Year Pass",
-            priceDisplay: "$199.00",
-            billingCadence: "Billed once every 2 years ($99.50/year)",
-            badge: "FOUNDER SPECIAL · 58% SAVINGS",
+            priceDisplay: "$49.00",
+            billingCadence: "Billed once every 2 years ($24.50/year)",
+            badge: "FOUNDER SPECIAL · 32% SAVINGS",
             trialText: "30-Day Free Trial included",
-            effectiveMonthlyRate: "$8.29 / mo",
+            effectiveMonthlyRate: "$2.04 / mo",
             features: [
                 "All 4 Expansion Packs & Living Companions included",
                 "Locked-in founder rate for 24 continuous months",

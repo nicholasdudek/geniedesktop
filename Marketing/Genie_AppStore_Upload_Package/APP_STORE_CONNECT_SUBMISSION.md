@@ -33,7 +33,9 @@ This document contains the exact field-by-field copy, answers, and disclosures r
 
 ### Description (Formatted for App Store Markdown)
 ```text
-Genie Editor is an ambient developer studio and spatial intelligence cockpit engineered exclusively for macOS with Swift and Metal. Designed for engineers, researchers, and creators, Genie Editor unifies spatial window formations, an autonomous local AI code engine, living widgets, and luxury ergonomics into a cohesive Apple-first experience.
+Genie Editor is an ambient developer studio and spatial intelligence cockpit engineered exclusively for macOS with Swift and Metal. 
+
+Crafted by a dedicated Mac user with over 25 years of experience using, mastering, and engineering Apple platforms, Genie unifies spatial window formations, an autonomous local AI code engine, living widgets, and luxury ergonomics into a cohesive Apple-first experience. Built from first principles for Apple Silicon Unified Memory and 120 FPS ProMotion displays, Genie delivers desktop mastery with 0% idle CPU and zero telemetry.
 
 KEY CAPABILITIES & FEATURES:
 
@@ -73,6 +75,9 @@ Zero-copy Apple Silicon Unified Memory Architecture (UMA) pipeline streams host 
 • Strict Privacy & Sovereign Security
 Zero telemetry, zero third-party trackers, biometric LocalAuthentication gates, and hardware-accelerated sandboxed execution.
 
+CRAFTED BY A 25-YEAR MAC VETERAN:
+Genie is not an Electron port or cross-platform compromise. It was architected by an Apple user and software engineer with more than 25 years of continuous daily Mac experience—spanning Mac OS 9, Mac OS X Aqua, and modern Apple Silicon. Every pixel, spring curve, Metal shader, and high-contrast scrollbar was shaped with an obsessive reverence for classic Apple Human Interface Guidelines and modern macOS ergonomics.
+
 Engineered exclusively for macOS Sonoma & Sequoia (Apple Silicon M1/M2/M3/M4 & Intel).
 ```
 
@@ -93,9 +98,9 @@ Engineered exclusively for macOS Sonoma & Sequoia (Apple Silicon M1/M2/M3/M4 & I
 
 | Plan Name | Product ID | Tier Price | Introductory Offer | Description / Duration |
 | :--- | :--- | :--- | :--- | :--- |
-| **Genie Annual Pass (Flagship)** | `com.nicholasdudek.genie.sub.oneyear` | **$120.00 / yr** | **30-Day Free Trial** | **$10.00/mo effective (Save 50%).** Billed annually. Complete studio access, including all Living Dock Pets, Companions, and Shaders. Best value. |
-| **Genie Pro Monthly** | `com.nicholasdudek.genie.sub.monthly`| **$19.99 / mo** | **30-Day Free Trial** | Monthly flexibility ($239.88/yr equiv). 30-Day Free Trial included. Instant cancel anytime. |
-| **Founder's 2-Year Pass** | `com.nicholasdudek.genie.sub.twoyearfounder` | **$199.00 / 2 yrs** | **30-Day Free Trial** | $8.29/mo effective ($99.50/yr, 58% savings). Billed biennially. Founder tier. |
+| **Genie Annual Pass (Flagship)** | `com.nicholasdudek.genie.sub.oneyear` | **$29.00 / yr** | **30-Day Free Trial** | **$2.42/mo effective (Save 19%).** Billed annually. Complete studio access, including all Living Dock Pets, Companions, and Shaders. Best value. |
+| **Genie Pro Monthly** | `com.nicholasdudek.genie.sub.monthly`| **$2.99 / mo** | **30-Day Free Trial** | Monthly flexibility ($35.88/yr equiv). 30-Day Free Trial included. Instant cancel anytime. |
+| **Founder's 2-Year Pass** | `com.nicholasdudek.genie.sub.twoyearfounder` | **$49.00 / 2 yrs** | **30-Day Free Trial** | $2.04/mo effective ($24.50/yr, 32% Savings). Billed biennially. Founder tier. |
 
 ### Non-Consumable Expansion Packs
 
@@ -115,6 +120,8 @@ Dear Apple App Review Team,
 Thank you for reviewing Genie!
 
 Genie is an ambient developer studio, spatial workspace, and local AI agent engineered natively and exclusively for macOS Sonoma and Sequoia using Swift 6.4 and Metal.
+
+Crafted by a dedicated Mac user with over 25 years of experience using, mastering, and engineering Apple platforms, Genie is built strictly from first principles using native AppKit, SwiftUI, Metal 3, and StoreKit 2, with 100% App Sandbox compliance and zero third-party telemetry.
 
 ### 🌟 Quick 2-Minute Reviewer Verification Script:
 
@@ -141,7 +148,7 @@ Genie is an ambient developer studio, spatial workspace, and local AI agent engi
 
 6. Testing In-App Purchases (StoreKit 2 Sandbox):
 - Open the Menu Bar Dropdown or Settings > Subscriptions / Expansion Store.
-- You can freely test any of the 3 premium subscription tiers ($120.00/yr Annual Pass, $19.99/mo Monthly, and $199.00 Founder's 2-Year Pass) using an Apple Sandbox tester account. A "Restore Purchases" button is readily available.
+- You can freely test any of the 3 premium subscription tiers ($29.00/yr Annual Pass, $2.99/mo Monthly, and $49.00 Founder's 2-Year Pass) using an Apple Sandbox tester account. A "Restore Purchases" button is readily available.
 
 ### 🛡️ System Permissions Disclosure (Guidelines 5.1.1 & 2.4.5):
 Genie is 100% App Sandbox compliant (GENIE_MAS=1). All system permissions are completely OPTIONAL, gated, and only requested lazily when a user explicitly taps a related action:

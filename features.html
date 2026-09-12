@@ -6,6 +6,7 @@
   <title>Genie Studio — Interactive Feature Lab & Gestures</title>
   <meta name="description" content="Explore the mechanics of Genie: iPhone Slide-Over views, hot corners, GPU mouse particle trails, dynamic battery status bar designs, and living Metal shaders.">
   <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+  <link rel="stylesheet" href="assets/css/genie-apple-2028-themes.css">
 
   <style>
     :root, [data-theme="dark"] {
@@ -359,13 +360,16 @@
       overflow: hidden;
     }
 
-    .showcase-media-box img {
+    .showcase-media-box img,
+    .showcase-media-box video {
       width: 100%;
       height: 100%;
       object-fit: cover;
       transition: transform 0.4s ease;
+      display: block;
     }
-    .showcase-card:hover .showcase-media-box img {
+    .showcase-card:hover .showcase-media-box img,
+    .showcase-card:hover .showcase-media-box video {
       transform: scale(1.03);
     }
 
@@ -1436,6 +1440,9 @@
 
     <!-- Clean Quick Links -->
     <div class="nav-quick-links">
+      <a href="previews.html" class="nav-quick-link" style="color:var(--gold); font-weight:700;">
+        <span>✨ Master Previews (21)</span>
+      </a>
       <a href="#views" class="nav-quick-link">
         <span>📱 Views</span>
       </a>
@@ -1493,6 +1500,14 @@
                 <span>Spatial Views (iPhone Mode)</span>
               </span>
               <span class="sidebar-nav-arrow">›</span>
+            </a>
+          </li>
+          <li>
+            <a href="#dock-animation" class="sidebar-nav-item" onclick="closeFeatSidebarDrawer()">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">🎵</span>
+                <span>Dock Animation & Dance to Music</span>
+              </span>
             </a>
           </li>
           <li>
@@ -1579,6 +1594,7 @@
       <div class="quick-jump-row">
         <a href="#views" class="jump-chip">📱 iPhone Mode & Trajectories</a>
         <a href="#gestures" class="jump-chip">⚡️ Hot Corners & Swipes</a>
+        <a href="#dock-animation" class="jump-chip">🎵 Dock Animation & Liquid Glass</a>
         <a href="#cursor-fx" class="jump-chip">✨ GPU Cursor Particles</a>
         <a href="#battery-designs" class="jump-chip">🔋 Battery Status Bar Designs</a>
         <a href="#themes-shaders" class="jump-chip">🎨 52+ Metal Shaders</a>
@@ -1735,6 +1751,69 @@
               <span class="feature-tag">Zero Scroll Glitch</span>
               <span class="feature-tag">Native Folders</span>
               <span class="feature-tag">Event Isolation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2B — Build 14 -->
+    <section class="feature-section" id="dock-animation">
+      <div class="section-header-box">
+        <span class="section-pill">Build 14 · Motion &amp; Glass</span>
+        <h2 class="section-title">Dock Animation Studio, Dance to Music &amp; Liquid Glass</h2>
+        <p class="section-desc">Build 14 lets you choose exactly how your dock moves, makes every app icon groove to whatever is playing, wraps each panel in Apple Liquid Glass, and adds a thermal guard that keeps local AI from overheating your Mac.</p>
+      </div>
+
+      <div class="feature-grid-3">
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <img src="assets/screenshots/19_app_matrix_dance_to_music.png" alt="Genie app matrix dancing to music">
+            <span class="showcase-badge">Beat-Synced</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Dance to Music 🎵</h3>
+            <p class="showcase-desc">Press play in Music, Spotify or Safari and the whole app matrix bobs, sways and tilts on a 124 BPM groove. Playback is detected through CoreAudio's output state — no microphone, no private APIs, nothing leaves your Mac.</p>
+            <div class="tag-row">
+              <span class="feature-tag">CoreAudio Detection</span>
+              <span class="feature-tag">Per-Icon Phase</span>
+              <span class="feature-tag">Zero Idle CPU</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <video autoplay muted loop playsinline poster="assets/screenshots/16_console_preferences.png">
+              <source src="assets/videos/dock_animation_settings.mp4" type="video/mp4">
+            </video>
+            <span class="showcase-badge">7 Styles + Intensity</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">Dock Animation Studio &amp; Liquid Glass 💧</h3>
+            <p class="showcase-desc">Pick Classic Magnify, Bounce on Hover, Jelly Wobble, Wave Ripple, Genie Lamp Rise or Dance to Music, then dial the intensity from subtle to wild. Flip on Apple Liquid Glass and every panel refracts the wallpaper behind it.</p>
+            <div class="tag-row">
+              <span class="feature-tag">NSGlassEffectView</span>
+              <span class="feature-tag">macOS 26 Native</span>
+              <span class="feature-tag">Sonoma Fallback</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-media-box">
+            <video autoplay muted loop playsinline poster="assets/screenshots/20_system_stats_overheat_guard.png">
+              <source src="assets/videos/system_stats_guard.mp4" type="video/mp4">
+            </video>
+            <span class="showcase-badge">Thermal Guard</span>
+          </div>
+          <div class="showcase-body">
+            <h3 class="showcase-title">System Stats &amp; Overheat Guard 🌡️</h3>
+            <p class="showcase-desc">Live Mac CPU, Genie CPU share, memory pressure and kernel thermal state. One tap stops a running local model and ejects it from RAM; Power Off disables the engine. Auto-stop fires the moment macOS reports a serious thermal state.</p>
+            <div class="tag-row">
+              <span class="feature-tag">Stop Model</span>
+              <span class="feature-tag">Auto Cool-Down</span>
+              <span class="feature-tag">Mach Telemetry</span>
             </div>
           </div>
         </div>
@@ -2028,7 +2107,7 @@
 
   <footer>
     <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; align-items: center;">
-      <p><strong>Genie — Desktop Workspace</strong> • Precision-crafted in California by Nicholas M. Dudek</p>
+      <p><strong>Genie — Desktop Workspace</strong> • Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party</p>
       <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
         <a href="index.html">Home Overview</a>
         <a href="features.html" style="color:var(--text); font-weight:600;">Feature Studio</a>

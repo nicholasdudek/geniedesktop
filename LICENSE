@@ -1,0 +1,14 @@
+# Genie Desktop License Agreement
+
+Copyright © 2026 Nicholas M. Dudek. All rights reserved.
+
+The source code in this repository is made publicly available for personal inspection,
+security verification, and academic evaluation only. 
+
+Commercial use, redistribution, sublicensing, reverse engineering, repackaging, 
+or publishing this software (in source or binary form) to application stores 
+(including the Apple Mac App Store) without explicit prior written authorization 
+from Nicholas M. Dudek is strictly prohibited.
+
+Third-party open-source components and models utilized by Genie remain governed 
+by their respective licenses as detailed in THIRD_PARTY_NOTICES.md.

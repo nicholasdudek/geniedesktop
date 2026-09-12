@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genie — Hollywood Cinematic Commercials & App Store Showcases</title>
+  <meta name="description" content="Hollywood cinematic commercials, 2880x1800 Retina screen captures, and interactive showcases for Apple App Store Connect submission. Featuring Neural Bloom shaders, CSS drop-down physics, and the Brick Wall context engine.">
+  <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+  <link rel="stylesheet" href="assets/css/genie-apple-2028-themes.css">
+
+  <style>
+    :root {
+      --bg: #030408;
+      --gold: #f4c375;
+      --gold-glow: rgba(244, 195, 117, 0.35);
+      --purple: #935ff5;
+      --purple-glow: rgba(147, 95, 245, 0.45);
+      --cyan: #38bdf8;
+      --cyan-glow: rgba(56, 189, 248, 0.35);
+      --red: #f87171;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-mono: "SF Mono", Menlo, Consolas, Monaco, monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      user-select: none;
+    }
+
+    /* Cinematic Letterbox Mask */
+    .letterbox-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: opacity 0.5s ease;
+    }
+    .letterbox-bar {
+      height: 48px;
+      background: #000;
+      width: 100%;
+      box-shadow: 0 0 40px rgba(0,0,0,0.9);
+      transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .scope-active .letterbox-bar { height: 72px; }
+
+    /* Interactive Living Neural Bloom Canvas */
+    #neural-bloom-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 1;
+      pointer-events: auto;
+    }
+
+    /* Moving Pixel Dust Particle Canvas */
+    #pixel-dust-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Film Grain & Anamorphic Lens Streak Overlay */
+    .anamorphic-flare {
+      position: fixed;
+      top: 35%;
+      left: -10%;
+      width: 120%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0) 20%, rgba(56, 189, 248, 0.7) 50%, rgba(147, 95, 245, 0.7) 65%, transparent 100%);
+      filter: blur(1px);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.8), 0 0 40px rgba(147, 95, 245, 0.5);
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.65;
+      animation: flarePulse 6s ease-in-out infinite alternate;
+    }
+
+    @keyframes flarePulse {
+      0% { opacity: 0.3; transform: scaleY(0.8) translateY(0); }
+      50% { opacity: 0.8; transform: scaleY(1.4) translateY(5px); }
+      100% { opacity: 0.4; transform: scaleY(0.9) translateY(-3px); }
+    }
+
+    /* Top Director Navigation & Timecode HUD */
+    header.director-hud {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      background: linear-gradient(180deg, rgba(3,4,8,0.92) 0%, rgba(3,4,8,0) 100%);
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-title img { width: 34px; height: 34px; border-radius: 9px; box-shadow: 0 4px 12px rgba(244,195,117,0.3); }
+    .brand-title h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(180deg, #fff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .brand-badge {
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(244, 195, 117, 0.15);
+      border: 1px solid rgba(244, 195, 117, 0.35);
+      color: var(--gold);
+    }
+
+    /* Commercial Stage Selector */
+    .scene-switcher {
+      display: flex;
+      background: rgba(255,255,255,0.05);
+      padding: 4px;
+      border-radius: 30px;
+      border: 1px solid rgba(255,255,255,0.1);
+      gap: 4px;
+    }
+    .scene-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .scene-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .scene-btn.active {
+      background: linear-gradient(135deg, rgba(244,195,117,0.3) 0%, rgba(147,95,245,0.3) 100%);
+      color: #fff;
+      border: 1px solid rgba(244,195,117,0.5);
+      box-shadow: 0 2px 12px rgba(244,195,117,0.25);
+    }
+
+    /* Director Action Tools */
+    .hud-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hud-btn {
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .hud-btn:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.25);
+      transform: translateY(-1px);
+    }
+
+    /* MAIN STAGE (Camera Viewport with 3D Transforms) */
+    main.viewport-stage {
+      position: relative;
+      z-index: 10;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 1200px;
+      overflow: hidden;
+    }
+
+    .camera-rig {
+      position: relative;
+      width: 90vw;
+      max-width: 1440px;
+      height: 82vh;
+      max-height: 900px;
+      border-radius: 18px;
+      transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), filter 0.8s ease;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.1);
+      overflow: hidden;
+      background: rgba(8, 12, 20, 0.65);
+      backdrop-filter: blur(35px);
+      -webkit-backdrop-filter: blur(35px);
+    }
+
+    /* Camera Pan & Zoom States */
+    .camera-rig.zoom-editor {
+      transform: scale(1.18) translateY(20px) rotateX(2deg);
+    }
+    .camera-rig.zoom-dropdown {
+      transform: scale(1.14) translateY(-35px) rotateX(-2deg);
+    }
+    .camera-rig.zoom-widgets {
+      transform: scale(1.16) translateX(40px) rotateY(-3deg);
+    }
+
+    /* SCENE 1: THE AMBIENT AWAKENING (CSS Dropdown Physics & Neural Bloom) */
+    .scene-view {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s;
+      display: flex;
+      flex-direction: column;
+    }
+    .scene-view.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Mac Style Window Header */
+    .mac-window-bar {
+      height: 42px;
+      background: rgba(14, 18, 28, 0.88);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+    .mac-traffic-lights {
+      display: flex;
+      gap: 8px;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.red { background: #ff5f56; }
+    .dot.yellow { background: #ffbd2e; }
+    .dot.green { background: #27c93f; }
+    .window-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* GRAND HORIZON DROP-DOWN (Spring Physics) */
+    .dropdown-container {
+      position: absolute;
+      top: 42px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100%);
+      width: 780px;
+      background: rgba(12, 16, 26, 0.88);
+      border: 1px solid rgba(244, 195, 117, 0.35);
+      border-radius: 0 0 20px 20px;
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 35px rgba(244,195,117,0.18);
+      transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 50;
+      padding: 24px;
+    }
+    .dropdown-container.revealed {
+      transform: translateX(-50%) translateY(0);
+    }
+    .dropdown-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .dropdown-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .dropdown-card:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--gold);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(244,195,117,0.2);
+    }
+    .dropdown-card-icon {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+    .dropdown-card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .dropdown-card-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* SCENE 2: GENIE EDITOR & THE BRICK WALL */
+    .editor-layout {
+      display: flex;
+      height: calc(100% - 42px);
+    }
+    .editor-sidebar {
+      width: 260px;
+      background: rgba(10, 14, 22, 0.85);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .sidebar-tree-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .sidebar-tree-item.active {
+      background: rgba(244,195,117,0.15);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .editor-main-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #080a10;
+      position: relative;
+    }
+
+    /* THE BRICK WALL CONTEXT ISOLATION BARRIER BANNER */
+    .brick-wall-banner {
+      background: linear-gradient(90deg, rgba(239,68,68,0.2) 0%, rgba(244,195,117,0.15) 50%, rgba(147,95,245,0.2) 100%);
+      border-bottom: 1px solid rgba(239,68,68,0.4);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .brick-wall-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fca5a5;
+    }
+    .brick-wall-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* CODE CANVAS & REAL-TIME TYPING */
+    .code-canvas-wrapper {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    .code-gutters {
+      width: 48px;
+      padding: 16px 8px;
+      text-align: right;
+      color: rgba(255,255,255,0.25);
+      border-right: 1px solid rgba(255,255,255,0.05);
+      background: rgba(0,0,0,0.3);
+    }
+    .code-content {
+      flex: 1;
+      padding: 16px;
+      white-space: pre;
+      color: #e2e8f0;
+    }
+
+    /* LUXURY THICK SCROLLBAR */
+    .code-canvas-wrapper::-webkit-scrollbar {
+      width: 14px;
+    }
+    .code-canvas-wrapper::-webkit-scrollbar-track {
+      background: rgba(14, 18, 28, 0.8);
+      border-left: 1px solid rgba(255,255,255,0.06);
+    }
+    .code-canvas-wrapper::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(244,195,117,0.7) 0%, rgba(147,95,245,0.7) 100%);
+      border-radius: 7px;
+      border: 3px solid rgba(14, 18, 28, 0.8);
+      box-shadow: 0 0 10px rgba(244,195,117,0.5);
+    }
+
+    /* NEXT-LAYER CONVERGENCE CHIP */
+    .next-layer-pill {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(18, 24, 38, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 20px rgba(56,189,248,0.25);
+      border-radius: 30px;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #38bdf8;
+      animation: floatChip 3s ease-in-out infinite alternate;
+    }
+    @keyframes floatChip {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-4px); }
+    }
+
+    /* SCENE 3: THE LIVING SPATIAL ECOSYSTEM (Animated Chat & World Clocks) */
+    .widgets-stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      padding: 40px;
+    }
+
+    /* THE FIRST-EVER ANIMATED CHAT WIDGET */
+    .living-chat-widget {
+      width: 380px;
+      background: rgba(16, 22, 34, 0.88);
+      border: 1px solid rgba(244, 195, 117, 0.3);
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 35px rgba(244,195,117,0.15);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    }
+    .widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .aura-orb-container {
+      position: relative;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .aura-pulse {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(244,195,117,0.8) 0%, rgba(147,95,245,0.4) 60%, transparent 100%);
+      animation: auraBreath 2.4s ease-in-out infinite alternate;
+    }
+    @keyframes auraBreath {
+      0% { transform: scale(0.85); opacity: 0.5; }
+      100% { transform: scale(1.35); opacity: 0.95; filter: blur(4px); }
+    }
+    .orb-core {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f4c375 0%, #935ff5 100%);
+      box-shadow: 0 0 20px #f4c375;
+      z-index: 2;
+    }
+
+    /* DANCING EQUALIZER WAVEFORM */
+    .equalizer-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 28px;
+    }
+    .eq-bar {
+      width: 4px;
+      background: linear-gradient(180deg, #f4c375 0%, #38bdf8 100%);
+      border-radius: 3px;
+      animation: eqBounce 1.2s ease-in-out infinite alternate;
+    }
+    .eq-bar:nth-child(1) { height: 14px; animation-delay: 0.1s; }
+    .eq-bar:nth-child(2) { height: 24px; animation-delay: 0.3s; }
+    .eq-bar:nth-child(3) { height: 18px; animation-delay: 0.15s; }
+    .eq-bar:nth-child(4) { height: 28px; animation-delay: 0.4s; }
+    .eq-bar:nth-child(5) { height: 12px; animation-delay: 0.25s; }
+
+    @keyframes eqBounce {
+      0% { transform: scaleY(0.4); }
+      100% { transform: scaleY(1.2); }
+    }
+
+    .widget-bubble {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: #f1f5f9;
+    }
+    .typing-dots {
+      display: inline-flex;
+      gap: 4px;
+      margin-left: 6px;
+    }
+    .typing-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: dotPulse 1.2s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotPulse {
+      0%, 100% { opacity: 0.2; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-3px); }
+    }
+
+    /* OLED WORLD CLOCK PILLOW CARD */
+    .world-clock-pillow {
+      width: 320px;
+      height: 280px;
+      background: #000000;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 36px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.25);
+      position: relative;
+    }
+    .analog-dial {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.15);
+      background: radial-gradient(circle, #080a10 0%, #000 100%);
+    }
+    .hand {
+      position: absolute;
+      left: 50%; bottom: 50%;
+      transform-origin: 50% 100%;
+      border-radius: 4px;
+    }
+    .hand.hour { width: 4px; height: 38px; background: #fff; transform: rotate(110deg); }
+    .hand.minute { width: 3px; height: 52px; background: #cbd5e1; transform: rotate(240deg); }
+    .hand.second {
+      width: 1.5px; height: 58px; background: #f4c375;
+      animation: sweepSecond 60s linear infinite;
+    }
+    @keyframes sweepSecond {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .dial-center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #f4c375;
+    }
+
+    /* BOTTOM TIMELINE & CINEMATIC SCRIPT DIRECTOR BAR */
+    footer.director-scrubber {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(0deg, rgba(3,4,8,0.95) 0%, rgba(3,4,8,0) 100%);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .timeline-progress-rail {
+      flex: 1;
+      margin: 0 24px;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      position: relative;
+      cursor: pointer;
+    }
+    .timeline-fill {
+      height: 100%;
+      width: 33%;
+      background: linear-gradient(90deg, var(--gold) 0%, var(--purple) 100%);
+      border-radius: 3px;
+      box-shadow: 0 0 12px rgba(244,195,117,0.5);
+      transition: width 0.1s linear;
+    }
+    .timecode-display {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--gold);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cinematic Letterbox Scope -->
+  <div class="letterbox-overlay" id="letterbox">
+    <div class="letterbox-bar"></div>
+    <div class="letterbox-bar"></div>
+  </div>
+
+  <!-- Anamorphic Light Flare -->
+  <div class="anamorphic-flare"></div>
+
+  <!-- Living Shaders: Neural Bloom & Moving Pixels -->
+  <canvas id="neural-bloom-canvas"></canvas>
+  <canvas id="pixel-dust-canvas"></canvas>
+
+  <!-- Director HUD -->
+  <header class="director-hud">
+    <div class="brand-title">
+      <img src="assets/images/app_icon.png" alt="Genie Icon" onerror="this.style.display='none'">
+      <h1>GENIE CINEMA SHOWCASE</h1>
+      <span class="brand-badge">Apple App Store 2880×1800 Master</span>
+    </div>
+
+    <!-- 3 Flagship Commercials -->
+    <div class="scene-switcher">
+      <button class="scene-btn active" onclick="switchCommercial(1)">
+        <span>01</span> Ambient Awakening
+      </button>
+      <button class="scene-btn" onclick="switchCommercial(2)">
+        <span>02</span> Genie Editor & Brick Wall
+      </button>
+      <button class="scene-btn" onclick="switchCommercial(3)">
+        <span>03</span> Living Spatial Ecosystem
+      </button>
+    </div>
+
+    <div class="hud-controls">
+      <button class="hud-btn" onclick="toggleScope()">
+        <span>📽️</span> Scope 2.39:1
+      </button>
+      <button class="hud-btn" onclick="togglePlay()">
+        <span id="play-icon">⏸️</span> Pause
+      </button>
+      <button class="hud-btn" onclick="cycleSpeed()">
+        <span id="speed-label">1.0×</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Viewport Stage with 3D Camera Rig -->
+  <main class="viewport-stage">
+    <div class="camera-rig" id="camera-rig">
+
+      <!-- Mac Window Bar -->
+      <div class="mac-window-bar">
+        <div class="mac-traffic-lights">
+          <div class="dot red"></div>
+          <div class="dot yellow"></div>
+          <div class="dot green"></div>
+        </div>
+        <div class="window-title" id="stage-window-title">
+          <span>✨</span> Genie Editor — Spatial AI Studio & Code Cockpit
+        </div>
+        <div style="width: 50px;"></div>
+      </div>
+
+      <!-- COMMERCIAL 1: THE AMBIENT AWAKENING -->
+      <div class="scene-view active" id="scene-1">
+        <!-- Grand Horizon Dropdown Physics -->
+        <div class="dropdown-container revealed" id="grand-dropdown">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: #fff;">Grand Horizon Control Dashboard</h3>
+            <span style="font-size: 0.7rem; color: var(--gold); background: rgba(244,195,117,0.15); padding: 2px 8px; border-radius: 8px;">120 FPS Vitreous Glass</span>
+          </div>
+          <div class="dropdown-grid">
+            <div class="dropdown-card">
+              <div class="dropdown-card-icon">🌸</div>
+              <div class="dropdown-card-title">Neural Bloom</div>
+              <div class="dropdown-card-sub">Dynamic Shader</div>
+            </div>
+            <div class="dropdown-card">
+              <div class="dropdown-card-icon">⚡</div>
+              <div class="dropdown-card-title">Cursor FX</div>
+              <div class="dropdown-card-sub">Lightning Plasma</div>
+            </div>
+            <div class="dropdown-card">
+              <div class="dropdown-card-icon">🧱</div>
+              <div class="dropdown-card-title">Brick Wall</div>
+              <div class="dropdown-card-sub">Zero Context Bleed</div>
+            </div>
+            <div class="dropdown-card">
+              <div class="dropdown-card-icon">💬</div>
+              <div class="dropdown-card-title">Animated Chat</div>
+              <div class="dropdown-card-sub">Living Complication</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 40px; margin-top: 140px;">
+          <div>
+            <h2 style="font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 12px; background: linear-gradient(180deg, #fff 0%, #cbd5e1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+              The Ambient Awakening
+            </h2>
+            <p style="font-size: 1.05rem; color: var(--text-muted); max-width: 600px; margin: 0 auto; line-height: 1.6;">
+              Bioluminescent Neural Bloom wallpapers meet instant spring-animated slide-down control centers with vitreous frosted glass and zero window overlap.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMMERCIAL 2: GENIE EDITOR & THE BRICK WALL -->
+      <div class="scene-view" id="scene-2">
+        <div class="editor-layout">
+          <!-- Sidebar -->
+          <div class="editor-sidebar">
+            <div style="font-size: 0.7rem; font-weight: 800; color: rgba(255,255,255,0.4); letter-spacing: 0.08em; text-transform: uppercase;">Workspace Files</div>
+            <div class="sidebar-tree-item active">
+              <span>📄</span> GenieContextBrickWall.swift
+            </div>
+            <div class="sidebar-tree-item">
+              <span>📄</span> GenieAnimatedChatWidget.swift
+            </div>
+            <div class="sidebar-tree-item">
+              <span>📄</span> WorldClockPillows.swift
+            </div>
+            <div class="sidebar-tree-item">
+              <span>⚙️</span> Package.swift
+            </div>
+          </div>
+
+          <!-- Main Editor -->
+          <div class="editor-main-pane">
+            <!-- Brick Wall Isolation Banner -->
+            <div class="brick-wall-banner">
+              <div class="brick-wall-status">
+                <span class="brick-wall-badge">BRICK WALL LOCKED</span>
+                <span>Context Isolation Firewall: Active (0% Noise Bleed)</span>
+              </div>
+              <div style="color: rgba(255,255,255,0.6); font-family: var(--font-mono);">
+                Target: Swift 6.4 · Zero Drift
+              </div>
+            </div>
+
+            <!-- Code Canvas with Thick Scrollbar -->
+            <div class="code-canvas-wrapper">
+              <div class="code-gutters" id="code-gutters">
+1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15
+              </div>
+              <div class="code-content" id="live-code-stream">
+import SwiftUI
+import AppKit
+
+// MARK: - Layer 1: Context Isolation Barrier
+public struct GenieEditorView: View {
+    @ObservedObject var brickWall = GenieContextBrickWallEngine.shared
+
+    public var body: some View {
+        VStack(spacing: 0) {
+            // As you type, the prompt meets the model at the next layer
+            Text("Brick Wall Active • Meeting at Next Layer")
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.orange)
+        }
+    }
+}
+              </div>
+            </div>
+
+            <!-- Floating Next-Layer Convergence Chip -->
+            <div class="next-layer-pill">
+              <span>⚡</span>
+              <span id="typing-layer-text">Layer 2: Semantic Convergence Active (as you type)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMMERCIAL 3: THE LIVING SPATIAL ECOSYSTEM -->
+      <div class="scene-view" id="scene-3">
+        <div class="widgets-stage">
+          <!-- The First-Ever Animated Chat Widget -->
+          <div class="living-chat-widget">
+            <div class="widget-header">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="aura-orb-container">
+                  <div class="aura-pulse"></div>
+                  <div class="orb-core"></div>
+                </div>
+                <div>
+                  <h4 style="font-size: 0.95rem; font-weight: 700; color: #fff;">Genie Neural Chat</h4>
+                  <p style="font-size: 0.72rem; color: var(--gold);">Living Complication · 60 FPS</p>
+                </div>
+              </div>
+              <!-- Equalizer Waveform -->
+              <div class="equalizer-bars">
+                <div class="eq-bar"></div>
+                <div class="eq-bar"></div>
+                <div class="eq-bar"></div>
+                <div class="eq-bar"></div>
+                <div class="eq-bar"></div>
+              </div>
+            </div>
+
+            <div class="widget-bubble">
+              Synthesizing isolated component with zero external context bleed...
+              <span class="typing-dots">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </span>
+            </div>
+
+            <button style="background: linear-gradient(135deg, rgba(244,195,117,0.2) 0%, rgba(147,95,245,0.2) 100%); border: 1px solid rgba(244,195,117,0.4); border-radius: 12px; padding: 10px; color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+              Summon Genie Editor (⌥ Space)
+            </button>
+          </div>
+
+          <!-- OLED World Clock Pillow -->
+          <div class="world-clock-pillow">
+            <div style="display: flex; justify-content: space-between; width: 100%;">
+              <span style="font-size: 0.8rem; font-weight: 700; color: #fff; letter-spacing: 0.05em;">TOKYO</span>
+              <span style="font-size: 0.75rem; color: var(--gold); font-family: var(--font-mono);">+16 HRS</span>
+            </div>
+
+            <!-- Analog Watch Face -->
+            <div class="analog-dial">
+              <div class="hand hour"></div>
+              <div class="hand minute"></div>
+              <div class="hand second"></div>
+              <div class="dial-center"></div>
+            </div>
+
+            <div style="text-align: center;">
+              <div style="font-size: 1.4rem; font-weight: 800; font-family: var(--font-mono); color: #fff;">09:42:15</div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em;">World Clock Pillow</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Director Timeline Scrubber -->
+  <footer class="director-scrubber">
+    <div class="timecode-display" id="timecode">00:00:10 / 00:00:30</div>
+    <div class="timeline-progress-rail" onclick="seekTimeline(event)">
+      <div class="timeline-fill" id="timeline-fill"></div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+      REEL: <span style="color: #fff;" id="reel-name">COMMERCIAL 1</span>
+    </div>
+  </footer>
+
+  <script>
+    // ── 1. NEURAL BLOOM BACKGROUND SHADER (CANVAS) ──────────────────────────
+    const bloomCanvas = document.getElementById('neural-bloom-canvas');
+    const bCtx = bloomCanvas.getContext('2d');
+    let bW, bH;
+    let petals = [];
+    const NUM_PETALS = 48;
+    let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2, speed: 0 };
+    let lastMouse = { x: mouse.x, y: mouse.y };
+
+    function resizeBloom() {
+      bW = bloomCanvas.width = window.innerWidth;
+      bH = bloomCanvas.height = window.innerHeight;
+      initPetals();
+    }
+    window.addEventListener('resize', resizeBloom);
+
+    function initPetals() {
+      petals = [];
+      for (let i = 0; i < NUM_PETALS; i++) {
+        petals.push({
+          angle: (i / NUM_PETALS) * Math.PI * 2,
+          radius: 80 + Math.random() * 220,
+          speed: 0.003 + Math.random() * 0.005,
+          phase: Math.random() * Math.PI * 2,
+          length: 120 + Math.random() * 180,
+          color: i % 2 === 0 ? 'rgba(244, 195, 117, ' : 'rgba(147, 95, 245, '
+        });
+      }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      const dx = e.clientX - lastMouse.x;
+      const dy = e.clientY - lastMouse.y;
+      mouse.speed = Math.sqrt(dx*dx + dy*dy);
+      lastMouse.x = mouse.x;
+      lastMouse.y = mouse.y;
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+
+    let bloomTime = 0;
+    function renderBloom() {
+      bloomTime += 0.015;
+      bCtx.fillStyle = 'rgba(3, 4, 8, 0.2)';
+      bCtx.fillRect(0, 0, bW, bH);
+
+      const cx = bW / 2 + (mouse.x - bW/2) * 0.05;
+      const cy = bH / 2 + (mouse.y - bH/2) * 0.05;
+
+      petals.forEach((p, idx) => {
+        p.angle += p.speed;
+        const currentRadius = p.radius + Math.sin(bloomTime + p.phase) * 35;
+        const x1 = cx + Math.cos(p.angle) * currentRadius;
+        const y1 = cy + Math.sin(p.angle) * currentRadius;
+
+        const ctrlAngle = p.angle + Math.sin(bloomTime * 0.8 + idx) * 0.4;
+        const x2 = cx + Math.cos(ctrlAngle) * (currentRadius + p.length);
+        const y2 = cy + Math.sin(ctrlAngle) * (currentRadius + p.length);
+
+        const grad = bCtx.createLinearGradient(x1, y1, x2, y2);
+        grad.addColorStop(0, p.color + '0.8)');
+        grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.4)');
+        grad.addColorStop(1, p.color + '0)');
+
+        bCtx.beginPath();
+        bCtx.moveTo(x1, y1);
+        bCtx.quadraticCurveTo(cx + (x1+x2)/2 * 0.5, cy + (y1+y2)/2 * 0.5, x2, y2);
+        bCtx.strokeStyle = grad;
+        bCtx.lineWidth = 2.5;
+        bCtx.stroke();
+      });
+
+      requestAnimationFrame(renderBloom);
+    }
+
+    // ── 2. MOVING PIXEL DUST PARTICLES ──────────────────────────────────────
+    const dustCanvas = document.getElementById('pixel-dust-canvas');
+    const dCtx = dustCanvas.getContext('2d');
+    let particles = [];
+    const NUM_PARTICLES = 140;
+
+    function initParticles() {
+      dustCanvas.width = window.innerWidth;
+      dustCanvas.height = window.innerHeight;
+      particles = [];
+      for (let i = 0; i < NUM_PARTICLES; i++) {
+        particles.push({
+          x: Math.random() * dustCanvas.width,
+          y: Math.random() * dustCanvas.height,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          size: Math.random() * 2.2 + 0.8,
+          alpha: Math.random() * 0.7 + 0.3,
+          color: Math.random() > 0.5 ? '#f4c375' : '#38bdf8'
+        });
+      }
+    }
+
+    function renderDust() {
+      dCtx.clearRect(0, 0, dustCanvas.width, dustCanvas.height);
+      particles.forEach(p => {
+        p.x += p.vx + (mouse.speed > 5 ? (mouse.x - p.x) * 0.001 : 0);
+        p.y += p.vy + (mouse.speed > 5 ? (mouse.y - p.y) * 0.001 : 0);
+
+        if (p.x < 0) p.x = dustCanvas.width;
+        if (p.x > dustCanvas.width) p.x = 0;
+        if (p.y < 0) p.y = dustCanvas.height;
+        if (p.y > dustCanvas.height) p.y = 0;
+
+        dCtx.fillStyle = p.color;
+        dCtx.globalAlpha = p.alpha;
+        dCtx.beginPath();
+        dCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        dCtx.fill();
+      });
+      dCtx.globalAlpha = 1.0;
+      requestAnimationFrame(renderDust);
+    }
+
+    resizeBloom();
+    renderBloom();
+    initParticles();
+    renderDust();
+
+    // ── 3. COMMERCIAL DIRECTOR & TIMELINE ENGINE ────────────────────────────
+    let currentCommercial = 1;
+    let isPlaying = true;
+    let playSpeed = 1.0;
+    let timelineSeconds = 0;
+    const commercialDuration = 30; // 30s per commercial
+
+    const cameraRig = document.getElementById('camera-rig');
+    const timelineFill = document.getElementById('timeline-fill');
+    const timecode = document.getElementById('timecode');
+    const reelName = document.getElementById('reel-name');
+
+    function switchCommercial(id) {
+      currentCommercial = id;
+      timelineSeconds = 0;
+
+      // Update Tabs
+      document.querySelectorAll('.scene-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === (id - 1));
+      });
+
+      // Update Scenes
+      document.querySelectorAll('.scene-view').forEach((sc, idx) => {
+        sc.classList.toggle('active', idx === (id - 1));
+      });
+
+      // Update Camera Animation Class
+      cameraRig.className = 'camera-rig';
+      if (id === 1) {
+        cameraRig.classList.add('zoom-dropdown');
+        reelName.textContent = 'COMMERCIAL 1: AMBIENT AWAKENING';
+        document.getElementById('grand-dropdown').classList.add('revealed');
+      } else if (id === 2) {
+        cameraRig.classList.add('zoom-editor');
+        reelName.textContent = 'COMMERCIAL 2: GENIE EDITOR & BRICK WALL';
+      } else if (id === 3) {
+        cameraRig.classList.add('zoom-widgets');
+        reelName.textContent = 'COMMERCIAL 3: LIVING SPATIAL ECOSYSTEM';
+      }
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      document.getElementById('play-icon').textContent = isPlaying ? '⏸️' : '▶️';
+    }
+
+    function toggleScope() {
+      document.body.classList.toggle('scope-active');
+    }
+
+    function cycleSpeed() {
+      if (playSpeed === 1.0) playSpeed = 0.5;
+      else if (playSpeed === 0.5) playSpeed = 2.0;
+      else playSpeed = 1.0;
+      document.getElementById('speed-label').textContent = playSpeed + '×';
+    }
+
+    function seekTimeline(e) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      timelineSeconds = pct * commercialDuration;
+    }
+
+    // Main Clock Tick
+    setInterval(() => {
+      if (!isPlaying) return;
+      timelineSeconds += (0.1 * playSpeed);
+      if (timelineSeconds >= commercialDuration) {
+        timelineSeconds = 0;
+        switchCommercial(currentCommercial === 3 ? 1 : currentCommercial + 1);
+      }
+
+      const pct = (timelineSeconds / commercialDuration) * 100;
+      timelineFill.style.width = pct + '%';
+
+      const sec = Math.floor(timelineSeconds);
+      const strSec = sec < 10 ? '0' + sec : sec;
+      timecode.textContent = `00:00:${strSec} / 00:00:30`;
+    }, 100);
+
+    // Initial Trigger
+    switchCommercial(1);
+  </script>
+</body>
+</html>
