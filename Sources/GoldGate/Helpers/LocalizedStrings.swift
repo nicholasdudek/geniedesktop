@@ -5,13 +5,13 @@ import SwiftUI
 
 public enum AppLanguage: String, CaseIterable, Identifiable {
     case english = "English (US)"
+    case korean = "한국어"
     case spanish = "Español"
     case french = "Français"
     case german = "Deutsch"
     case japanese = "日本語"
     case chinese = "简体中文"
     case italian = "Italiano"
-    case korean = "한국어"
     case portuguese = "Português"
     case arabic = "العربية"
 
@@ -20,13 +20,13 @@ public enum AppLanguage: String, CaseIterable, Identifiable {
     public var code: String {
         switch self {
         case .english: return "EN"
+        case .korean: return "KO"
         case .spanish: return "ES"
         case .french: return "FR"
         case .german: return "DE"
         case .japanese: return "JA"
         case .chinese: return "ZH"
         case .italian: return "IT"
-        case .korean: return "KO"
         case .portuguese: return "PT"
         case .arabic: return "AR"
         }
@@ -35,13 +35,13 @@ public enum AppLanguage: String, CaseIterable, Identifiable {
     public var flag: String {
         switch self {
         case .english: return "🇺🇸"
+        case .korean: return "🇰🇷"
         case .spanish: return "🇪🇸"
         case .french: return "🇫🇷"
         case .german: return "🇩🇪"
         case .japanese: return "🇯🇵"
         case .chinese: return "🇨🇳"
         case .italian: return "🇮🇹"
-        case .korean: return "🇰🇷"
         case .portuguese: return "🇧🇷"
         case .arabic: return "🇸🇦"
         }
@@ -50,13 +50,13 @@ public enum AppLanguage: String, CaseIterable, Identifiable {
     public var greeting: String {
         switch self {
         case .english: return "Hello"
+        case .korean: return "안녕하세요"
         case .spanish: return "Hola"
         case .french: return "Bonjour"
         case .german: return "Hallo"
         case .japanese: return "こんにちは"
         case .chinese: return "你好"
         case .italian: return "Ciao"
-        case .korean: return "안녕하세요"
         case .portuguese: return "Olá"
         case .arabic: return "مرحبا"
         }

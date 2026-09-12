@@ -277,6 +277,16 @@ Genie adheres strictly to its internal architectural guidelines documented in [`
 
 ---
 
+## 🧠 AI Models & Server Architecture Documentation
+
+Comprehensive architecture specifications for the AI and server subsystems are documented on GitHub:
+
+* **[AI Models, Tools & Servers Specification](docs/AI_AND_SERVERS_ARCHITECTURE.md)**: Exhaustive technical reference for the 5 model tiers (`genie-frontier`, `genie3-30b`, `genie3-7b`, `genie3-iphone`, `goldgate`), 18 direct neural weight-mapped tools, the REST API server (`genie_api_server.py`), AgentBridge MCP servers, and in-RAM micro-hypervisor swarms.
+* **[Genie Model Literature & Taxonomy](GENIE_MODEL_LITERATURE_AND_ARCHITECTURE.md)**: Unified literature review, LoRA configuration, dataset curation, and vLLM/NIM serving topology.
+* **[Open-Source License](LICENSE-APACHE)**: The AI model weights catalogs, API servers, MCP bridges, and documentation are licensed under the **Apache License, Version 2.0**.
+
+---
+
 ## 📬 Contact & Support
 
 * **Principal Engineer & Founder**: Nicholas M. Dudek

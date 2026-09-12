@@ -64,7 +64,16 @@ graph TD
 
 ---
 
+### AI Engines & Server Architecture (`docs/AI_AND_SERVERS_ARCHITECTURE.md`)
+
+* **AI Models**: 5-tier architecture (`genie-frontier`, `genie3-30b`, `genie3-7b`, `genie3-iphone`, `goldgate`).
+* **Tool Catalog**: 18 deterministic weight-mapped tools (`list_files`, `desktop_agent`, `run_command`, `spatial_dom`, etc.).
+* **Servers**: REST API Server (`genie_api_server.py` on `:8080`), AgentBridge MCP Suite (`ollama-antigravity-mcp`, `icloud_mcp`, `tooling`), In-RAM Hypervisor Linux MicroVMs, Bonjour P2P Swarm (`:8421`).
+* **License**: Governed by the **Apache License, Version 2.0** (`LICENSE-APACHE`).
+
+---
+
 ### Verification & Release Instructions
 1. **Compilation**: `swift build -c release`
-2. **App Bundle Sync**: Copies release binary into `/Applications/Genie.app/Contents/MacOS/GoldGate`.
+2. **App Bundle Sync**: Copies release binary into `/Applications/Genie.app/Contents/MacOS/Genie`.
 3. **Ad-Hoc Signing**: Automatically applies local codesign `codesign --force --deep --sign - /Applications/Genie.app`.

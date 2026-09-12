@@ -6854,7 +6854,7 @@ struct MenuBarDropdownView: View {
                     Spacer()
                 }
 
-                Text(LocalizedStrings.translateText("Included living companions, atmospheric shaders, 3D formations, and window themes.", lang: appLanguage))
+                Text(LocalizedStrings.translateText("Available as individual one-time add-ons or fully unlocked with any Genie Membership Pass.", lang: appLanguage))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -6991,6 +6991,16 @@ struct MenuBarDropdownView: View {
                 }
 
                 Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(pack.priceString)
+                        .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text(LocalizedStrings.translateText("One-Time Purchase", lang: appLanguage))
+                        .font(.system(size: 8.5, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
             }
 
             // Included items list (Clickable to equip individual items!)
@@ -7007,7 +7017,7 @@ struct MenuBarDropdownView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 11, weight: .bold))
-                    Text(LocalizedStrings.translateText("UNLOCKED", lang: appLanguage))
+                    Text(LocalizedStrings.translateText("INCLUDED WITH PASS", lang: appLanguage))
                         .font(.system(size: 9.5, weight: .bold))
                 }
                 .foregroundColor(.green)

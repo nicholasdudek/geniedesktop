@@ -19,6 +19,7 @@
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
+		<string>ko</string>
 	</array>
 	<key>CFBundleName</key>
 	<string>Genie</string>
@@ -39,7 +40,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>500</string>
+	<string>505</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationCategoryType</key>

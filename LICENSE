@@ -12,3 +12,10 @@ from Nicholas M. Dudek is strictly prohibited.
 
 Third-party open-source components and models utilized by Genie remain governed 
 by their respective licenses as detailed in THIRD_PARTY_NOTICES.md.
+
+## Open-Source AI Engines, API Servers & Documentation Grant
+
+The Genie AI model definitions, neural tool weight mapping catalogs, REST API Server (`API_Server/`), 
+Model Context Protocol bridges (`AgentBridge/`), in-RAM hypervisor specifications, and technical 
+documentation (`docs/`) are licensed under the **Apache License, Version 2.0**. 
+See [LICENSE-APACHE](LICENSE-APACHE) for the full license terms.

@@ -349,7 +349,7 @@ public struct MenuBarAppStripView: View {
 
     private var activeGlyph: String {
         let style = statusIconGlyph.isEmpty ? statusIconStyle : statusIconGlyph
-        if !style.isEmpty {
+        if !style.isEmpty && !style.contains("") && !style.lowercased().contains("apple") {
             return style
         }
         return "Genie Person 🧞‍♂️"
@@ -829,20 +829,16 @@ public struct MenuBarAppStripView: View {
             FinderChatWindowManager.shared.toggle(tab: .chat)
         }) {
             ZStack {
-                if statusIconStyle.contains("") || statusIconStyle.lowercased().contains("apple") {
-                    AppleLogoView(style: appleColor, size: 16)
-                } else {
-                    GenieMysticalIconView(
-                        glyphImage: glyphImage,
-                        isHovered: isHovered,
-                        size: 20
-                    ) {
-                        HapticFeedback.selection()
-                        FinderChatWindowManager.shared.toggle(tab: .chat)
-                    }
+                GenieMysticalIconView(
+                    glyphImage: glyphImage,
+                    isHovered: isHovered,
+                    size: 20
+                ) {
+                    HapticFeedback.selection()
+                    FinderChatWindowManager.shared.toggle(tab: .chat)
                 }
             }
-            .frame(width: 26, height: 22)
+            .frame(width: 30, height: 24)
             .scaleEffect(gWave.scale, anchor: .top)
             .offset(x: magnificationDisplacement(for: "leoLauncher"), y: gWave.yOffset)
             .contentShape(Rectangle())
@@ -1117,40 +1113,46 @@ public struct MenuBarAppStripView: View {
         if showActiveApps {
             if menuBarDockInactiveAppsOnly {
                 // Sleek Inactive Applications Pill: Genie Launcher + Inactive (Background) Running Apps
-                HStack(alignment: .center, spacing: 3.5) {
+                HStack(alignment: .center, spacing: 8.5) {
                     genieLauncherButton
 
                     if !activeDockItems.isEmpty {
                         Rectangle()
                             .fill(Color.white.opacity(0.20))
                             .frame(width: 1, height: 16)
-                            .padding(.horizontal, 2)
+                            .padding(.horizontal, 4)
 
-                        ForEach(visibleDockItems) { item in
-                            dockAppItemView(item: item)
+                        HStack(alignment: .center, spacing: 8.5) {
+                            ForEach(visibleDockItems) { item in
+                                dockAppItemView(item: item)
+                            }
                         }
+                        .padding(.horizontal, 8)
 
                         moreAppsPillButton
                     }
 
                     putBackPillButton
                 }
-                .padding(.horizontal, 3)
-                .padding(.vertical, 1.5)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4.0)
             } else {
-                HStack(alignment: .center, spacing: 3.5) {
+                HStack(alignment: .center, spacing: 8.5) {
                     // 0. Primary GENIE menu bar icon (brings to chat!)
                     genieLauncherButton
 
                     Rectangle()
                         .fill(Color.white.opacity(0.20))
                         .frame(width: 1, height: 16)
-                        .padding(.horizontal, 2)
+                        .padding(.horizontal, 4)
 
                     // 1. Applications in exact bottom macOS Dock order (Finder, System Settings, Chrome, Stickies, Mail, Genie, etc.)
-                    ForEach(visibleDockItems) { item in
-                        dockAppItemView(item: item)
+                    HStack(alignment: .center, spacing: 8.5) {
+                        ForEach(visibleDockItems) { item in
+                            dockAppItemView(item: item)
+                        }
                     }
+                    .padding(.horizontal, 8)
 
                     moreAppsPillButton
 
@@ -1161,7 +1163,7 @@ public struct MenuBarAppStripView: View {
                         Rectangle()
                             .fill(Color.white.opacity(0.20))
                             .frame(width: 1, height: 16)
-                            .padding(.horizontal, 2)
+                            .padding(.horizontal, 4)
                     }
 
                     // 3. Pinned Folder Stacks (Applications, Downloads)
@@ -1180,7 +1182,7 @@ public struct MenuBarAppStripView: View {
                     Rectangle()
                         .fill(Color.white.opacity(0.20))
                         .frame(width: 1, height: 16)
-                        .padding(.horizontal, 2)
+                        .padding(.horizontal, 4)
 
                     // 6. Genie Chat Inside Pill Dock
                     chatPillItemView
@@ -1191,16 +1193,16 @@ public struct MenuBarAppStripView: View {
                     // 8. Genie Settings Inside Pill Dock
                     settingsPillItemView
                 }
-                .padding(.horizontal, 3)
-                .padding(.vertical, 1.5)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4.0)
             }
         } else {
             // When apps are hidden or collapsed, ALWAYS keep the nice animated Genie launcher in the menu bar!
             HStack(alignment: .center, spacing: 0) {
                 genieLauncherButton
             }
-            .padding(.horizontal, 3)
-            .padding(.vertical, 1.5)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2.5)
         }
     }
 
@@ -2529,12 +2531,10 @@ public struct MenuBarAppStripView: View {
         let totalXOffset = isDragging ? dragOffset : (neighborOffset + magOffset)
 
         Button(action: {
-            if draggingItemId == nil {
-                activateApp(item)
-            }
+            activateApp(item)
         }) {
             dockAppButtonContent(item: item, isHovered: isHovered, isBouncing: isBouncing, isSmoking: isSmoking, isCurrentActive: isCurrentActive)
-                .frame(width: 26, height: 26)
+                .frame(width: 28, height: 28)
                 .scaleEffect(
                     isDragging ? (isDragOffThreshold ? 0.75 : 1.22) : (wave.scale * (isBouncing ? 1.28 : 1.0)),
                     anchor: .center
@@ -2542,7 +2542,7 @@ public struct MenuBarAppStripView: View {
                 .offset(x: totalXOffset, y: isDragging ? dragYOffset : wave.yOffset)
                 .opacity(isDragging && isDragOffThreshold ? 0.45 : 1.0)
                 .shadow(color: isDragging ? Color.cyan.opacity(0.75) : Color.clear, radius: isDragging ? 6 : 0)
-                .contentShape(RoundedRectangle(cornerRadius: 6.5, style: .continuous))
+                .contentShape(Rectangle())
         }
         .background(
             GeometryReader { geo in
@@ -2582,6 +2582,9 @@ public struct MenuBarAppStripView: View {
                                 count: 28
                             )
                         }
+                    } else if abs(val.translation.width) < 8.0 && abs(val.translation.height) < 8.0 {
+                        // Micro-movement / tap release: activate the app directly!
+                        activateApp(item)
                     } else if let draggingId = draggingItemId,
                        let fromIndex = dockItems.firstIndex(where: { $0.id == draggingId }) {
                         let slotWidth: CGFloat = 30.0

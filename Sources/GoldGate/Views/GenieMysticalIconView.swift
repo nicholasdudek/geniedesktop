@@ -15,7 +15,7 @@ public struct GenieMysticalIconView: View {
     public var glyphImage: NSImage
     public var isHovered: Bool
     public var size: CGFloat
-    public var onPrimaryClick: () -> Void
+    public var onPrimaryClick: (() -> Void)?
 
     @State private var hoverRubCounter: Int = 0
     @State private var lastHoverTime: TimeInterval = 0
@@ -26,7 +26,7 @@ public struct GenieMysticalIconView: View {
         glyphImage: NSImage,
         isHovered: Bool = false,
         size: CGFloat = 20,
-        onPrimaryClick: @escaping () -> Void = {}
+        onPrimaryClick: (() -> Void)? = nil
     ) {
         self.glyphImage = glyphImage
         self.isHovered = isHovered
@@ -122,6 +122,7 @@ public struct GenieMysticalIconView: View {
             }
             .frame(width: size + 10, height: size + 6)
             .contentShape(Rectangle())
+            .modifier(TapGestureOptionalModifier(action: onPrimaryClick))
             .onHover { hovering in
                 if hovering {
                     let now = ProcessInfo.processInfo.systemUptime
@@ -321,5 +322,18 @@ public struct GenieFloatingWishBubbleView: View {
                         )
                 )
         )
+    }
+}
+
+private struct TapGestureOptionalModifier: ViewModifier {
+    let action: (() -> Void)?
+    func body(content: Content) -> some View {
+        if let action = action {
+            content.onTapGesture {
+                action()
+            }
+        } else {
+            content
+        }
     }
 }

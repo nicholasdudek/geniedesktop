@@ -573,22 +573,13 @@ public struct RealMacOSMiniDockView: View {
         }) {
             VStack(spacing: 3) {
                 ZStack {
-                    if let icon = genieAppIcon {
-                        Image(nsImage: icon)
-                            .resizable()
-                            .interpolation(.high)
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: isHovered ? 48 : 40, height: isHovered ? 48 : 40)
-                            .shadow(color: isHovered ? Color.cyan.opacity(0.7) : Color.black.opacity(0.4), radius: isHovered ? 8 : 4)
-                    } else {
-                        Text("🪔")
-                            .font(.system(size: isHovered ? 30 : 26))
-                            .frame(width: isHovered ? 48 : 40, height: isHovered ? 48 : 40)
-                            .background(Circle().fill(Color.white.opacity(isHovered ? 0.22 : 0.12)))
-                            .shadow(color: isHovered ? Color.cyan.opacity(0.7) : Color.clear, radius: 8)
-                    }
+                    GenieMysticalIconView(
+                        glyphImage: StatusIconRenderer.generateGlyphImage(glyph: "Genie Person 🧞‍♂️", size: 36, phase: 0),
+                        isHovered: isHovered,
+                        size: 34
+                    )
                 }
-                .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isHovered)
+                .frame(width: 44, height: 44)
 
                 Circle()
                     .fill(Color.cyan)

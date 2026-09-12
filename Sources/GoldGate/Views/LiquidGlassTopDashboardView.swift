@@ -567,7 +567,10 @@ public struct LiquidGlassTopDashboardView: View {
                     if screenRecorder.isRecording {
                         screenRecorder.stopRecording()
                     } else {
-                        screenRecorder.startRecording()
+                        let res = screenRecorder.startRecording()
+                        if res == nil && !screenRecorder.isRecording {
+                            NSSound.beep()
+                        }
                     }
                 }) {
                     HStack(spacing: 4) {

@@ -1555,7 +1555,7 @@ public struct UnifiedSettingsView: View {
             // 2. Feature Packs Showcase
             settingsGlassCard(title: "Feature Packs & Living Companions", icon: "bag.fill", tint: .yellow) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Unlock living companions, 120 FPS atmospheric Metal shaders, 3D icon snuggies, and custom grid formations.")
+                    Text("Standalone In-App Purchases are $4.99 each ($19.99 for All-Inclusive Pass), or 100% unlocked with any Genie Membership Pass.")
                         .font(.system(size: 11))
                         .foregroundColor(.white.opacity(0.65))
 
@@ -1597,6 +1597,15 @@ public struct UnifiedSettingsView: View {
                                     }
 
                                     Spacer()
+
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text(pack.priceString)
+                                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                            .foregroundColor(.white)
+                                        Text("One-Time IAP")
+                                            .font(.system(size: 8.5, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
                                 }
 
                                 // Clickable individual items
@@ -1631,7 +1640,7 @@ public struct UnifiedSettingsView: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: "checkmark.seal.fill")
                                             .font(.system(size: 11, weight: .bold))
-                                        Text("UNLOCKED")
+                                        Text("INCLUDED WITH PASS")
                                             .font(.system(size: 9.5, weight: .bold))
                                     }
                                     .foregroundColor(.green)

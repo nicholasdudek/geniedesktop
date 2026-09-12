@@ -54,26 +54,30 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Button("Mac Ollama (genie-frontier)") {
+                    Button("8B Llama 3.1 Instruct (8GB Mac Host)") {
                         settings.host = "http://192.168.1.2:11434/v1/chat/completions"
-                        settings.model = "genie-frontier:latest"
+                        settings.model = "llama3.1:8b"
                     }
-                    Button("Mac Ollama (genie-iphone)") {
+                    Button("7B Qwen 2.5 Coder (8GB Mac Host)") {
                         settings.host = "http://192.168.1.2:11434/v1/chat/completions"
-                        settings.model = "genie-iphone:latest"
+                        settings.model = "qwen2.5-coder:7b"
                     }
-                    Button("Genie API Server (Port 8080)") {
-                        settings.host = "http://192.168.1.2:8080/v1/chat/completions"
-                        settings.model = "genie-master"
+                    Button("8B DeepSeek R1 Reasoning (8GB Mac Host)") {
+                        settings.host = "http://192.168.1.2:11434/v1/chat/completions"
+                        settings.model = "deepseek-r1:8b"
                     }
-                    Button("Simulator Localhost (127.0.0.1)") {
+                    Button("3B Llama 3.2 (iPhone / Low RAM Optimal)") {
+                        settings.host = "http://192.168.1.2:11434/v1/chat/completions"
+                        settings.model = "llama3.2:3b"
+                    }
+                    Button("Simulator Localhost (127.0.0.1:11434)") {
                         settings.host = "http://127.0.0.1:11434/v1/chat/completions"
-                        settings.model = "genie-frontier:latest"
+                        settings.model = "llama3.1:8b"
                     }
                 } header: {
-                    Text("Quick Connect Presets")
+                    Text("8B & Hardware Presets (8GB Machines)")
                 } footer: {
-                    Text("Tap to automatically configure host URL and model name for your local Mac network.")
+                    Text("Optimized for 8GB unified memory Macs running 4-bit quantized 8B models (Llama 3.1, Qwen 2.5 Coder, DeepSeek R1), and compact 3B models for iPhone.")
                 }
 
                 Section {

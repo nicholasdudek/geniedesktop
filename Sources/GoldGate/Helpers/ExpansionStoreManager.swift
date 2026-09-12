@@ -129,8 +129,8 @@ public final class ExpansionStoreManager: ObservableObject {
         ExpansionPackItem(
             id: ultimateID,
             title: "All-Inclusive Feature Pass",
-            subtitle: "All themes, companions, shaders, and grid formations fully included",
-            priceString: "Included",
+            subtitle: "All themes, companions, shaders, and grid formations fully included (Included with Annual Pass)",
+            priceString: "$19.99",
             icon: "crown.fill",
             gradient: [Color.yellow, Color.orange, Color.red],
             includes: [
@@ -140,13 +140,13 @@ public final class ExpansionStoreManager: ObservableObject {
                 "10+ Custom Dynamic Geometric Formations",
                 "All Features Unlocked & Free Forever"
             ],
-            badge: "INCLUDED"
+            badge: "LIFETIME PASS · $19.99"
         ),
         ExpansionPackItem(
             id: cyberpunkID,
             title: "Cyberpunk 2099 Feature Pack",
             subtitle: "Holographic matrix, glitch beams, and neon effects",
-            priceString: "Included",
+            priceString: "$4.99",
             icon: "bolt.horizontal.circle.fill",
             gradient: [Color.cyan, Color.blue, Color.purple],
             includes: [
@@ -157,13 +157,13 @@ public final class ExpansionStoreManager: ObservableObject {
                 "Formation: Tesseract Hypercube 🧊",
                 "Snuggie: Cyber Samurai Mask 🥷"
             ],
-            badge: "INCLUDED"
+            badge: "ADD-ON · $4.99"
         ),
         ExpansionPackItem(
             id: zenID,
             title: "Japanese Zen & Spirits Pack",
             subtitle: "Tranquil koi sanctuaries, nine-tailed kitsune, and floating lanterns",
-            priceString: "Included",
+            priceString: "$4.99",
             icon: "leaf.fill",
             gradient: [Color.pink, Color.purple, Color.orange],
             includes: [
@@ -174,13 +174,13 @@ public final class ExpansionStoreManager: ObservableObject {
                 "Snuggie: Sakura Shinto Gate ⛩️",
                 "Apparel: Sakura Wreath 🌸"
             ],
-            badge: "INCLUDED"
+            badge: "ADD-ON · $4.99"
         ),
         ExpansionPackItem(
             id: cosmosID,
             title: "Deep Cosmos & Star Voyager Pack",
             subtitle: "Gravitational lensing, cosmic star whales, and orbital vortexes",
-            priceString: "Included",
+            priceString: "$4.99",
             icon: "sparkles",
             gradient: [Color.indigo, Color.purple, Color.black],
             includes: [
@@ -191,13 +191,13 @@ public final class ExpansionStoreManager: ObservableObject {
                 "Formation: Supernova Burst 💥",
                 "Snuggie: Astronaut Visor 👨‍🚀"
             ],
-            badge: "INCLUDED"
+            badge: "ADD-ON · $4.99"
         ),
         ExpansionPackItem(
             id: retroID,
             title: "Retro 1984 Arcade Pack",
             subtitle: "Nostalgic CRT vector scanlines, 8-bit sprites, and vintage soundscapes",
-            priceString: "Included",
+            priceString: "$4.99",
             icon: "gamecontroller.fill",
             gradient: [Color.green, Color.teal, Color.mint],
             includes: [
@@ -208,7 +208,7 @@ public final class ExpansionStoreManager: ObservableObject {
                 "Snuggie: Pixel Heart Armor ❤️",
                 "Style: 8-Bit Arcade Battery Gauge"
             ],
-            badge: "INCLUDED"
+            badge: "ADD-ON · $4.99"
         ),
         ExpansionPackItem(
             id: cursorsAndPetsID,
@@ -224,7 +224,7 @@ public final class ExpansionStoreManager: ObservableObject {
                 "Always-On System-Wide Cursor Glow across Safari, Xcode & Finder",
                 "Reactive Pet Sounds & Speech Bubble Companionship"
             ],
-            badge: "POPULAR ✨"
+            badge: "POPULAR · $4.99"
         )
     ]
 

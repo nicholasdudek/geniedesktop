@@ -134,22 +134,28 @@ echo "Using Installer Signing Identity SHA-1: ${INSTALLER_IDENTITY:-None}"
 echo "==> Looking for Mac App Store provisioning profile for $BUNDLE_ID..."
 PROVISION_PROFILE=""
 PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-if [ -d "$PROFILES_DIR" ]; then
-    for profile in "$PROFILES_DIR"/*.provisionprofile "$PROFILES_DIR"/*.mobileprovision; do
+SEARCH_DIRS=("$PROFILES_DIR" "$HOME/Downloads" "$PROJECT_DIR")
+for dir in "${SEARCH_DIRS[@]}"; do
+    [ -d "$dir" ] || continue
+    for profile in "$dir"/*.provisionprofile "$dir"/*.mobileprovision; do
         [ -f "$profile" ] || continue
-        PROFILE_APP_ID=$(security cms -D -i "$profile" 2>/dev/null | \
-            /usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.application-identifier" /dev/stdin 2>/dev/null || \
-            security cms -D -i "$profile" 2>/dev/null | \
-            /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /dev/stdin 2>/dev/null || true)
-        # Strip team prefix (e.g. "TEAMID.com.nicholasdudek.genie" → "com.nicholasdudek.genie")
-        PROFILE_BUNDLE_ID=$(echo "$PROFILE_APP_ID" | sed 's/^[A-Z0-9]*\.//')
-        if [ "$PROFILE_BUNDLE_ID" = "$BUNDLE_ID" ]; then
-            PROVISION_PROFILE="$profile"
-            echo "==> Found matching provisioning profile: $(basename "$profile")"
-            break
+        TMP_PROFILE_PLIST=$(mktemp)
+        if security cms -D -i "$profile" > "$TMP_PROFILE_PLIST" 2>/dev/null; then
+            PROFILE_APP_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.application-identifier" "$TMP_PROFILE_PLIST" 2>/dev/null || \
+                /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" "$TMP_PROFILE_PLIST" 2>/dev/null || true)
+            rm -f "$TMP_PROFILE_PLIST"
+            # Strip team prefix (e.g. "TEAMID.com.nicholasdudek.genie" → "com.nicholasdudek.genie")
+            PROFILE_BUNDLE_ID=$(echo "$PROFILE_APP_ID" | sed 's/^[A-Z0-9]*\.//')
+            if [ "$PROFILE_BUNDLE_ID" = "$BUNDLE_ID" ]; then
+                PROVISION_PROFILE="$profile"
+                echo "==> Found matching provisioning profile: $(basename "$profile") in $dir"
+                break 2
+            fi
+        else
+            rm -f "$TMP_PROFILE_PLIST"
         fi
     done
-fi
+done
 
 if [ -n "$PROVISION_PROFILE" ]; then
     cp "$PROVISION_PROFILE" "$BUILD_DIR/$APP_NAME.app/Contents/embedded.provisionprofile"
@@ -161,6 +167,10 @@ else
     echo "    2. Download the Mac App Store profile for $BUNDLE_ID"
     echo "    3. Double-click it to install, then re-run this script"
 fi
+
+# Strip quarantine and extended attributes (fixes ITMS-91109)
+echo "==> Stripping quarantine and extended attributes from app bundle..."
+xattr -cr "$BUILD_DIR/$APP_NAME.app"
 
 # 7. Sign the App Bundle
 if [ -n "$APP_IDENTITY" ]; then

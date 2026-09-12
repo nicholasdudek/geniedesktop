@@ -7,6 +7,11 @@
 	     Built with -DGENIE_MAS, which compiles out the subsystems that
 	     have no sandbox-legal equivalent (see GenieCapabilities.swift).
 	     ============================================================ -->
+	<key>com.apple.application-identifier</key>
+	<string>7T4Y46UY7L.com.nicholasdudek.genie</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>7T4Y46UY7L</string>
+
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 
@@ -33,16 +38,6 @@
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
 
-	<!-- App Group. GenieCapabilities.sharedSupportDirectory,
-	     FinderSyncIPC and AgentSystemTools all resolve
-	     group.com.nicholasdudek.genie, and both extension entitlement files
-	     declare it. Without it on the host app,
-	     containerURL(forSecurityApplicationGroupIdentifier:) returns nil and
-	     the Finder Sync / Widget IPC silently has nowhere to meet. -->
-	<key>com.apple.security.application-groups</key>
-	<array>
-		<string>group.com.nicholasdudek.genie</string>
-	</array>
 
 	<!-- File access. Full Disk Access is not available to sandboxed apps;
 	     Genie Lite uses user-selected scope + security-scoped bookmarks. -->
@@ -78,11 +73,5 @@
 		</array>
 	</dict>
 
-	<!-- Sign in with Apple (GenieAppleAuth). Sandbox-safe; requires the capability
-	     on the App ID and in the provisioning profile. -->
-	<key>com.apple.developer.applesignin</key>
-	<array>
-		<string>Default</string>
-	</array>
 </dict>
 </plist>

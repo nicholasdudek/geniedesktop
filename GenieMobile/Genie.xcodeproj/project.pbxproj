@@ -10,6 +10,7 @@
 		0C350876062817F4155A7774 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5C53E498D4687F10F5437FF /* EditorView.swift */; };
 		2A54DFD473A8F88A317B432A /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD91863DB61C16BBA5AC1B9 /* ChatView.swift */; };
 		343FA49F71880237DB588D66 /* FilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6C66A2DC9A51A64B234466 /* FilesView.swift */; };
+		6299E309D30BC78CDD894F09 /* GenieDuoContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61041B45D45F084626A29808 /* GenieDuoContainerView.swift */; };
 		648612A7D2EE20AC8C08EFCF /* GenieAgentCore in Frameworks */ = {isa = PBXBuildFile; productRef = CD5A393EC4BA75B00B173716 /* GenieAgentCore */; };
 		7DE4B5F1711AF743F8DBE930 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCC83BFC81F124CA8AE5C140 /* SettingsView.swift */; };
 		8B24435C61FB9BC114498008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4B622B6709EF910F741AC6D9 /* Assets.xcassets */; };
@@ -17,6 +18,7 @@
 		AAFB86EF6136958B6FB4DEEB /* AgentSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0698E37C0A4E60FF24E22584 /* AgentSessionStore.swift */; };
 		CD5A1F33AB4E02215D626975 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B4AB161A90A3AC2CBD01CA2 /* WorkspaceStore.swift */; };
 		CD9E3B4E9352A371D65AB1C3 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396E856B5494BCA2A55E4515 /* RootTabView.swift */; };
+		E47C4BBB0A0E726479E1E732 /* GenieCLIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F51B150EBD6C2596054EF80 /* GenieCLIView.swift */; };
 		E610A8F7DD1A1F3498F62213 /* GenieMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BF0F4D6A00920997D5CDB6E /* GenieMobileApp.swift */; };
 		ECF984FC4B5CEDB4FE4962E0 /* PlatformCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB7EE3C18D868ECD8E58012 /* PlatformCompatibility.swift */; };
 /* End PBXBuildFile section */
@@ -24,10 +26,12 @@
 /* Begin PBXFileReference section */
 		0698E37C0A4E60FF24E22584 /* AgentSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSessionStore.swift; sourceTree = "<group>"; };
 		1B4AB161A90A3AC2CBD01CA2 /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
+		1F51B150EBD6C2596054EF80 /* GenieCLIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenieCLIView.swift; sourceTree = "<group>"; };
 		396E856B5494BCA2A55E4515 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		42BEC0B506382DCA6C102F33 /* DocumentTabStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentTabStore.swift; sourceTree = "<group>"; };
 		4B622B6709EF910F741AC6D9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5BF0F4D6A00920997D5CDB6E /* GenieMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenieMobileApp.swift; sourceTree = "<group>"; };
+		61041B45D45F084626A29808 /* GenieDuoContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenieDuoContainerView.swift; sourceTree = "<group>"; };
 		82176DF8DE5EE9E243A483CE /* AgentRuntime */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AgentRuntime; path = ../AgentRuntime; sourceTree = SOURCE_ROOT; };
 		CF6C66A2DC9A51A64B234466 /* FilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesView.swift; sourceTree = "<group>"; };
 		D52237D1FDDA1115FF3A4115 /* Genie.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Genie.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -66,6 +70,8 @@
 				42BEC0B506382DCA6C102F33 /* DocumentTabStore.swift */,
 				F5C53E498D4687F10F5437FF /* EditorView.swift */,
 				CF6C66A2DC9A51A64B234466 /* FilesView.swift */,
+				1F51B150EBD6C2596054EF80 /* GenieCLIView.swift */,
+				61041B45D45F084626A29808 /* GenieDuoContainerView.swift */,
 				5BF0F4D6A00920997D5CDB6E /* GenieMobileApp.swift */,
 				EAB7EE3C18D868ECD8E58012 /* PlatformCompatibility.swift */,
 				396E856B5494BCA2A55E4515 /* RootTabView.swift */,
@@ -170,6 +176,8 @@
 				9CE82D71A9DABE5F6212DD85 /* DocumentTabStore.swift in Sources */,
 				0C350876062817F4155A7774 /* EditorView.swift in Sources */,
 				343FA49F71880237DB588D66 /* FilesView.swift in Sources */,
+				E47C4BBB0A0E726479E1E732 /* GenieCLIView.swift in Sources */,
+				6299E309D30BC78CDD894F09 /* GenieDuoContainerView.swift in Sources */,
 				E610A8F7DD1A1F3498F62213 /* GenieMobileApp.swift in Sources */,
 				ECF984FC4B5CEDB4FE4962E0 /* PlatformCompatibility.swift in Sources */,
 				CD9E3B4E9352A371D65AB1C3 /* RootTabView.swift in Sources */,

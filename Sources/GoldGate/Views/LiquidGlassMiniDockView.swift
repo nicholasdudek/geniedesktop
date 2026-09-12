@@ -8,12 +8,12 @@ import SwiftUI
 /// bar DEVELOPER_NOTES 2.8 describes as the world's smallest dock. The 4 pt gutter
 /// between icon and tile edge is preserved, so only the scale changes.
 private enum DockMetrics {
-    static let icon: CGFloat = 22
-    static let iconWell: CGFloat = 26
-    static let hoverBloom: CGFloat = 30
-    static let tile = CGSize(width: 30, height: 34)
-    static let runningDot: CGFloat = 3
-    static let itemSpacing: CGFloat = 3
+    static let icon: CGFloat = 28
+    static let iconWell: CGFloat = 34
+    static let hoverBloom: CGFloat = 40
+    static let tile = CGSize(width: 40, height: 44)
+    static let runningDot: CGFloat = 4
+    static let itemSpacing: CGFloat = 11
 }
 
 // MARK: - 📱 Liquid Glass Mini Dock View
@@ -89,7 +89,7 @@ public struct LiquidGlassMiniDockView: View {
             }
 
             // Mini Dock Capsule Container
-            HStack(spacing: 8) {
+            HStack(spacing: 12) {
                 // 0. Genie Studio (Chat & Workflows) — Consolidated under the GENIE Blocks
                 genieStudioView
 
@@ -111,8 +111,9 @@ public struct LiquidGlassMiniDockView: View {
                             dockAppItemView(item: item)
                         }
                     }
-                    .padding(.horizontal, 2)
+                    .padding(.horizontal, 18)
                 }
+                .frame(height: DockMetrics.tile.height + 6)
                 .frame(maxWidth: .infinity)
 
                 // Vertical Divider
@@ -137,8 +138,8 @@ public struct LiquidGlassMiniDockView: View {
                     batteryPillView
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 10)
             .background(
                 ZStack {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -197,20 +198,11 @@ public struct LiquidGlassMiniDockView: View {
                             .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
                     }
 
-                    if let icon = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath) as NSImage? {
-                        Image(nsImage: icon)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: DockMetrics.icon, height: DockMetrics.icon)
-                            .scaleEffect(isHovered ? 1.15 : 1.0)
-                            .shadow(color: Color.cyan.opacity(isHovered ? 0.6 : 0.2), radius: 3, y: 1.5)
-                    } else {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.cyan)
-                            .frame(width: DockMetrics.icon, height: DockMetrics.icon)
-                            .scaleEffect(isHovered ? 1.15 : 1.0)
-                    }
+                    GenieMysticalIconView(
+                        glyphImage: StatusIconRenderer.generateGlyphImage(glyph: "Genie Person 🧞‍♂️", size: 24, phase: 0),
+                        isHovered: isHovered,
+                        size: DockMetrics.icon
+                    )
                 }
                 .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
 
@@ -374,10 +366,22 @@ public struct LiquidGlassMiniDockView: View {
         return Button(action: {
             HapticFeedback.selection()
             if let finder = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").first {
-                finder.activate(options: [.activateAllWindows])
+                finder.unhide()
+                if #available(macOS 14.0, *) {
+                    _ = finder.activate(options: [.activateAllWindows])
+                    NSApp.yieldActivation(toApplicationWithBundleIdentifier: "com.apple.finder")
+                } else {
+                    _ = finder.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+                }
+                #if !GENIE_MAS
+                let script = "tell application \"Finder\" to activate"
+                NSAppleScript(source: script)?.executeAndReturnError(nil)
+                #endif
             } else {
                 let finderURL = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
-                NSWorkspace.shared.openApplication(at: finderURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+                let config = NSWorkspace.OpenConfiguration()
+                config.activates = true
+                NSWorkspace.shared.openApplication(at: finderURL, configuration: config, completionHandler: nil)
             }
             withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                 isPresented = false
@@ -576,6 +580,14 @@ public struct LiquidGlassMiniDockView: View {
         return Button(action: {
             HapticFeedback.selection()
             NSWorkspace.shared.open(url)
+            if let finder = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").first {
+                if #available(macOS 14.0, *) {
+                    _ = finder.activate(options: [.activateAllWindows])
+                    NSApp.yieldActivation(toApplicationWithBundleIdentifier: "com.apple.finder")
+                } else {
+                    _ = finder.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+                }
+            }
             withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                 isPresented = false
             }
@@ -620,6 +632,14 @@ public struct LiquidGlassMiniDockView: View {
         return Button(action: {
             HapticFeedback.selection()
             NSWorkspace.shared.open(url)
+            if let finder = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").first {
+                if #available(macOS 14.0, *) {
+                    _ = finder.activate(options: [.activateAllWindows])
+                    NSApp.yieldActivation(toApplicationWithBundleIdentifier: "com.apple.finder")
+                } else {
+                    _ = finder.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+                }
+            }
             withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                 isPresented = false
             }
@@ -665,7 +685,7 @@ public struct LiquidGlassMiniDockView: View {
 
         return Button(action: {
             HapticFeedback.selection()
-            NSWorkspace.shared.open(trashUrl)
+            MenuBarActionDispatcher.shared.openNativeTrash()
             withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                 isPresented = false
             }
@@ -713,16 +733,12 @@ public struct LiquidGlassMiniDockView: View {
         }
         .contextMenu {
             Button("Open Trash") {
-                NSWorkspace.shared.open(trashUrl)
+                MenuBarActionDispatcher.shared.openNativeTrash()
                 withAnimation { isPresented = false }
             }
             if trashMonitor.trashItemCount > 0 {
                 Button("Empty Trash") {
-                    let script = "tell application \"Finder\" to empty trash"
-                    if let appleScript = NSAppleScript(source: script) {
-                        var error: NSDictionary?
-                        appleScript.executeAndReturnError(&error)
-                    }
+                    MenuBarActionDispatcher.shared.emptyNativeTrash()
                 }
             }
         }

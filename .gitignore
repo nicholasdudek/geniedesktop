@@ -29,3 +29,7 @@ Artifacts/
 *.pt
 *.safetensors
 UnifiedTraining/genie_nemo_30b_lora_adapter.zip
+
+# Provisioning profiles
+*.provisionprofile
+*.mobileprovision

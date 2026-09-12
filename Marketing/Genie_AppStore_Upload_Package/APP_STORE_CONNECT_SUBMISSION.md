@@ -106,6 +106,11 @@ Engineered exclusively for macOS Sonoma & Sequoia (Apple Silicon M1/M2/M3/M4 & I
 
 | Pack Name | Product ID | Tier Price | Description |
 | :--- | :--- | :--- | :--- |
+| **All-Inclusive Feature Pass** | `com.nicholasdudek.genie.pack.ultimate` | **$19.99** (Lifetime) | All 4 feature packs, 15+ living companions & widgets, 12+ Metal shaders, and custom 3D grid formations. Lifetime unlocked. |
+| **Cyberpunk 2099 Feature Pack** | `com.nicholasdudek.genie.pack.cyberpunk` | **$4.99** (One-Time) | Cyber Alpha Wolf, Cyber Sentry Drone, 4K Tokyo Neon Night Rain shader, Matrix Digital Rain stream, and Tesseract formation. |
+| **Japanese Zen & Spirits Pack** | `com.nicholasdudek.genie.pack.zen` | **$4.99** (One-Time) | Cherry Blossom 9-Tail Kitsune, Japanese Koi Sanctuary, 4K Sakura Petal Blizzard shader, and Zen Garden formation. |
+| **Deep Cosmos & Star Voyager Pack** | `com.nicholasdudek.genie.pack.cosmos` | **$4.99** (One-Time) | Cosmic Star Whale, Deep Void Star Kraken, Supermassive Black Hole Lens shader, and Hyperdrive Warp Speed shader. |
+| **Retro 1984 Arcade Pack** | `com.nicholasdudek.genie.pack.retro` | **$4.99** (One-Time) | 8-Bit Arcade Ghost, Pixel Yoshi companion, Retro CRT Vector Scanline Grid shader, and Fluid Ink Chromatography shader. |
 | **Fancy Cursors & Living Dock Pets Collection** | `com.nicholasdudek.genie.pack.cursorsandpets` | **$4.99** (One-Time) | 10+ interactive living dock pets (Fox, Dragon, Kitten, Owl, Robot, Penguin) and 12+ Metal-accelerated cursor shaders. Included free with Annual Pass. |
 
 ---

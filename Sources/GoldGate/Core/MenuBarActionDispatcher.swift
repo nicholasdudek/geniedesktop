@@ -472,7 +472,14 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
 
         // 1. Direct unhide and activate with full frontmost override
         app.unhide()
-        _ = app.activate(options: [.activateAllWindows])
+        if #available(macOS 14.0, *) {
+            _ = app.activate(options: [.activateAllWindows])
+            if let bid = app.bundleIdentifier {
+                NSApp.yieldActivation(toApplicationWithBundleIdentifier: bid)
+            }
+        } else {
+            _ = app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+        }
 
         // 2. Guaranteed AppleScript reopen and activate via bundle ID or app name.
         //
@@ -632,6 +639,13 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
 
         if let running = existingRunningApp {
             activateApp(running)
+            // Also invoke workspace activation to guarantee WindowServer focus
+            if let u = running.bundleURL ?? item.bundleURL {
+                let cfg = NSWorkspace.OpenConfiguration()
+                cfg.activates = true
+                cfg.createsNewApplicationInstance = false
+                NSWorkspace.shared.openApplication(at: u, configuration: cfg, completionHandler: nil)
+            }
         } else if let url = item.bundleURL {
             let config = NSWorkspace.OpenConfiguration()
             config.activates = true
@@ -639,6 +653,10 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
                 if let a = app {
                     DispatchQueue.main.async {
                         self.activateApp(a)
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        NSWorkspace.shared.open(url)
                     }
                 }
             }
@@ -651,9 +669,45 @@ public final class MenuBarActionDispatcher: NSObject, ObservableObject {
                     DispatchQueue.main.async {
                         self.activateApp(a)
                     }
+                } else {
+                    DispatchQueue.main.async {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
             }
             NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockAppLaunched"), object: item.id)
+        } else {
+            let candidateURL: URL? = {
+                if item.id.hasPrefix("/") && FileManager.default.fileExists(atPath: item.id) {
+                    return URL(fileURLWithPath: item.id)
+                }
+                if let u = NSWorkspace.shared.urlForApplication(withBundleIdentifier: item.id) {
+                    return u
+                }
+                let cand1 = "/Applications/\(item.name).app"
+                if FileManager.default.fileExists(atPath: cand1) { return URL(fileURLWithPath: cand1) }
+                let cand2 = "/System/Applications/\(item.name).app"
+                if FileManager.default.fileExists(atPath: cand2) { return URL(fileURLWithPath: cand2) }
+                let cand3 = "/System/Applications/Utilities/\(item.name).app"
+                if FileManager.default.fileExists(atPath: cand3) { return URL(fileURLWithPath: cand3) }
+                return nil
+            }()
+            if let url = candidateURL {
+                let config = NSWorkspace.OpenConfiguration()
+                config.activates = true
+                NSWorkspace.shared.openApplication(at: url, configuration: config) { app, _ in
+                    if let a = app {
+                        DispatchQueue.main.async {
+                            self.activateApp(a)
+                        }
+                    } else {
+                        DispatchQueue.main.async {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
+                NotificationCenter.default.post(name: NSNotification.Name("NexusMiniDockAppLaunched"), object: item.id)
+            }
         }
     }
 

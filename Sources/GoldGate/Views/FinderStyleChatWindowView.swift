@@ -2653,8 +2653,12 @@ public struct FinderStyleChatWindowView: View {
                             screenRecorder.stopRecording()
                             showStatusFeedback("Screen Recording Saved! 🎥")
                         } else {
-                            screenRecorder.startRecording()
-                            showStatusFeedback("Recording Screen... 🔴")
+                            let res = screenRecorder.startRecording()
+                            if res != nil || screenRecorder.isRecording {
+                                showStatusFeedback("Recording Screen... 🔴")
+                            } else {
+                                showStatusFeedback(screenRecorder.statusMessage)
+                            }
                         }
                         HapticFeedback.selection()
                     }) {
@@ -2899,8 +2903,12 @@ public struct FinderStyleChatWindowView: View {
                 screenRecorder.stopRecording()
                 showStatusFeedback("Screen Recording Saved! 🎥")
             } else {
-                screenRecorder.startRecording()
-                showStatusFeedback("Recording Screen... 🔴")
+                let res = screenRecorder.startRecording()
+                if res != nil || screenRecorder.isRecording {
+                    showStatusFeedback("Recording Screen... 🔴")
+                } else {
+                    showStatusFeedback(screenRecorder.statusMessage)
+                }
             }
         }) {
             HStack(spacing: 4) {
