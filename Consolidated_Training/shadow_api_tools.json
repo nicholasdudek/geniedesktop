@@ -17,7 +17,39 @@
               "description": "Maximum number of messages to return (default 10)."
             }
           },
-          "required": ["search_term"]
+          "required": [
+            "search_term"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "semantic_local_file_search",
+        "description": "Searches the user's local Mac filesystem (Documents, Photos, PDFs) by semantic concept rather than exact filename. Uses local vector embeddings. Use this when the user asks to find a vague file, document, or image based on what it contains.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "concept": {
+              "type": "string",
+              "description": "The abstract concept to search for (e.g., 'a receipt from a coffee shop', 'a photo of a beach sunset')."
+            },
+            "file_types": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Optional file extensions to filter by (e.g., ['pdf'], ['jpg', 'png'])."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max results to return."
+            }
+          },
+          "required": [
+            "concept"
+          ]
         }
       }
     }
