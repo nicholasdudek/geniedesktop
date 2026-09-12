@@ -147,10 +147,10 @@ struct QuickSetupWizardView: View {
                             .font(.system(size: 11))
                             .foregroundColor(accessibilityGranted ? .green : .orange)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Accessibility Control")
+                            Text(LocalizedStrings.setupText("Accessibility Control", lang: appLanguage))
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(.primary.opacity(0.9))
-                            Text("Enables window snapping, app switching, and gesture tracking.")
+                            Text(LocalizedStrings.setupText("Enables window snapping, app switching, and gesture tracking.", lang: appLanguage))
                                 .font(.system(size: 8.5))
                                 .foregroundColor(.secondary)
                         }
@@ -163,7 +163,7 @@ struct QuickSetupWizardView: View {
                                     checkPermissions()
                                 }
                             }) {
-                                Text("Authorize")
+                                Text(LocalizedStrings.setupText("Authorize", lang: appLanguage))
                                     .font(.system(size: 9.5, weight: .semibold))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 8)
@@ -180,10 +180,10 @@ struct QuickSetupWizardView: View {
                             .font(.system(size: 11))
                             .foregroundColor(screenGranted ? .green : .cyan)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Screen Overlay & Atmosphere")
+                            Text(LocalizedStrings.setupText("Screen Overlay & Atmosphere", lang: appLanguage))
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(.primary.opacity(0.9))
-                            Text("Powers liquid glass desktop reflections and shader atmosphere.")
+                            Text(LocalizedStrings.setupText("Powers liquid glass desktop reflections and shader atmosphere.", lang: appLanguage))
                                 .font(.system(size: 8.5))
                                 .foregroundColor(.secondary)
                         }
@@ -196,7 +196,7 @@ struct QuickSetupWizardView: View {
                                     checkPermissions()
                                 }
                             }) {
-                                Text("Authorize")
+                                Text(LocalizedStrings.setupText("Authorize", lang: appLanguage))
                                     .font(.system(size: 9.5, weight: .semibold))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 8)

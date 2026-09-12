@@ -479,6 +479,22 @@ public struct LocalizedStrings {
         }
     }
 
+
+    // MARK: - Onboarding & Permissions (Konglish Style)
+    public static func setupText(_ text: String, lang: String) -> String {
+        guard lang == "한국어" else { return text }
+        switch text {
+        case "Genie Quick Setup": return "Genie 퀵 Setup"
+        case "Accessibility Control": return "Accessibility 권한 (접근성)"
+        case "Enables window snapping, app switching, and gesture tracking.": return "스마트 윈도우 스냅, 앱 스위칭 및 Gesture 트래킹을 지원합니다."
+        case "Screen Overlay & Atmosphere": return "Screen 오버레이 & 분위기"
+        case "Powers liquid glass desktop reflections and shader atmosphere.": return "리퀴드 Glass 데스크탑 반사 및 Shader 이펙트를 구동합니다."
+        case "Authorize": return "권한 허용 (Authorize)"
+        case "Finish Setup": return "Setup 완료"
+        default: return text
+        }
+    }
+
     // MARK: - Extended Living Theme Names & Descriptions
     public static func translateText(_ text: String, lang: String) -> String {
         guard lang != "English (US)" else { return text }
