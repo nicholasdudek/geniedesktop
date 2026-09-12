@@ -687,7 +687,10 @@ public struct GenieiPhoneDuoSimulatorView: View {
 
                         // Omnibox Toolbar Row
                         HStack(spacing: 8) {
-                            Button(action: { }) {
+                            Button(action: {
+                                HapticFeedback.selection()
+                                MiniBrowserManager.shared.goBack()
+                            }) {
                                 Image(systemName: "chevron.left")
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(manager.canGoBack ? .white : .white.opacity(0.3))
@@ -695,7 +698,10 @@ public struct GenieiPhoneDuoSimulatorView: View {
                             .buttonStyle(.plain)
                             .disabled(!manager.canGoBack)
 
-                            Button(action: { }) {
+                            Button(action: {
+                                HapticFeedback.selection()
+                                MiniBrowserManager.shared.goForward()
+                            }) {
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(manager.canGoForward ? .white : .white.opacity(0.3))
@@ -734,7 +740,10 @@ public struct GenieiPhoneDuoSimulatorView: View {
                             .padding(.vertical, 4)
                             .background(Capsule().fill(Color.white.opacity(0.12)))
 
-                            Button(action: {}) {
+                            Button(action: {
+                                HapticFeedback.selection()
+                                MiniBrowserManager.shared.openInDefaultBrowser()
+                            }) {
                                 Image(systemName: "square.and.arrow.up")
                                     .font(.system(size: 11))
                                     .foregroundColor(.white.opacity(0.8))
