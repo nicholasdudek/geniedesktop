@@ -46,7 +46,6 @@ public final class ExpansionStoreManager: ObservableObject {
     public static let planOneYearID = "com.nicholasdudek.genie.sub.oneyear"
     public static let planMonthlyID = "com.nicholasdudek.genie.sub.monthly"
     public static let planTwoYearFounderID = "com.nicholasdudek.genie.sub.twoyearfounder"
-    public static let planStudentID = "com.nicholasdudek.genie.sub.student"
 
     // Legacy GoldGate IDs
     public static let legacyCyberpunkID = "com.nicholasdudek.goldgate.pack.cyberpunk"
@@ -62,26 +61,6 @@ public final class ExpansionStoreManager: ObservableObject {
     @Published public var errorMessage: String? = nil
 
     public let subscriptionPlans: [GenieSubscriptionPlan] = [
-        GenieSubscriptionPlan(
-            id: planStudentID,
-            name: "Genie for Students",
-            priceDisplay: "Free",
-            billingCadence: "Free for 12 months, then $120.00/year",
-            badge: "18 & UNDER · COLLEGE",
-            trialText: "No card required while eligibility lasts",
-            effectiveMonthlyRate: "$0.00 / mo",
-            features: [
-                "Everything in the Annual Pass, free for a full year",
-                "Open to anyone 18 or under, and to enrolled college students",
-                "Full access to 81-Screen Spatial Canvas Matrix",
-                "Neural Bloom shaders & living 4K Metal backdrops",
-                "Autonomous Local (Ollama) & Cloud AI Routing (BYOK)",
-                "Sovereign Linux Hypervisor & Virtualization Engine",
-                "All 4 Expansion Packs (Cyberpunk, Zen, Cosmos, Retro)",
-                "Renews at the standard annual price unless you cancel"
-            ],
-            isPopular: false
-        ),
         GenieSubscriptionPlan(
             id: planOneYearID,
             name: "Genie Annual Pass",
@@ -141,50 +120,9 @@ public final class ExpansionStoreManager: ObservableObject {
     ]
 
     public func selectPlan(_ plan: GenieSubscriptionPlan) {
-        if plan.id == Self.planStudentID {
-            guard studentEligibilityExpiry != nil else {
-                purchaseSuccessMessage = "Verify you're 18 or under, or enrolled in college, to start your free year."
-                return
-            }
-        }
         activePlanName = plan.name
         UserDefaults.standard.set(plan.name, forKey: PrefKey.activeSubscriptionPlan)
         purchaseSuccessMessage = "Subscribed to \(plan.name) successfully! ✨"
-    }
-
-    // MARK: - Student & under-18 eligibility
-    //
-    // The free year is an entitlement, not a StoreKit purchase: a $0 subscription
-    // is not a product Apple will sell, so nothing here goes through Product.purchase.
-    //
-    // Age and enrolment cannot be established inside the app. Apple does not expose a
-    // customer's age or student status to third-party apps, so granting the year on a
-    // self-declared checkbox would hand the paid tier to anyone who ticks it. This
-    // holds the entitlement and its expiry; `grantStudentYear` is only ever called
-    // with a date a verification provider has already returned.
-
-    /// When the current free year runs out. Nil means not eligible.
-    @Published public private(set) var studentEligibilityExpiry: Date? =
-        UserDefaults.standard.object(forKey: PrefKey.studentEligibilityExpiry) as? Date
-
-    public var isStudentYearActive: Bool {
-        guard let expiry = studentEligibilityExpiry else { return false }
-        return expiry > Date()
-    }
-
-    /// Starts the free year. `verifiedUntil` must come from a completed verification
-    /// — never from anything the user typed.
-    public func grantStudentYear(verifiedUntil expiry: Date) {
-        studentEligibilityExpiry = expiry
-        UserDefaults.standard.set(expiry, forKey: PrefKey.studentEligibilityExpiry)
-        activePlanName = "Genie for Students"
-        UserDefaults.standard.set(activePlanName, forKey: PrefKey.activeSubscriptionPlan)
-        purchaseSuccessMessage = "Your free year is active through \(expiry.formatted(date: .abbreviated, time: .omitted)). 🎓"
-    }
-
-    /// One year from today, for a verifier to hand back to `grantStudentYear`.
-    public static func oneYearFromNow(_ from: Date = Date()) -> Date {
-        Calendar.current.date(byAdding: .year, value: 1, to: from) ?? from.addingTimeInterval(365 * 86_400)
     }
 
     public let availablePacks: [ExpansionPackItem] = [
