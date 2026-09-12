@@ -1,6 +1,21 @@
 import AppKit
 import SwiftUI
 
+/// Matched to the real menu bar so the mini dock's items read as the same class of
+/// control as the system's own: CustomMenuBarManager draws each status item in a
+/// 22x22 box with 3 pt between them. The dock had drifted to a 30 pt icon in a
+/// 38x42 tile — larger than every menu item beside it, and larger than the 22 pt
+/// bar DEVELOPER_NOTES 2.8 describes as the world's smallest dock. The 4 pt gutter
+/// between icon and tile edge is preserved, so only the scale changes.
+private enum DockMetrics {
+    static let icon: CGFloat = 22
+    static let iconWell: CGFloat = 26
+    static let hoverBloom: CGFloat = 30
+    static let tile = CGSize(width: 30, height: 34)
+    static let runningDot: CGFloat = 3
+    static let itemSpacing: CGFloat = 3
+}
+
 // MARK: - 📱 Liquid Glass Mini Dock View
 /// An integrated frosted liquid-glass mini dock strip embedded directly in the slide-down ceiling dashboard
 /// (Zenith / LiquidGlassTopDashboardView) alongside the digital clock and quick chat.
@@ -91,7 +106,7 @@ public struct LiquidGlassMiniDockView: View {
 
                 // 2. Running & Pinned Applications Strip
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: DockMetrics.itemSpacing) {
                         ForEach(displayItems) { item in
                             dockAppItemView(item: item)
                         }
@@ -172,40 +187,40 @@ public struct LiquidGlassMiniDockView: View {
                     if isHovered {
                         Circle()
                             .fill(Color.cyan.opacity(0.35))
-                            .frame(width: 38, height: 38)
+                            .frame(width: DockMetrics.hoverBloom, height: DockMetrics.hoverBloom)
                             .blur(radius: 5)
                     }
 
                     if isChatActive {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .strokeBorder(Color.cyan.opacity(0.85), lineWidth: 1.5)
-                            .frame(width: 34, height: 34)
+                            .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
                     }
 
                     if let icon = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath) as NSImage? {
                         Image(nsImage: icon)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 30, height: 30)
+                            .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                             .scaleEffect(isHovered ? 1.15 : 1.0)
                             .shadow(color: Color.cyan.opacity(isHovered ? 0.6 : 0.2), radius: 3, y: 1.5)
                     } else {
                         Image(systemName: "sparkles")
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.cyan)
-                            .frame(width: 30, height: 30)
+                            .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                             .scaleEffect(isHovered ? 1.15 : 1.0)
                     }
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
 
                 // Glowing Active Dot
                 Circle()
                     .fill(Color.cyan)
-                    .frame(width: 3.5, height: 3.5)
+                    .frame(width: DockMetrics.runningDot, height: DockMetrics.runningDot)
                     .shadow(color: Color.cyan.opacity(0.9), radius: 2)
             }
-            .frame(width: 38, height: 42)
+            .frame(width: DockMetrics.tile.width, height: DockMetrics.tile.height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -373,25 +388,25 @@ public struct LiquidGlassMiniDockView: View {
                     if isHovered {
                         Circle()
                             .fill(Color.cyan.opacity(0.20))
-                            .frame(width: 38, height: 38)
+                            .frame(width: DockMetrics.hoverBloom, height: DockMetrics.hoverBloom)
                             .blur(radius: 4)
                     }
 
                     Image(nsImage: NSWorkspace.shared.icon(forFile: "/System/Library/CoreServices/Finder.app"))
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 30, height: 30)
+                        .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                         .scaleEffect(isHovered ? 1.15 : 1.0)
                         .shadow(color: Color.black.opacity(0.3), radius: 3, y: 1.5)
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
 
                 // Running dot
                 Circle()
                     .fill(isFrontmost ? Color.cyan : Color.white.opacity(0.85))
-                    .frame(width: 3.5, height: 3.5)
+                    .frame(width: DockMetrics.runningDot, height: DockMetrics.runningDot)
             }
-            .frame(width: 38, height: 42)
+            .frame(width: DockMetrics.tile.width, height: DockMetrics.tile.height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -453,7 +468,7 @@ public struct LiquidGlassMiniDockView: View {
                     if isHovered {
                         Circle()
                             .fill(Color.cyan.opacity(0.18))
-                            .frame(width: 38, height: 38)
+                            .frame(width: DockMetrics.hoverBloom, height: DockMetrics.hoverBloom)
                             .blur(radius: 4)
                     }
 
@@ -461,7 +476,7 @@ public struct LiquidGlassMiniDockView: View {
                     if isFrontmost {
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
                             .strokeBorder(Color.cyan.opacity(0.55), lineWidth: 1.2)
-                            .frame(width: 34, height: 34)
+                            .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
                     }
 
                     // App Icon
@@ -469,15 +484,15 @@ public struct LiquidGlassMiniDockView: View {
                         Image(nsImage: icon)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 30, height: 30)
+                            .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                     } else {
                         Image(systemName: "app.fill")
                             .font(.system(size: 24))
                             .foregroundColor(.white.opacity(0.8))
-                            .frame(width: 30, height: 30)
+                            .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                     }
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
                 .scaleEffect(isHovered ? 1.15 : (isBouncing ? 1.25 : 1.0))
                 .shadow(color: Color.black.opacity(isHovered ? 0.45 : 0.22), radius: isHovered ? 4 : 2, y: 1.5)
 
@@ -485,14 +500,14 @@ public struct LiquidGlassMiniDockView: View {
                 if item.isRunning {
                     Circle()
                         .fill(isFrontmost ? Color.cyan : Color.white.opacity(0.85))
-                        .frame(width: 3.5, height: 3.5)
+                        .frame(width: DockMetrics.runningDot, height: DockMetrics.runningDot)
                 } else {
                     Circle()
                         .fill(Color.clear)
-                        .frame(width: 3.5, height: 3.5)
+                        .frame(width: DockMetrics.runningDot, height: DockMetrics.runningDot)
                 }
             }
-            .frame(width: 38, height: 42)
+            .frame(width: DockMetrics.tile.width, height: DockMetrics.tile.height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -570,24 +585,24 @@ public struct LiquidGlassMiniDockView: View {
                     if isHovered {
                         Circle()
                             .fill(Color.blue.opacity(0.20))
-                            .frame(width: 38, height: 38)
+                            .frame(width: DockMetrics.hoverBloom, height: DockMetrics.hoverBloom)
                             .blur(radius: 4)
                     }
 
                     Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 30, height: 30)
+                        .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                         .scaleEffect(isHovered ? 1.15 : 1.0)
                         .shadow(color: Color.black.opacity(0.3), radius: 3, y: 1.5)
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
 
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 3.5, height: 3.5)
+                    .frame(width: DockMetrics.runningDot, height: DockMetrics.runningDot)
             }
-            .frame(width: 38, height: 42)
+            .frame(width: DockMetrics.tile.width, height: DockMetrics.tile.height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -614,24 +629,24 @@ public struct LiquidGlassMiniDockView: View {
                     if isHovered {
                         Circle()
                             .fill(Color.purple.opacity(0.20))
-                            .frame(width: 38, height: 38)
+                            .frame(width: DockMetrics.hoverBloom, height: DockMetrics.hoverBloom)
                             .blur(radius: 4)
                     }
 
                     Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 30, height: 30)
+                        .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                         .scaleEffect(isHovered ? 1.15 : 1.0)
                         .shadow(color: Color.black.opacity(0.3), radius: 3, y: 1.5)
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
 
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 3.5, height: 3.5)
+                    .frame(width: DockMetrics.runningDot, height: DockMetrics.runningDot)
             }
-            .frame(width: 38, height: 42)
+            .frame(width: DockMetrics.tile.width, height: DockMetrics.tile.height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -660,14 +675,14 @@ public struct LiquidGlassMiniDockView: View {
                     if isHovered {
                         Circle()
                             .fill(Color.orange.opacity(0.20))
-                            .frame(width: 38, height: 38)
+                            .frame(width: DockMetrics.hoverBloom, height: DockMetrics.hoverBloom)
                             .blur(radius: 4)
                     }
 
                     Image(nsImage: trashIcon)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 30, height: 30)
+                        .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                         .scaleEffect(isHovered ? 1.15 : 1.0)
                         .shadow(color: Color.black.opacity(0.3), radius: 3, y: 1.5)
 
@@ -681,13 +696,13 @@ public struct LiquidGlassMiniDockView: View {
                             .offset(x: 4, y: -2)
                     }
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
 
                 Circle()
                     .fill(Color.clear)
-                    .frame(width: 3.5, height: 3.5)
+                    .frame(width: DockMetrics.runningDot, height: DockMetrics.runningDot)
             }
-            .frame(width: 38, height: 42)
+            .frame(width: DockMetrics.tile.width, height: DockMetrics.tile.height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -729,30 +744,30 @@ public struct LiquidGlassMiniDockView: View {
                     if isHovered {
                         Circle()
                             .fill(Color.purple.opacity(0.35))
-                            .frame(width: 38, height: 38)
+                            .frame(width: DockMetrics.hoverBloom, height: DockMetrics.hoverBloom)
                             .blur(radius: 4)
                     }
 
                     if isSettingsActive {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .strokeBorder(Color.purple.opacity(0.85), lineWidth: 1.5)
-                            .frame(width: 34, height: 34)
+                            .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
                     }
 
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(isSettingsActive ? .cyan : (isHovered ? .white : .white.opacity(0.85)))
-                        .frame(width: 30, height: 30)
+                        .frame(width: DockMetrics.icon, height: DockMetrics.icon)
                         .scaleEffect(isHovered ? 1.15 : 1.0)
                         .shadow(color: Color.purple.opacity(isHovered ? 0.6 : 0.2), radius: 3, y: 1.5)
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: DockMetrics.iconWell, height: DockMetrics.iconWell)
 
                 Circle()
                     .fill(isSettingsActive ? Color.cyan : Color.clear)
-                    .frame(width: 3.5, height: 3.5)
+                    .frame(width: DockMetrics.runningDot, height: DockMetrics.runningDot)
             }
-            .frame(width: 38, height: 42)
+            .frame(width: DockMetrics.tile.width, height: DockMetrics.tile.height)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
