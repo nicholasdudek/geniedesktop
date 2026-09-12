@@ -784,11 +784,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func updateStatusItemWidth(_ width: CGFloat) {
         guard let statusItem = statusItem else { return }
-        if CustomMenuBarManager.shared.isEnabled {
-            statusItem.isVisible = false
-            statusItem.length = 0
-            return
-        }
         statusItem.isVisible = true
         statusItem.button?.clipsToBounds = false
 
@@ -1300,7 +1295,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         nc.addObserver(forName: NSNotification.Name("NexusCustomMenuBarToggled"), object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in
                 CustomMenuBarManager.shared.rebuildWindows()
-                self?.statusItem?.isVisible = !CustomMenuBarManager.shared.isEnabled
+                self?.statusItem?.isVisible = true
             }
         }
 

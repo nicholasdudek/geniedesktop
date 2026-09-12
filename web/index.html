@@ -2304,6 +2304,113 @@
       box-shadow: 0 4px 16px rgba(244, 195, 117, 0.3);
     }
 
+    /* Latest Update Band — both menu bars at once */
+    .menubar-update-band {
+      margin-top: 40px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-accent);
+      border-radius: 24px;
+      padding: 32px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    .menubar-update-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 34px;
+      align-items: center;
+    }
+
+    .menubar-update-grid > * { min-width: 0; }
+
+    .menubar-update-pill {
+      display: inline-block;
+      background: rgba(244, 195, 117, 0.15);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .menubar-update-band h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      margin-bottom: 10px;
+    }
+
+    .menubar-update-band p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.65;
+      margin: 0;
+    }
+
+    .menubar-mock-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .mock-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 14px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    .mock-bar.genie-own {
+      border-color: var(--border-accent);
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(0,0,0,0.35));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+    }
+
+    .mock-menu { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+    .mock-menu.strong { color: var(--text); font-weight: 700; }
+    .mock-spacer { flex: 1 1 auto; }
+
+    .mock-genie-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 8px;
+      background: rgba(244, 195, 117, 0.16);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .mock-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    @media (max-width: 960px) {
+      .menubar-update-grid { grid-template-columns: 1fr; }
+      .menubar-update-band { padding: 22px 18px; border-radius: 18px; }
+      .mock-bar { font-size: 0.7rem; gap: 8px; }
+    }
+
     /* Battery Selections Cards */
     .battery-selections-box {
       margin-top: 48px;
@@ -3073,14 +3180,17 @@
     <div class="section-title">
       <div class="hero-badge" style="margin-bottom: 12px; display: inline-flex;">⚡️ Real macOS Menu Bar Power</div>
       <h2>Menu Bar Studio Hub & Dynamic Battery Customizer</h2>
-      <p>Take complete command of your workspace without ever minimizing your apps. Switch between 28+ living battery styles, monitor active wattage telemetry, and tweak all 11 studio subsystems directly from your macOS menu bar.</p>
+      <p>Take complete command of your workspace without ever minimizing your apps. Switch between 28+ living battery styles, monitor active wattage telemetry, and tweak all 11 studio subsystems directly from your macOS menu bar &mdash; or hand the whole bar to Genie, which now runs <strong>alongside</strong> Apple's instead of replacing it.</p>
     </div>
 
     <!-- Main Interactive Menu Showcase Card -->
     <div class="menubar-hero-card">
       <!-- Tab Switcher for Real Menu Bar Screenshots -->
       <div class="menubar-tabs-bar" id="menubar-tabs-bar">
-        <button class="menubar-tab-btn active" onclick="switchMenubarTab('battery', this)">
+        <button class="menubar-tab-btn active" onclick="switchMenubarTab('geniebar', this)">
+          <span>🍎 Genie's Own Menu Bar</span>
+        </button>
+        <button class="menubar-tab-btn" onclick="switchMenubarTab('battery', this)">
           <span>🔋 Battery Styles & Settings</span>
         </button>
         <button class="menubar-tab-btn" onclick="switchMenubarTab('status', this)">
@@ -3100,38 +3210,105 @@
       <!-- Display Stage: Real Screenshot + Deep Feature Breakdown -->
       <div class="menubar-display-stage">
         <div class="menubar-screen-frame">
-          <img id="menubar-feature-img" src="assets/screenshots/4_Settings_And_Battery_Styles.png" alt="Settings and Battery Styles Menu Bar Dropdown">
-          <span class="menubar-zoom-badge" id="menubar-feature-badge">Retina Menu Bar Capture</span>
+          <img id="menubar-feature-img" src="assets/screenshots/12_grand_horizon_menubar.png" alt="Genie Menu Bar & Docks settings with a live menu bar preview">
+          <span class="menubar-zoom-badge" id="menubar-feature-badge">🍎 Retina Capture &bull; Menu Bar & Docks</span>
         </div>
 
         <div class="menubar-details-pane">
-          <span class="hero-version-pill" id="menubar-pane-pill" style="margin-bottom:12px; display:inline-block;">Studio Hub Subsystem</span>
-          <h3 id="menubar-pane-title">28+ Living Battery Styles & Hardware Telemetry</h3>
-          <p id="menubar-pane-desc">Replace your static system battery icon with fluid living gauges. Genie connects directly to Apple Silicon power rails and the System Management Controller (SMC) to deliver millisecond-level telemetry right on your status bar.</p>
+          <span class="hero-version-pill" id="menubar-pane-pill" style="margin-bottom:12px; display:inline-block;">Menu Bar Studio &bull; Genie's Own Bar</span>
+          <h3 id="menubar-pane-title">Genie's Own Menu Bar &mdash; Beside Apple's, Not Instead of It</h3>
+          <p id="menubar-pane-desc">Genie can draw the entire menu bar itself — Apple menu, app menus, clock, battery and system controls — on every display you own. As of this build it no longer costs you the native one: the Genie status item stays in the macOS menu bar whether your own bar is switched on or off.</p>
 
           <ul class="menubar-feature-bullets" id="menubar-pane-bullets">
             <li>
-              <span class="bullet-icon">⚡️</span>
-              <div><strong>Real-Time Wattage & Velocity:</strong> Live readouts of active power draw in watts (e.g. 14.2W), battery cycle count, and precise discharge speed.</div>
+              <span class="bullet-icon">✅</span>
+              <div><strong>Both Bars, At Once (New):</strong> Turning on the custom bar used to remove Genie from the system menu bar entirely. The status item now holds its place at launch, through every rebuild, and on both sides of a spatial overlay transition.</div>
             </li>
             <li>
-              <span class="bullet-icon">✨</span>
-              <div><strong>5 Signature Gauge Families:</strong> Liquid Glass Capsule, Cyberpunk Digital HUD, VisionOS Pill, Vertical Energy Column, and Minimalist Monochrome.</div>
+              <span class="bullet-icon">🪟</span>
+              <div><strong>7 Glass Materials, 3 Layouts:</strong> Vitreous Liquid Crystal through Pure Optic Transparency, shaped as a Suspended Horizon Capsule, Continuous Panoramic Horizon, or Sculpted Monolith Pill.</div>
             </li>
             <li>
-              <span class="bullet-icon">🔋</span>
-              <div><strong>State-Aware Transitions:</strong> Fluid green charging bolts on AC power, ember amber in Low Power Mode, and red pulse below 20%.</div>
+              <span class="bullet-icon">📐</span>
+              <div><strong>Notch-Aware Dual Tier:</strong> Grand Dual-Tier Horizon reads the real auxiliary top-left and top-right areas to clear the camera inset; Precision Slim Profile keeps one classic tier.</div>
             </li>
             <li>
-              <span class="bullet-icon">🎛️</span>
-              <div><strong>Zero-Delay Hotkey Control:</strong> Open the Studio Hub dropdown instantaneously via global hotkey or top-edge hover without stealing active window focus.</div>
+              <span class="bullet-icon">🖥️</span>
+              <div><strong>One Bar Per Display:</strong> A bar is built for every screen and rebuilt when you plug one in, joins all Spaces, and can stay visible or auto-hide until you reach for the top edge.</div>
+            </li>
+            <li>
+              <span class="bullet-icon">⌚️</span>
+              <div><strong>Typography & Clock Control:</strong> SF Pro family and weight, 10–18pt sizing, 9 accent colours, 3 Apple-logo styles, and 12 clock formats down to ISO 8601.</div>
             </li>
           </ul>
 
           <a href="features.html#battery-designs" class="menubar-details-cta">
-            <span>Test the Interactive Battery Lab & Simulator</span>
+            <span id="menubar-pane-cta">Open the Menu Bar & Battery Lab</span>
             <span>→</span>
           </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Latest Update — Genie's own bar now runs alongside the system menu bar -->
+    <div class="menubar-update-band">
+      <div class="menubar-update-grid">
+        <div>
+          <span class="menubar-update-pill">New in this build</span>
+          <h3>Both menu bars. At the same time.</h3>
+          <p>Switching on Genie's own menu bar used to pull Genie out of the macOS menu bar — the one place people look for a menu bar app had no Genie in it at all. The status item is now always present: at launch, across every rebuild when you change displays, and on both sides of a spatial overlay transition. Run the Genie bar, the native bar, or both, and the lightning glyph is always one click away.</p>
+        </div>
+
+        <div class="menubar-mock-stack">
+          <div>
+            <div class="mock-label">macOS menu bar</div>
+            <div class="mock-bar">
+              <span class="mock-menu strong">&#63743;</span>
+              <span class="mock-menu">Finder</span>
+              <span class="mock-menu">File</span>
+              <span class="mock-menu">Edit</span>
+              <span class="mock-spacer"></span>
+              <span class="mock-genie-chip">⚡️ Genie</span>
+              <span class="mock-menu">100%</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="mock-label">Genie's own bar</div>
+            <div class="mock-bar genie-own">
+              <span class="mock-menu strong">&#63743;</span>
+              <span class="mock-menu strong">Genie</span>
+              <span class="mock-menu">File</span>
+              <span class="mock-menu">Edit</span>
+              <span class="mock-menu">View</span>
+              <span class="mock-spacer"></span>
+              <span class="mock-menu">100%</span>
+              <span class="mock-menu">Fri Sep 11&nbsp; 2:46 AM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="telemetry-strip">
+        <div class="telemetry-card">
+          <div class="telemetry-num">7</div>
+          <div class="telemetry-lbl">Glass Materials</div>
+          <div class="telemetry-sub">Vitreous Crystal → Pure Optic</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">3</div>
+          <div class="telemetry-lbl">Bar Layouts</div>
+          <div class="telemetry-sub">Capsule, Panoramic, Monolith</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">12</div>
+          <div class="telemetry-lbl">Clock Formats</div>
+          <div class="telemetry-sub">Natural language to ISO 8601</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-num">Every</div>
+          <div class="telemetry-lbl">Display Gets a Bar</div>
+          <div class="telemetry-sub">Notch-cleared, rebuilt on hot-plug</div>
         </div>
       </div>
     </div>
@@ -4255,6 +4432,21 @@
   
     // Menu Bar Studio Hub Screenshot Switcher
     const MENUBAR_DATA = {
+      geniebar: {
+        img: 'assets/screenshots/12_grand_horizon_menubar.png',
+        badge: '🍎 Retina Capture \u2022 Menu Bar & Docks',
+        pill: 'Menu Bar Studio \u2022 Genie\'s Own Bar',
+        title: 'Genie\'s Own Menu Bar \u2014 Beside Apple\'s, Not Instead of It',
+        desc: 'Genie can draw the entire menu bar itself \u2014 Apple menu, app menus, clock, battery and system controls \u2014 on every display you own. As of this build it no longer costs you the native one: the Genie status item stays in the macOS menu bar whether your own bar is switched on or off.',
+        cta: 'Open the Menu Bar & Battery Lab',
+        bullets: [
+          { icon: '\u2705', title: 'Both Bars, At Once (New):', desc: 'Turning on the custom bar used to remove Genie from the system menu bar entirely. The status item now holds its place at launch, through every rebuild, and on both sides of a spatial overlay transition.' },
+          { icon: '\ud83e\ude9f', title: '7 Glass Materials, 3 Layouts:', desc: 'Vitreous Liquid Crystal through Pure Optic Transparency, shaped as a Suspended Horizon Capsule, Continuous Panoramic Horizon, or Sculpted Monolith Pill.' },
+          { icon: '\ud83d\udcd0', title: 'Notch-Aware Dual Tier:', desc: 'Grand Dual-Tier Horizon reads the real auxiliary top-left and top-right areas to clear the camera inset; Precision Slim Profile keeps one classic tier.' },
+          { icon: '\ud83d\udda5\ufe0f', title: 'One Bar Per Display:', desc: 'A bar is built for every screen and rebuilt when you plug one in, joins all Spaces, and can stay visible or auto-hide until you reach for the top edge.' },
+          { icon: '\u231a\ufe0f', title: 'Typography & Clock Control:', desc: 'SF Pro family and weight, 10\u201318pt sizing, 9 accent colours, 3 Apple-logo styles, and 12 clock formats down to ISO 8601.' }
+        ]
+      },
       battery: {
         img: 'assets/screenshots/4_Settings_And_Battery_Styles.png',
         badge: '🔍 Zoomed UI Detail • Battery Styles & HUD',
@@ -4350,9 +4542,12 @@
       const desc = document.getElementById('menubar-pane-desc');
       const bulletsList = document.getElementById('menubar-pane-bullets');
 
+      const cta = document.getElementById('menubar-pane-cta');
+
       if (pill) pill.textContent = data.pill;
       if (title) title.textContent = data.title;
       if (desc) desc.textContent = data.desc;
+      if (cta) cta.textContent = data.cta || 'Test the Interactive Battery Lab & Simulator';
 
       if (bulletsList) {
         bulletsList.innerHTML = data.bullets.map(b => `
