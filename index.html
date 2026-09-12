@@ -3121,6 +3121,366 @@
       transform: scale(1.03);
     }
 
+    /* 🧱 Slide-Up Tetris Tools Dock (Build 500) */
+    .duo-tetris-tray {
+      max-height: 0;
+      opacity: 0;
+      padding: 0 18px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(14, 18, 26, 0.98) 0%, rgba(10, 13, 20, 0.98) 100%);
+      border-top: 1px solid transparent;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      z-index: 20;
+    }
+    .duo-tetris-tray.open {
+      max-height: 280px;
+      opacity: 1;
+      padding: 12px 18px 14px 18px;
+      border-top: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    .tetris-tray-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .tetris-overseer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tetris-overseer-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(168, 85, 247, 0.2) 70%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      animation: genieOverseerBob 2.8s ease-in-out infinite alternate;
+    }
+    @keyframes genieOverseerBob {
+      0% { transform: translateY(0px) rotate(0deg); }
+      100% { transform: translateY(-4px) rotate(3deg); }
+    }
+    .tetris-overseer-icon {
+      font-size: 18px;
+      filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+    }
+    .tetris-overseer-aura {
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      border: 1px dashed rgba(56, 189, 248, 0.5);
+      animation: spinAura 10s linear infinite;
+    }
+    @keyframes spinAura {
+      100% { transform: rotate(360deg); }
+    }
+    .tetris-overseer-label {
+      display: flex;
+      flex-direction: column;
+    }
+    .tetris-title {
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #38bdf8;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .tetris-sub {
+      font-size: 0.70rem;
+      color: rgba(255, 255, 255, 0.65);
+    }
+    .tetris-close-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.7);
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+    .tetris-close-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+    }
+    .tetris-blocks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+    }
+    .tetris-block {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      cursor: pointer;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s, border-color 0.22s, background 0.22s;
+    }
+    .tetris-block::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2.5px;
+      background: var(--block-accent, #38bdf8);
+      opacity: 0.85;
+    }
+    .tetris-block:hover {
+      transform: translateY(-3px) scale(1.02);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--block-accent, #38bdf8);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 12px var(--block-glow, rgba(56, 189, 248, 0.35));
+    }
+    .tetris-block.t-cyan { --block-accent: #38bdf8; --block-glow: rgba(56, 189, 248, 0.45); }
+    .tetris-block.t-magenta { --block-accent: #f472b6; --block-glow: rgba(244, 114, 182, 0.45); }
+    .tetris-block.t-purple { --block-accent: #a855f7; --block-glow: rgba(168, 85, 247, 0.45); }
+    .tetris-block.t-green { --block-accent: #4ade80; --block-glow: rgba(74, 222, 128, 0.45); }
+    .tetris-block.t-gold { --block-accent: #f4c375; --block-glow: rgba(244, 195, 117, 0.45); }
+    .tetris-block.t-orange { --block-accent: #fb923c; --block-glow: rgba(251, 146, 60, 0.45); }
+    .tetris-block.t-blue { --block-accent: #60a5fa; --block-glow: rgba(96, 165, 250, 0.45); }
+
+    .tetris-block.dispatched {
+      animation: tetrisBlockDisappear 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+      pointer-events: none;
+    }
+    @keyframes tetrisBlockDisappear {
+      0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+      35% {
+        transform: translateY(-18px) scale(1.08);
+        box-shadow: 0 0 24px var(--block-accent, #38bdf8);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-70px) scale(0.6);
+        opacity: 0;
+      }
+    }
+    .tetris-glyph {
+      font-size: 15px;
+    }
+    .tetris-block-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .tetris-block-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--block-accent, #38bdf8);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .duo-tetris-toggle-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.85);
+      padding: 9px 12px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .duo-tetris-toggle-btn:hover, .duo-tetris-toggle-btn.active {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* 🧞 Animated Genie Talisman Button (Voice Dictation / Send Prompt / Interrupt) */
+    .genie-talisman-btn {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: visible;
+      flex-shrink: 0;
+    }
+    .genie-talisman-btn:hover {
+      transform: scale(1.08);
+    }
+
+    /* Smoke plume container */
+    .talisman-smoke {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 20px;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+    }
+    .t-puff {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.85) 0%, rgba(168, 85, 247, 0.45) 60%, transparent 100%);
+      filter: blur(1.5px);
+      opacity: 0;
+    }
+    .t-puff.p1 {
+      left: 3px;
+      animation: puffDrift 2.2s infinite ease-out 0.1s;
+    }
+    .t-puff.p2 {
+      left: 9px;
+      animation: puffDrift 2.5s infinite ease-out 0.7s;
+    }
+    .t-puff.p3 {
+      left: 14px;
+      animation: puffDrift 2.0s infinite ease-out 1.3s;
+    }
+    @keyframes puffDrift {
+      0% {
+        transform: translateY(10px) scale(0.4);
+        opacity: 0;
+      }
+      30% {
+        opacity: 0.85;
+      }
+      80% {
+        opacity: 0.4;
+      }
+      100% {
+        transform: translateY(-16px) scale(1.6);
+        opacity: 0;
+      }
+    }
+
+    .talisman-aura {
+      position: absolute;
+      inset: -2px;
+      border-radius: 16px;
+      pointer-events: none;
+      transition: all 0.3s;
+    }
+
+    /* Idle / Deactivated State: Mystical floating Genie with gentle smoke plume */
+    .genie-talisman-btn.idle {
+      border-color: rgba(56, 189, 248, 0.35);
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.15) 0%, rgba(14, 18, 26, 0.85) 100%);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+    }
+    .genie-talisman-btn.idle .talisman-aura {
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    /* Text Ready / Send State: Bright gold & cyan aura */
+    .genie-talisman-btn.ready-send {
+      border-color: rgba(244, 195, 117, 0.85);
+      background: radial-gradient(circle at center, rgba(244, 195, 117, 0.30) 0%, rgba(14, 18, 26, 0.95) 100%);
+      box-shadow: 0 0 20px rgba(244, 195, 117, 0.55);
+      transform: scale(1.04);
+    }
+
+    /* Voice Listening State: Expanding soundwave rings */
+    .genie-talisman-btn.listening {
+      border-color: #38bdf8;
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.4) 0%, rgba(14, 18, 26, 0.9) 100%);
+      box-shadow: 0 0 22px rgba(56, 189, 248, 0.65);
+    }
+    .genie-talisman-btn.listening::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 18px;
+      border: 1.5px solid #38bdf8;
+      animation: audioPulse 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+    }
+    @keyframes audioPulse {
+      0% { transform: scale(0.95); opacity: 1; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    /* Processing / Generating State: Bottled intense plasma + Click to STOP */
+    .genie-talisman-btn.processing {
+      border-color: rgba(239, 68, 68, 0.7);
+      background: radial-gradient(circle at center, rgba(168, 85, 247, 0.4) 0%, rgba(239, 68, 68, 0.2) 60%, rgba(14, 18, 26, 0.95) 100%);
+      box-shadow: 0 0 24px rgba(168, 85, 247, 0.55), 0 0 10px rgba(239, 68, 68, 0.45);
+      animation: processingPulsate 1.0s infinite alternate ease-in-out;
+    }
+    @keyframes processingPulsate {
+      0% { transform: scale(1.0); box-shadow: 0 0 16px rgba(168, 85, 247, 0.4); }
+      100% { transform: scale(1.06); box-shadow: 0 0 26px rgba(168, 85, 247, 0.7), 0 0 14px rgba(239, 68, 68, 0.5); }
+    }
+    .genie-talisman-btn.processing:hover {
+      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.3);
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.75);
+    }
+
+    .talisman-icon-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+    }
+    .talisman-bottle-svg {
+      width: 26px;
+      height: 26px;
+      filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.6));
+      transition: transform 0.2s;
+    }
+    .talisman-sub-icon {
+      position: absolute;
+      bottom: -4px;
+      right: -6px;
+      font-size: 11px;
+      background: rgba(14, 18, 26, 0.9);
+      border-radius: 50%;
+      padding: 1px;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+      transition: all 0.2s;
+    }
+
     /* Right Display: Duo Fold Live Studio & WebKit Canvas */
     .duo-screen-right {
       display: flex;
@@ -3776,11 +4136,90 @@
           <button class="duo-action-chip" onclick="triggerDuoDemo('scan')">🔍 Screen Vision Grounding</button>
         </div>
 
-        <!-- Input Bar -->
+        <!-- Slide-Up Tetris Tools Dock (Build 500) -->
+        <div class="duo-tetris-tray" id="duo-tetris-tray">
+          <div class="tetris-tray-header">
+            <div class="tetris-overseer">
+              <div class="tetris-overseer-avatar">
+                <div class="tetris-overseer-aura"></div>
+                <span class="tetris-overseer-icon">🪔</span>
+              </div>
+              <div class="tetris-overseer-label">
+                <span class="tetris-title">TETRIS BUILD 500 TOOLS DOCK</span>
+                <span class="tetris-sub">Click any block to tetris into execution stream</span>
+              </div>
+            </div>
+            <button class="tetris-close-btn" onclick="toggleTetrisToolsTray()" title="Close Tetris Dock (⌘T)">✕</button>
+          </div>
+          <div class="tetris-blocks-grid">
+            <button class="tetris-block t-cyan" onclick="dispatchTetrisTool(this, 'microvm', 'In-RAM Linux MicroVM', 'hypervisor.spawn_microvm(ram_mb: 512, ephemeral: true)')">
+              <span class="tetris-glyph">⚡️</span>
+              <span class="tetris-block-title">In-RAM MicroVM</span>
+              <span class="tetris-block-tag">HYPERVISOR</span>
+            </button>
+            <button class="tetris-block t-magenta" onclick="dispatchTetrisTool(this, 'scan', 'Screen Grounding', 'agent.inspect_screen(grounding: .subpixel)')">
+              <span class="tetris-glyph">🔍</span>
+              <span class="tetris-block-title">Screen Grounding</span>
+              <span class="tetris-block-tag">VISION</span>
+            </button>
+            <button class="tetris-block t-purple" onclick="dispatchTetrisTool(this, '3d-canvas', 'Duo Fold Studio', 'metal.set_viewport(canvas: \'Display2\', fps: 120)')">
+              <span class="tetris-glyph">🚀</span>
+              <span class="tetris-block-title">Duo Fold Studio</span>
+              <span class="tetris-block-tag">METAL 3</span>
+            </button>
+            <button class="tetris-block t-green" onclick="dispatchTetrisTool(this, 'airlock', 'APFS Airlock', 'airlock.sandbox_quarantine(mode: .sealed)')">
+              <span class="tetris-glyph">📦</span>
+              <span class="tetris-block-title">APFS Airlock</span>
+              <span class="tetris-block-tag">STORAGE</span>
+            </button>
+            <button class="tetris-block t-gold" onclick="dispatchTetrisTool(this, 'reasoning', 'Deep Reasoning', 'localModels.generate(reasoning: .extended)')">
+              <span class="tetris-glyph">🧠</span>
+              <span class="tetris-block-title">Deep Reasoning</span>
+              <span class="tetris-block-tag">LOCAL R1</span>
+            </button>
+            <button class="tetris-block t-orange" onclick="dispatchTetrisTool(this, 'pillows', 'Clock Pillows', 'openTab(.pillows)')">
+              <span class="tetris-glyph">⏱️</span>
+              <span class="tetris-block-title">Clock Pillows</span>
+              <span class="tetris-block-tag">OLED RIM</span>
+            </button>
+            <button class="tetris-block t-blue" onclick="dispatchTetrisTool(this, 'terminal', 'Terminal Studio', 'terminal.attach_pty()')">
+              <span class="tetris-glyph">🐚</span>
+              <span class="tetris-block-title">Terminal Studio</span>
+              <span class="tetris-block-tag">PTY STREAM</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Input Bar with Tetris Tools Toggle & Animated Genie Talisman Button -->
         <div class="duo-input-area">
-          <input type="text" id="duo-user-input" class="duo-text-input" placeholder="Ask Genie to automate macOS, generate shaders, or orchestrate tools..." onkeydown="if(event.key==='Enter') sendDuoMessage()">
-          <button class="duo-send-btn" onclick="sendDuoMessage()">
-            <span>Send</span> <span>⏎</span>
+          <button class="duo-tetris-toggle-btn" id="duo-tetris-toggle-btn" onclick="toggleTetrisToolsTray()" title="Toggle Slide-Up Tetris Tools Dock (⌘T)">
+            <span class="tetris-icon-glyph">🧱</span>
+            <span class="tetris-btn-label">Tools</span>
+          </button>
+          <input type="text" id="duo-user-input" class="duo-text-input" placeholder="Ask Genie or click talisman to voice dictate / send..." oninput="updateTalismanState()" onkeydown="if(event.key==='Enter') handleTalismanClick()">
+          
+          <!-- Animated Genie Talisman Button (Voice Dictation / Send Prompt / Interrupt) -->
+          <button class="genie-talisman-btn idle" id="genie-talisman-btn" onclick="handleTalismanClick()" title="Send prompt or start voice dictation">
+            <div class="talisman-aura"></div>
+            <div class="talisman-smoke">
+              <span class="t-puff p1"></span>
+              <span class="t-puff p2"></span>
+              <span class="t-puff p3"></span>
+            </div>
+            <div class="talisman-icon-wrapper">
+              <svg class="talisman-bottle-svg" viewBox="0 0 32 32" fill="none">
+                <path d="M16 6C17.1 6 18 6.9 18 8V9.5C21.5 10.5 24 13.5 24 17C24 18.5 23.2 20 22 21L23 25C23.2 25.8 22.6 26.5 21.8 26.5H10.2C9.4 26.5 8.8 25.8 9 25L10 21C8.8 20 8 18.5 8 17C8 13.5 10.5 10.5 14 9.5V8C14 6.9 14.9 6 16 6Z" fill="url(#talismanGrad)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+                <circle cx="16" cy="17" r="2.5" fill="#38bdf8"/>
+                <defs>
+                  <linearGradient id="talismanGrad" x1="8" y1="6" x2="24" y2="26.5" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#38bdf8"/>
+                    <stop offset="0.5" stop-color="#a855f7"/>
+                    <stop offset="1" stop-color="#f4c375"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span class="talisman-sub-icon" id="talisman-sub-icon">🎤</span>
+            </div>
           </button>
         </div>
       </div>
@@ -5866,15 +6305,205 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
       requestAnimationFrame(render3DGalaxy);
     }
 
-    // 6. Live Duo Demo Trigger Handler
+    // 6. Live Duo Demo Trigger Handler & Tetris Dock System
+    let isTetrisTrayOpen = false;
+    let isDuoGenerating = false;
+    let isDuoListening = false;
+    let duoAudioTimer = null;
+
+    function toggleTetrisToolsTray() {
+      const tray = document.getElementById('duo-tetris-tray');
+      const btn = document.getElementById('duo-tetris-toggle-btn');
+      if (!tray) return;
+      isTetrisTrayOpen = !isTetrisTrayOpen;
+      if (isTetrisTrayOpen) {
+        tray.classList.add('open');
+        if (btn) btn.classList.add('active');
+      } else {
+        tray.classList.remove('open');
+        if (btn) btn.classList.remove('active');
+      }
+    }
+
+    function dispatchTetrisTool(blockElement, action, title, toolCode) {
+      if (!blockElement) return;
+      blockElement.classList.add('dispatched');
+      appendChatMsg('user', `Dispatch tool: ${title}`);
+      
+      setTimeout(() => {
+        toggleTetrisToolsTray();
+        blockElement.classList.remove('dispatched');
+      }, 420);
+
+      if (action === '3d-canvas') {
+        setRightDisplayTab('canvas');
+      } else if (action === 'microvm') {
+        setRightDisplayTab('vm');
+      } else if (action === 'pillows' || action === 'reasoning') {
+        setRightDisplayTab('code');
+      }
+
+      setTalismanProcessing(true);
+
+      setTimeout(() => {
+        if (!isDuoGenerating) return;
+        appendChatMsg('genie', `
+          <div class="genie-reasoning-box">
+            <div class="genie-reasoning-header" onclick="toggleReasoning(this)">
+              <span><span class="genie-brain-icon">🧠</span> Autonomous Reasoning Process (48ms)</span>
+              <span class="reasoning-arrow">▲</span>
+            </div>
+            <div class="genie-reasoning-body">
+              • Dispatched Tetris action: ${title}.<br>
+              • Hardware isolation verified via Swift 6 concurrency actor.<br>
+              • Pipeline state committed into unified memory with 0 latency hitch.
+            </div>
+          </div>
+          <div class="genie-tool-call">
+            <span class="genie-tool-badge exec">TOOL EXEC</span>
+            <code>${toolCode}</code>
+            <span class="genie-tool-badge success">EXIT 0 · DISPATCHED ✨</span>
+          </div>
+          <p>✨ <b>${title}</b> executed successfully. Tetris block streamed into memory dock.</p>
+        `);
+        setTalismanProcessing(false);
+      }, 700);
+    }
+
+    function updateTalismanState() {
+      if (isDuoGenerating || isDuoListening) return;
+      const input = document.getElementById('duo-user-input');
+      const btn = document.getElementById('genie-talisman-btn');
+      const subIcon = document.getElementById('talisman-sub-icon');
+      if (!btn || !input) return;
+
+      const hasText = input.value.trim().length > 0;
+      if (hasText) {
+        btn.className = 'genie-talisman-btn ready-send';
+        btn.title = 'Send prompt (⏎)';
+        if (subIcon) subIcon.textContent = '⏎';
+      } else {
+        btn.className = 'genie-talisman-btn idle';
+        btn.title = 'Start voice dictation or send prompt';
+        if (subIcon) subIcon.textContent = '🎤';
+      }
+    }
+
+    function handleTalismanClick() {
+      const input = document.getElementById('duo-user-input');
+      const btn = document.getElementById('genie-talisman-btn');
+      if (!btn) return;
+
+      // 1. If currently generating: STOP / INTERRUPT
+      if (isDuoGenerating) {
+        stopDuoGeneration();
+        return;
+      }
+
+      // 2. If text entered: SEND PROMPT
+      if (input && input.value.trim().length > 0) {
+        sendDuoMessage();
+        return;
+      }
+
+      // 3. If empty: TOGGLE VOICE DICTATION
+      if (!isDuoListening) {
+        startVoiceDictation();
+      } else {
+        stopVoiceDictation();
+      }
+    }
+
+    function setTalismanProcessing(processing) {
+      isDuoGenerating = processing;
+      const btn = document.getElementById('genie-talisman-btn');
+      const subIcon = document.getElementById('talisman-sub-icon');
+      if (!btn) return;
+
+      if (processing) {
+        btn.className = 'genie-talisman-btn processing';
+        btn.title = 'Click to Stop / Interrupt Generation (■)';
+        if (subIcon) subIcon.textContent = '⏹️';
+      } else {
+        updateTalismanState();
+      }
+    }
+
+    function stopDuoGeneration() {
+      setTalismanProcessing(false);
+      appendChatMsg('genie', `
+        <p style="color: #fb923c; margin: 4px 0;">
+          ⏹️ <b>Generation Interrupted</b> by Genie talisman click. Metal compute pipeline and Hypervisor threads paused.
+        </p>
+      `);
+    }
+
+    function startVoiceDictation() {
+      isDuoListening = true;
+      const btn = document.getElementById('genie-talisman-btn');
+      const subIcon = document.getElementById('talisman-sub-icon');
+      const input = document.getElementById('duo-user-input');
+      if (btn) {
+        btn.className = 'genie-talisman-btn listening';
+        btn.title = 'Listening to speech stream... Click to finish';
+      }
+      if (subIcon) subIcon.textContent = '🔴';
+      if (input) {
+        input.placeholder = '🎙️ Listening to voice stream (Apple Speech Framework)...';
+      }
+
+      const voicePhrases = [
+        "Render 3D spatial particle galaxy on Display 2 with 120 FPS momentum physics",
+        "Spawn ephemeral In-RAM Alpine Linux microVM via Apple Hypervisor",
+        "Inspect active window coordinates with ScreenCaptureKit subpixel vision",
+        "Switch World Clock Pillows to Tokyo 9:00 AM specular rim gradient"
+      ];
+      const chosen = voicePhrases[Math.floor(Math.random() * voicePhrases.length)];
+
+      duoAudioTimer = setTimeout(() => {
+        if (input) {
+          input.value = chosen;
+          input.placeholder = 'Ask Genie or click talisman to voice dictate / send...';
+        }
+        stopVoiceDictation();
+        updateTalismanState();
+        setTimeout(() => {
+          sendDuoMessage();
+        }, 400);
+      }, 1500);
+    }
+
+    function stopVoiceDictation() {
+      isDuoListening = false;
+      if (duoAudioTimer) {
+        clearTimeout(duoAudioTimer);
+        duoAudioTimer = null;
+      }
+      updateTalismanState();
+    }
+
+    // Global keyboard listener for ⌘T (Toggle Tetris Dock)
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 't') {
+        const active = document.activeElement;
+        if (!active || active.id === 'duo-user-input' || active.tagName !== 'INPUT') {
+          e.preventDefault();
+          toggleTetrisToolsTray();
+        }
+      }
+    });
+
     function triggerDuoDemo(action) {
       const chatStream = document.getElementById('duo-chat-stream');
       if (!chatStream) return;
+
+      setTalismanProcessing(true);
 
       if (action === '3d-canvas') {
         setRightDisplayTab('canvas');
         appendChatMsg('user', 'Show me the 3D Spatial Canvas with momentum inertia physics.');
         setTimeout(() => {
+          if (!isDuoGenerating) return;
           appendChatMsg('genie', `
             <div class="genie-reasoning-box">
               <div class="genie-reasoning-header" onclick="toggleReasoning(this)">
@@ -5894,11 +6523,13 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
             </div>
             <p>Spatial Particle Universe active on Display 2! Drag anywhere on the canvas to rotate in 3D.</p>
           `);
-        }, 300);
+          setTalismanProcessing(false);
+        }, 500);
       } else if (action === 'microvm') {
         setRightDisplayTab('vm');
         appendChatMsg('user', 'Spin up an ephemeral In-RAM Linux MicroVM via Apple Hypervisor.');
         setTimeout(() => {
+          if (!isDuoGenerating) return;
           appendChatMsg('genie', `
             <div class="genie-reasoning-box">
               <div class="genie-reasoning-header" onclick="toggleReasoning(this)">
@@ -5918,18 +6549,22 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
             </div>
             <p>Ephemeral Linux microVM is booted and active in RAM. Shell stream connected to Display 2.</p>
           `);
-        }, 300);
+          setTalismanProcessing(false);
+        }, 500);
       } else if (action === 'pillows') {
         setRightDisplayTab('code');
         appendChatMsg('user', 'Inspect World Clock Pillows specular rim gradient implementation.');
         setTimeout(() => {
+          if (!isDuoGenerating) return;
           appendChatMsg('genie', `
             <p>Showing <code>WorldClockPillowView.swift</code> with 24-timezone temporal scrubber and OLED blackout specular rim shaders on Display 2.</p>
           `);
-        }, 300);
+          setTalismanProcessing(false);
+        }, 400);
       } else if (action === 'scan') {
         appendChatMsg('user', 'Scan active screens and ground UI coordinates via ScreenCaptureKit.');
         setTimeout(() => {
+          if (!isDuoGenerating) return;
           appendChatMsg('genie', `
             <div class="genie-tool-call">
               <span class="genie-tool-badge exec">VISION</span>
@@ -5938,7 +6573,8 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
             </div>
             <p>Identified 48 actionable UI bounding boxes across both displays with subpixel precision.</p>
           `);
-        }, 300);
+          setTalismanProcessing(false);
+        }, 450);
       }
     }
 
@@ -5947,9 +6583,13 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
       if (!input || !input.value.trim()) return;
       const text = input.value.trim();
       input.value = '';
+      updateTalismanState();
       appendChatMsg('user', text);
 
+      setTalismanProcessing(true);
+
       setTimeout(() => {
+        if (!isDuoGenerating) return;
         appendChatMsg('genie', `
           <div class="genie-reasoning-box">
             <div class="genie-reasoning-header" onclick="toggleReasoning(this)">
@@ -5969,7 +6609,8 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
           </div>
           <p>Task executed across both displays. All operations preserved in RAM with 0% CPU idle.</p>
         `);
-      }, 400);
+        setTalismanProcessing(false);
+      }, 750);
     }
 
     function appendChatMsg(sender, htmlContent) {
