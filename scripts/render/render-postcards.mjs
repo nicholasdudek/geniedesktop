@@ -36,7 +36,8 @@ const isAppStoreSize = renderer.outputWidth === 2880 && renderer.outputHeight ==
 console.log(`Rendering ${selected.length} postcard(s) at ${renderer.label} (scale ${renderer.scale.toFixed(3)})`);
 if (!isAppStoreSize) console.log('  (non-App-Store size — writing masters to Postcards_Showcase_Suite only)');
 
-await Promise.all([SUITE, BUILD14, SHOWCASE, WEB].map((d) => mkdir(d, { recursive: true })));
+const ROOT_POSTCARDS = resolve(GOLDGATE, 'assets/postcards');
+await Promise.all([SUITE, BUILD14, SHOWCASE, WEB, ROOT_POSTCARDS].map((d) => mkdir(d, { recursive: true })));
 
 const started = Date.now();
 try {
@@ -55,6 +56,25 @@ try {
       await copyFile(master, resolve(SUITE, item.appstore_name));
       await copyFile(master, resolve(BUILD14, item.appstore_name));
       await copyFile(master, resolve(WEB, `${item.slug}.png`));
+      await copyFile(master, resolve(GOLDGATE, `assets/postcards/${item.slug}.png`));
+
+      // Synchronize with legacy App Store screenshot slots for web carousel & grid
+      const legacyNames = [
+        "01_Spatial_Canvas_Launch.png",
+        "02_App_Matrix_Navigation.png",
+        "03_Studio_Hub_Living_Themes.png",
+        "04_Wallpaper_Camouflage_Mode.png",
+        "05_Geometric_Formations_Lotus.png",
+        "06_Fibonacci_Galaxy_Spiral.png",
+        "07_Motion_Physics_And_Gestures.png",
+        "08_Spatial_Sound_Engine.png",
+        "09_Dynamic_Battery_Status_Bar.png",
+        "10_VIP_Expansion_Store.png"
+      ];
+      if (n < legacyNames.length) {
+        await copyFile(master, resolve(GOLDGATE, `assets/images/appstore_screenshots/${legacyNames[n]}`));
+        await copyFile(master, resolve(GOLDGATE, `web/assets/images/appstore_screenshots/${legacyNames[n]}`));
+      }
     }
 
     console.log(`  [${n + 1}/${selected.length}] ${item.title} — ${((Date.now() - t0) / 1000).toFixed(1)}s`);

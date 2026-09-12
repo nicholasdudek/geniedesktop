@@ -93,9 +93,15 @@ try {
       master,
     ]);
 
+    const rootVideo = resolve(GOLDGATE, 'assets/video');
+    const rootPreviews = resolve(GOLDGATE, 'assets/previews');
+    await Promise.all([rootVideo, rootPreviews].map((d) => mkdir(d, { recursive: true })));
+
     if (isAppStoreSize) {
       await copyFile(master, resolve(OUT_APPSTORE, `${item.name}.mp4`));
       await copyFile(master, resolve(OUT_WEB, `${item.name}.mp4`));
+      await copyFile(master, resolve(rootVideo, `${item.name}.mp4`));
+      await copyFile(master, resolve(rootPreviews, `${item.name}.mp4`));
     }
 
     // Looping preview for the web page and GitHub readme. ffmpeg here has no
@@ -111,19 +117,23 @@ try {
       '-lavfi', `${filters}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5`,
       '-loop', '0', gif]);
     await rm(palette, { force: true });
+    await copyFile(gif, resolve(rootPreviews, `${item.name}.gif`));
 
     if (hasGif2Webp) {
-      await run('gif2webp', ['-q', '78', '-m', '4', '-mt', gif,
-        '-o', resolve(OUT_WEB, `${item.name}.webp`)]);
+      const webp = resolve(OUT_WEB, `${item.name}.webp`);
+      await run('gif2webp', ['-q', '78', '-m', '4', '-mt', gif, '-o', webp]);
+      await copyFile(webp, resolve(rootPreviews, `${item.name}.webp`));
     }
 
     // Poster from the showcase scene (~40% in). -update 1 is required for a
     // single still, otherwise the image2 muxer wants a %0Nd sequence pattern.
+    const poster = resolve(OUT_WEB, `${item.name}_poster.png`);
     await run('ffmpeg', [
       '-y', '-ss', String(duration * 0.4), '-i', master,
       '-frames:v', '1', '-update', '1',
-      resolve(OUT_WEB, `${item.name}_poster.png`),
+      poster,
     ]);
+    await copyFile(poster, resolve(rootPreviews, `${item.name}_poster.png`));
 
     await rm(frameDir, { recursive: true, force: true });
     console.log(` ${total} frames, ${((Date.now() - t0) / 1000).toFixed(1)}s`);

@@ -72,7 +72,7 @@ ${theme}
     ${showCapture ? `<div class="shot capture-frame"><img src="${capture}" alt=""></div>` : ''}
     <div class="content">
       <div class="top">
-        <div class="stamp">Genie 4.0 &nbsp;&bull;&nbsp; Sovereign macOS Desktop</div>
+        <div class="stamp">Genie Build 500 &nbsp;&bull;&nbsp; Sovereign macOS Desktop</div>
         <div class="watermark">Genie</div>
       </div>
       <div class="headline">

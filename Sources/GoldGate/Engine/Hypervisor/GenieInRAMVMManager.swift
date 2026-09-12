@@ -220,11 +220,12 @@ public final class GenieInRAMVMManager: ObservableObject {
         return false
     }
 
-    private func checkExistingMount() {
+    nonisolated private func checkExistingMount() {
         if FileManager.default.fileExists(atPath: Self.ramDiskDefaultMountURL.path) {
             let path = Self.ramDiskDefaultMountURL.path
             let device = findDeviceForVolume(name: Self.ramDiskVolumeName)
-            DispatchQueue.main.async {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
                 self.isRAMDiskMounted = true
                 self.ramDiskMountPath = path
                 self.ramDiskDevice = device
@@ -233,7 +234,7 @@ public final class GenieInRAMVMManager: ObservableObject {
         }
     }
 
-    private func findDeviceForVolume(name: String) -> String? {
+    nonisolated private func findDeviceForVolume(name: String) -> String? {
         guard GenieCapabilities.canSpawnSubprocesses else { return nil }
 
         let proc = Process()

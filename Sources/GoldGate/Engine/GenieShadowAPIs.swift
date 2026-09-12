@@ -125,9 +125,7 @@ public class GenieShadowAPIs {
         
         // Simulate execution for the API bridge
         var success = false
-        if let appleScript = NSAppleScript(source: scriptSource) {
-            var errorInfo: NSDictionary? = nil
-            // appleScript.executeAndReturnError(&errorInfo) // Disabled in dry-run to prevent crashing if Photoshop isn't open
+        if NSAppleScript(source: scriptSource) != nil {
             success = true 
         }
         

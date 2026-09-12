@@ -2,51 +2,51 @@
   {
     "id": "1",
     "name": "App_Preview_1_Spatial_Canvas_1080p",
-    "title": "THE INSTANT SUMMON",
-    "subtitle": "Opening the Menu Bar Rail & 81-Screen Spatial Canvas",
-    "feature_title": "SPATIAL DESKTOP MATRIX",
-    "feature_desc": "Continuous coordinate mapping across an infinite 81-screen plane with 120 FPS Metal rendering.",
+    "title": "AUTONOMOUS OS AGENT",
+    "subtitle": "Genie Build 500 — Live Tool Execution & OS Control",
+    "feature_title": "COREGRAPHICS & SHADOW APIS",
+    "feature_desc": "Autonomous mouse movement, keyboard typing, accessibility tree inspection, and 19 shadow tools.",
     "bg_wallpaper": "GenieAerial4K.jpg",
-    "main_capture": "21_spatial_desktop_grid.png",
+    "main_capture": "04_executive_intelligence_ai.png",
     "accent": "#f4c375",
     "pills": [
-      "81-Screen Universe",
-      "Sub-35MB Footprint",
-      "Zero Telemetry"
+      "CGEvent Input Injection",
+      "AXUIElement Tree",
+      "19 Shadow Tools"
     ],
-    "callout": "Tap Cmd+Shift+Space to expand into infinite space"
+    "callout": "Full autonomous desktop agent with zero cloud telemetry"
   },
   {
     "id": "2",
     "name": "App_Preview_2_Living_Themes_1080p",
-    "title": "AUTONOMOUS CREATION STUDIO",
-    "subtitle": "Opening Genie Chat & Dual-Tab Live Web Studio",
-    "feature_title": "VISION AI & LIVE WEB STUDIO",
-    "feature_desc": "On-device reasoning with real-time tool execution, live HTML5/CSS preview, and instant source editing.",
+    "title": "DUO FOLD CODE STUDIO",
+    "subtitle": "Genie Build 500 — Dual-Pane Web Studio & Live Preview",
+    "feature_title": "SPLIT-SCREEN LIVE PREVIEW",
+    "feature_desc": "Real-time HTML5/CSS preview with integrated code inspector and vision AI reasoning.",
     "bg_wallpaper": "GoldenGateSunset.jpg",
     "main_capture": "19_chat_dual_tab_preview.png",
     "accent": "#60a5fa",
     "pills": [
-      "Local Vision Model",
+      "Vision-Guided Agent",
       "Live Split Preview",
-      "Local Ollama Routing"
+      "Local Ollama Models"
     ],
-    "callout": "Instant live rendering of code creations"
+    "callout": "Instant live rendering of autonomous code creations"
   },
   {
     "id": "3",
     "name": "App_Preview_3_Formations_And_Controls_1080p",
-    "title": "SOVEREIGN POWER STATION",
-    "subtitle": "Opening World Clock Pillows & Dedicated Linux Hypervisor",
-    "feature_title": "OLED CLOCKS & HYPERVISOR",
-    "feature_desc": "Specular rim blackout clock cards and direct Apple Silicon virtualization kernel for Linux clones.",
+    "title": "SOVEREIGN IN-RAM HYPERVISOR",
+    "subtitle": "Genie Build 500 — Micro-VM Swarms & World Clock Pillows",
+    "feature_title": "LINUX VMS & OLED PILLOWS",
+    "feature_desc": "Direct Apple Silicon virtualization kernel with millisecond micro-clones and blackout OLED clock pillows.",
     "bg_wallpaper": "SonomaHorizon.jpg",
     "main_capture": "18_hypervisor_ai_stations.png",
     "accent": "#34d399",
     "pills": [
-      "Direct Virtualization",
-      "Time Travel Scrubber",
-      "Parallel Thread Sentinel"
+      "In-RAM Virtualization",
+      "OLED Clock Pillows",
+      "Parallel Sentinel"
     ],
     "callout": "Spin up isolated Linux clones in milliseconds"
   }

@@ -1,64 +1,30 @@
 [
   {
     "id": "01",
-    "slug": "01_postcard_spatial_canvas",
-    "appstore_name": "01_AppStore_2880x1800_Spatial_Desktop_Canvas.png",
-    "title": "SPATIAL DESKTOP CANVAS",
-    "subtitle": "Continuous 3x3 to 9x9 multi-space desktop matrix with frustum-culled 120 FPS navigation.",
-    "badge": "EDITION 01 \u2022 SPATIAL MATRIX",
+    "slug": "01_postcard_os_agent",
+    "appstore_name": "01_AppStore_2880x1800_Autonomous_OS_Agent.png",
+    "title": "AUTONOMOUS OS AGENT",
+    "subtitle": "Native CoreGraphics mouse control, AppleScript keyboard injection, and live UI automation.",
+    "badge": "EDITION 01 • AUTONOMOUS OS AGENT",
     "pills": [
-      "81-Screen Universe",
-      "Sub-35MB RAM",
-      "Zero Telemetry"
+      "CGEvent Input Injection",
+      "AXUIElement Accessibility",
+      "19 Shadow API Tools"
     ],
-    "capture": "21_spatial_desktop_grid.png",
+    "capture": "04_executive_intelligence_ai.png",
     "wallpaper": "GenieAerial4K.jpg",
-    "is_fullscreen": true,
+    "is_fullscreen": false,
     "accent": "#f4c375"
   },
   {
     "id": "02",
-    "slug": "02_postcard_ai_agent_studio",
-    "appstore_name": "02_AppStore_2880x1800_Genie_Chat_AI_Agent.png",
-    "title": "AUTONOMOUS LOCAL AI AGENT",
-    "subtitle": "Integrated vision intelligence with real-time tool execution and live split-screen preview.",
-    "badge": "EDITION 02 \u2022 LOCAL INTELLIGENCE",
+    "slug": "02_postcard_hypervisor_vm",
+    "appstore_name": "02_AppStore_2880x1800_InRAM_Hypervisor_VMs.png",
+    "title": "IN-RAM LINUX HYPERVISOR",
+    "subtitle": "Apple Silicon virtualization kernel with micro-clone swarms and zero cloud dependencies.",
+    "badge": "EDITION 02 • SOVEREIGN HYPERVISOR",
     "pills": [
-      "Vision Guided",
-      "Live HTML/CSS Preview",
-      "Ollama & Apple Silicon"
-    ],
-    "capture": "19_chat_dual_tab_preview.png",
-    "wallpaper": "GoldenGateSunset.jpg",
-    "is_fullscreen": true,
-    "accent": "#60a5fa"
-  },
-  {
-    "id": "03",
-    "slug": "03_postcard_world_clock_pillows",
-    "appstore_name": "03_AppStore_2880x1800_World_Clock_Pillows.png",
-    "title": "OLED WORLD CLOCK PILLOWS",
-    "subtitle": "Blackout specular rim gradient cards with analog sweep hands, alarms & time travel scrubber.",
-    "badge": "EDITION 03 \u2022 TIME MATRIX",
-    "pills": [
-      "Time Travel Scrubber",
-      "Looping Chimes",
-      "Multi-Zone Clocks"
-    ],
-    "capture": "17_world_clock_pillows.png",
-    "wallpaper": "iMacPurple.jpg",
-    "is_fullscreen": false,
-    "accent": "#c084fc"
-  },
-  {
-    "id": "04",
-    "slug": "04_postcard_hypervisor_vm",
-    "appstore_name": "04_AppStore_2880x1800_AI_Stations_Hypervisor.png",
-    "title": "SOVEREIGN LINUX HYPERVISOR",
-    "subtitle": "Direct Apple Silicon virtualization kernel with millisecond micro-clones and zero cloud dependencies.",
-    "badge": "EDITION 04 \u2022 KERNEL HYPERVISOR",
-    "pills": [
-      "Native Virtualization",
+      "In-Memory Linux Swarms",
       "Virtio-FS Fast Bridge",
       "Zero Cloud Overhead"
     ],
@@ -68,15 +34,100 @@
     "accent": "#34d399"
   },
   {
+    "id": "03",
+    "slug": "03_postcard_duo_fold_studio",
+    "appstore_name": "03_AppStore_2880x1800_Duo_Fold_DualTab_Studio.png",
+    "title": "DUO FOLD CODE STUDIO",
+    "subtitle": "Dual-pane code synthesis with real-time browser preview, inspect inspector, and instant sync.",
+    "badge": "EDITION 03 • DUO FOLD STUDIO",
+    "pills": [
+      "Vision-Guided Agent",
+      "Live WebKit Preview",
+      "Instant Code Synthesis"
+    ],
+    "capture": "19_chat_dual_tab_preview.png",
+    "wallpaper": "GoldenGateSunset.jpg",
+    "is_fullscreen": true,
+    "accent": "#60a5fa"
+  },
+  {
+    "id": "04",
+    "slug": "04_postcard_world_clock_pillows",
+    "appstore_name": "04_AppStore_2880x1800_World_Clock_Pillows.png",
+    "title": "OLED WORLD CLOCK PILLOWS",
+    "subtitle": "Blackout specular rim cards with analog sweep hands, multi-timezone alarms & scrubber.",
+    "badge": "EDITION 04 • TIME MATRIX",
+    "pills": [
+      "Time Travel Scrubber",
+      "Looping Alarm Chimes",
+      "Multi-Zone Pillows"
+    ],
+    "capture": "17_world_clock_pillows.png",
+    "wallpaper": "iMacPurple.jpg",
+    "is_fullscreen": false,
+    "accent": "#c084fc"
+  },
+  {
     "id": "05",
-    "slug": "05_postcard_living_themes_shaders",
-    "appstore_name": "05_AppStore_2880x1800_Living_Themes_Shaders.png",
+    "slug": "05_postcard_spatial_canvas",
+    "appstore_name": "05_AppStore_2880x1800_Spatial_Desktop_Canvas.png",
+    "title": "SPATIAL DESKTOP MATRIX",
+    "subtitle": "Continuous 81-screen coordinate universe with frustum-culled 120 FPS navigation.",
+    "badge": "EDITION 05 • SPATIAL MATRIX",
+    "pills": [
+      "81-Screen Universe",
+      "Sub-35MB Footprint",
+      "Zero Telemetry"
+    ],
+    "capture": "21_spatial_desktop_grid.png",
+    "wallpaper": "GenieAerial4K.jpg",
+    "is_fullscreen": true,
+    "accent": "#f4c375"
+  },
+  {
+    "id": "06",
+    "slug": "06_postcard_diagnostics_sentinel",
+    "appstore_name": "06_AppStore_2880x1800_System_Diagnostics_Sentinel.png",
+    "title": "SYSTEM SENTINEL HUD",
+    "subtitle": "Continuous parallel thread telemetry, memory headroom guard, and zero-telemetry proof.",
+    "badge": "EDITION 06 • SENTINEL TELEMETRY",
+    "pills": [
+      "Parallel Thread Sentinel",
+      "Memory Headroom Guard",
+      "Zero Telemetry Proof"
+    ],
+    "capture": "20_system_diagnostics_sentinel.png",
+    "wallpaper": "Macintosh.jpg",
+    "is_fullscreen": true,
+    "accent": "#94a3b8"
+  },
+  {
+    "id": "07",
+    "slug": "07_postcard_battery_telemetry",
+    "appstore_name": "07_AppStore_2880x1800_Dynamic_Battery_Telemetry.png",
+    "title": "DYNAMIC BATTERY TELEMETRY",
+    "subtitle": "Live SMC wattage sampling, 28+ gauge styles, minimal pills, and clamshell stay-awake.",
+    "badge": "EDITION 07 • POWER TELEMETRY",
+    "pills": [
+      "Live Wattage Draw",
+      "Clamshell Stay-Awake",
+      "SMC Hardware Rail"
+    ],
+    "capture": "01_power_reserve_battery.png",
+    "wallpaper": "iMacOrange.jpg",
+    "is_fullscreen": false,
+    "accent": "#4ade80"
+  },
+  {
+    "id": "08",
+    "slug": "08_postcard_living_themes_shaders",
+    "appstore_name": "08_AppStore_2880x1800_Living_Themes_Shaders.png",
     "title": "LIVING THEMES & METAL SHADERS",
-    "subtitle": "120 FPS Metal fluid dynamics, frosted vitreous glass, and dynamic 4K aerial murals.",
-    "badge": "EDITION 05 \u2022 METAL ATMOSPHERES",
+    "subtitle": "120 FPS GPU fluid dynamics, frosted vitreous glass, and dynamic 4K aerial murals.",
+    "badge": "EDITION 08 • METAL ATMOSPHERES",
     "pills": [
       "120 FPS Metal Shaders",
-      "Vitreous Glass",
+      "Vitreous Liquid Glass",
       "Day/Night Transitions"
     ],
     "capture": "02_atmospheric_murals_shaders.png",
@@ -85,32 +136,15 @@
     "accent": "#fb923c"
   },
   {
-    "id": "06",
-    "slug": "06_postcard_battery_telemetry",
-    "appstore_name": "06_AppStore_2880x1800_Dynamic_Battery_Telemetry.png",
-    "title": "DYNAMIC BATTERY TELEMETRY",
-    "subtitle": "Live wattage breakdown, charging state glyphs, minimal pills, and clamshell stay-awake.",
-    "badge": "EDITION 06 \u2022 POWER TELEMETRY",
-    "pills": [
-      "Live Wattage Draw",
-      "Clamshell Stay-Awake",
-      "Health Degradation Metrics"
-    ],
-    "capture": "01_power_reserve_battery.png",
-    "wallpaper": "iMacOrange.jpg",
-    "is_fullscreen": false,
-    "accent": "#4ade80"
-  },
-  {
-    "id": "07",
-    "slug": "07_postcard_application_atelier",
-    "appstore_name": "07_AppStore_2880x1800_Application_Atelier.png",
+    "id": "09",
+    "slug": "09_postcard_application_atelier",
+    "appstore_name": "09_AppStore_2880x1800_Application_Atelier.png",
     "title": "APPLICATION ATELIER & FORMATIONS",
-    "subtitle": "Responsive Grid, Fibonacci Galaxy, Halfpipe Arc, Bottom Shelf and instant drag organization.",
-    "badge": "EDITION 07 \u2022 SPATIAL GEOMETRY",
+    "subtitle": "Responsive Grid, Fibonacci Galaxy, Halfpipe Arc, Floating Lotus and instant dock hub.",
+    "badge": "EDITION 09 • SPATIAL GEOMETRY",
     "pills": [
       "Fibonacci Galaxy",
-      "Responsive Grid",
+      "Floating Lotus",
       "Drag-to-Dock Hub"
     ],
     "capture": "07_application_atelier.png",
@@ -119,54 +153,20 @@
     "accent": "#38bdf8"
   },
   {
-    "id": "08",
-    "slug": "08_postcard_haute_bezels_snuggies",
-    "appstore_name": "08_AppStore_2880x1800_Window_Housings_Snuggies.png",
-    "title": "HAUTE BEZELS & NOTCH SNUGGIES",
-    "subtitle": "Precision window frames, camera notch integration, and tactile acoustic audio signatures.",
-    "badge": "EDITION 08 \u2022 BESPOKE FINISHES",
+    "id": "10",
+    "slug": "10_postcard_security_governance",
+    "appstore_name": "10_AppStore_2880x1800_Security_Governance_Privacy.png",
+    "title": "SECURITY GOVERNANCE & PRIVACY",
+    "subtitle": "Strict sandboxing, permission gates, zero telemetry leakage, and 100% offline security.",
+    "badge": "EDITION 10 • ZERO TELEMETRY",
     "pills": [
-      "Notch Snuggie Dock",
-      "Luxury Frame Bezels",
-      "Tactile Audio Feedback"
+      "Strict Sandboxing",
+      "Zero Telemetry",
+      "Hardened Runtime"
     ],
-    "capture": "08_haute_bezels_snuggies.png",
+    "capture": "15_security_governance_privacy.png",
     "wallpaper": "SonomaHorizon.jpg",
     "is_fullscreen": false,
-    "accent": "#f4c375"
-  },
-  {
-    "id": "09",
-    "slug": "09_postcard_pets_complications",
-    "appstore_name": "09_AppStore_2880x1800_Interactive_Widgets_Pets.png",
-    "title": "INTERACTIVE PETS & COMPLICATIONS",
-    "subtitle": "Desktop companions, 2D rigid body physics pinball, and spatial kinetic complications.",
-    "badge": "EDITION 09 \u2022 KINETIC PHYSICS",
-    "pills": [
-      "Rigid Body Physics",
-      "Desktop Companions",
-      "Spatial Glider Complications"
-    ],
-    "capture": "13_spatial_pets_pinball.png",
-    "wallpaper": "RadialSkyBlue.jpg",
-    "is_fullscreen": false,
-    "accent": "#f472b6"
-  },
-  {
-    "id": "10",
-    "slug": "10_postcard_diagnostics_hud",
-    "appstore_name": "10_AppStore_2880x1800_System_Diagnostics_HUD.png",
-    "title": "CONTINUOUS DIAGNOSTICS HUD",
-    "subtitle": "Real-time parallel thread sentinel, zero-investigation memory headroom, and system health.",
-    "badge": "EDITION 10 \u2022 SYSTEM SENTINEL",
-    "pills": [
-      "Parallel Thread Sentinel",
-      "Memory Headroom Guard",
-      "Zero Telemetry Attestation"
-    ],
-    "capture": "20_system_diagnostics_sentinel.png",
-    "wallpaper": "Macintosh.jpg",
-    "is_fullscreen": true,
-    "accent": "#94a3b8"
+    "accent": "#a78bfa"
   }
 ]

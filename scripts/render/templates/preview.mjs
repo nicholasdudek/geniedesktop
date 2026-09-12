@@ -112,14 +112,14 @@ ${sceneKeyframes()}
     <div class="vignette"></div>
 
     <div class="scene scene-hero" data-anim>
-      <div class="badge">Genie 4.0 for Mac</div>
+      <div class="badge">Genie Build 500 for Mac</div>
       <h1 class="hero-title">${esc(item.title)}</h1>
       <p class="hero-sub">${esc(item.subtitle)}</p>
     </div>
 
     <div class="scene scene-showcase" data-anim>
       <div class="chrome-bar">
-        <span>Genie 4.0 &nbsp;&bull;&nbsp; ${esc(item.title)}</span>
+        <span>Genie Build 500 &nbsp;&bull;&nbsp; ${esc(item.title)}</span>
         <span class="chrome-callout">${esc(item.callout)}</span>
       </div>
       <div class="showcase-shot capture-frame"><img src="${capture}" alt=""></div>

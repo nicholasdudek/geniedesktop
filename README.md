@@ -13,14 +13,14 @@
   <a href="https://apps.apple.com/app/id6808165534">
     <img src="https://img.shields.io/badge/Mac_App_Store-Download-007AFF?style=for-the-badge&logo=apple&logoColor=white" alt="Mac App Store" />
   </a>
-  <img src="https://img.shields.io/badge/Current_Build-v1.0.0_(Build_14)-935ff5?style=for-the-badge&logo=apple&logoColor=white" alt="Release Build v1.0.0 (Build 14)" />
+  <img src="https://img.shields.io/badge/Current_Build-v2.0.0_(Build_500)-935ff5?style=for-the-badge&logo=apple&logoColor=white" alt="Release Build v2.0.0 (Build 500)" />
   <img src="https://img.shields.io/badge/macOS-14.0%20Sonoma%20%7C%2015.0%20Sequoia-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Sonoma & Sequoia" />
   <img src="https://img.shields.io/badge/Architecture-Apple%20Silicon%20ARM64-FF9500?style=for-the-badge" alt="Apple Silicon" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20%2F%20Zero%20Telemetry-success?style=for-the-badge" alt="Zero Telemetry" />
 </p>
 
 <p align="center">
-  <img src="assets/previews/App_Preview_1_Spatial_Canvas_1080p.gif" width="95%" alt="Genie Spatial Canvas 120 FPS Preview" style="border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
+  <img src="assets/previews/App_Preview_1_Spatial_Canvas_1080p.gif" width="95%" alt="Genie Autonomous OS Agent Preview" style="border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
 </p>
 
 ---
@@ -143,94 +143,94 @@ Explore authentic artifacts and code examples in the [`examples/`](examples/) di
 
 ## 📸 Official Postcard Showcase (Retina 4K)
 
-Here is the flagship visual showcase of Genie created in this project:
+Here is the flagship visual showcase of Genie Build 500:
 
-### 01 · Spatial Desktop Canvas
-> *Summon your entire application library directly over your wallpaper with real spring physics.*
+### 01 · Autonomous OS Agent & Shadow APIs
+> *Zero-latency screen comprehension, shadow accessibility hooks, and terminal orchestration without human drag.*
 
 <p align="center">
-  <img src="assets/postcards/01_postcard_spatial_canvas.png" width="95%" alt="Spatial Desktop Canvas" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+  <img src="assets/postcards/01_postcard_os_agent.png" width="95%" alt="Autonomous OS Agent and Shadow APIs" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
 </p>
 
 ---
 
-### 02 · AI Agent Studio
-> *On-device 27.3B multimodal vision agent with atomic read-back checkpoints and terminal sandbox.*
+### 02 · In-RAM Linux Hypervisor & Micro-VM Swarms
+> *Lightweight Alpine guest runtimes initialized in sub-50ms with direct memory maps and vsock inter-process RPC.*
 
 <p align="center">
-  <img src="assets/postcards/02_postcard_ai_agent_studio.png" width="95%" alt="AI Agent Studio" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+  <img src="assets/postcards/02_postcard_hypervisor_vm.png" width="95%" alt="In-RAM Linux Hypervisor and Micro-VM Swarms" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
 </p>
 
 ---
 
-### 03 · World Clock Pillows
+### 03 · Duo Fold Dual-Pane Code Studio
+> *Collapsible dual-column engineering environment with integrated tree browser and sidecar terminal.*
+
+<p align="center">
+  <img src="assets/postcards/03_postcard_duo_fold_studio.png" width="95%" alt="Duo Fold Dual-Pane Code Studio" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+</p>
+
+---
+
+### 04 · World Clock Pillows & OLED Blackout
 > *OLED blackout cards with specular rim gradients, hand-built analog watch faces, and timezone synchronization.*
 
 <p align="center">
-  <img src="assets/postcards/03_postcard_world_clock_pillows.png" width="95%" alt="World Clock Pillows" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+  <img src="assets/postcards/04_postcard_world_clock_pillows.png" width="95%" alt="World Clock Pillows and OLED Blackout" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
 </p>
 
 ---
 
-### 04 · Sovereign Hypervisor Virtual Machines
-> *Kernel-level Apple Virtualization.framework engine hosting Linux runtimes via Virtio-FS and vsock channels.*
+### 05 · Spatial Desktop Matrix
+> *Summon your entire application library across an infinite 81-screen continuous universe with real spring physics.*
 
 <p align="center">
-  <img src="assets/postcards/04_postcard_hypervisor_vm.png" width="95%" alt="Hypervisor Virtual Machines" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+  <img src="assets/postcards/05_postcard_spatial_canvas.png" width="95%" alt="Spatial Desktop Matrix" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
 </p>
 
 ---
 
-### 05 · Living Themes & 4K Metal Shaders
-> *Hardware-accelerated fluid dynamics, caustics, and generative particle fields running at 120 FPS ProMotion.*
-
-<p align="center">
-  <img src="assets/postcards/05_postcard_living_themes_shaders.png" width="95%" alt="Living Themes and Shaders" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
-</p>
-
----
-
-### 06 · Battery Telemetry & Power Equalizers
-> *28+ dynamic battery styles, VisionOS pill gauges, and real-time charging equalizers in your menu bar.*
-
-<p align="center">
-  <img src="assets/postcards/06_postcard_battery_telemetry.png" width="95%" alt="Battery Telemetry" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
-</p>
-
----
-
-### 07 · Application Atelier
-> *Bespoke application staging, tag filtering, and lightning-fast search indexing.*
-
-<p align="center">
-  <img src="assets/postcards/07_postcard_application_atelier.png" width="95%" alt="Application Atelier" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
-</p>
-
----
-
-### 08 · Haute Bezels & Icon Snuggies
-> *Customizable physical glass bezels, drop shadows, and tactile materials surrounding application icons.*
-
-<p align="center">
-  <img src="assets/postcards/08_postcard_haute_bezels_snuggies.png" width="95%" alt="Haute Bezels and Snuggies" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
-</p>
-
----
-
-### 09 · Desktop Pets & Complications
-> *Living desktop companions, gravity pinball physics, and interactive menu bar complications.*
-
-<p align="center">
-  <img src="assets/postcards/09_postcard_pets_complications.png" width="95%" alt="Pets and Complications" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
-</p>
-
----
-
-### 10 · Diagnostics HUD & Overheat Guard
+### 06 · System Sentinel HUD & Diagnostics
 > *Real-time Mach kernel telemetry, memory pressure monitoring, and thermal auto-throttling.*
 
 <p align="center">
-  <img src="assets/postcards/10_postcard_diagnostics_hud.png" width="95%" alt="Diagnostics HUD" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+  <img src="assets/postcards/06_postcard_diagnostics_sentinel.png" width="95%" alt="System Sentinel HUD and Diagnostics" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+</p>
+
+---
+
+### 07 · Battery Telemetry & Power Gauges
+> *28+ dynamic battery styles, VisionOS pill gauges, and real-time charging equalizers in your menu bar.*
+
+<p align="center">
+  <img src="assets/postcards/07_postcard_battery_telemetry.png" width="95%" alt="Battery Telemetry and Power Gauges" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+</p>
+
+---
+
+### 08 · Living Themes & 4K Metal Shaders
+> *Hardware-accelerated fluid dynamics, caustics, and generative particle fields running at 120 FPS ProMotion.*
+
+<p align="center">
+  <img src="assets/postcards/08_postcard_living_themes_shaders.png" width="95%" alt="Living Themes and Shaders" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+</p>
+
+---
+
+### 09 · Application Atelier & Formations
+> *Bespoke application staging, Fibonacci Golden Spirals, Floating Lotus arrays, and lightning-fast search indexing.*
+
+<p align="center">
+  <img src="assets/postcards/09_postcard_application_atelier.png" width="95%" alt="Application Atelier and Formations" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
+</p>
+
+---
+
+### 10 · Security Governance & Strict Sandbox
+> *Zero analytics, verified local sandboxing, hardened runtime boundaries, and byte-level diff auditing.*
+
+<p align="center">
+  <img src="assets/postcards/10_postcard_security_governance.png" width="95%" alt="Security Governance and Strict Sandbox" style="border-radius: 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);" />
 </p>
 
 ---
