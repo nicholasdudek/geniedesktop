@@ -231,7 +231,9 @@ final class DesktopWindowManager: ObservableObject {
     /// NSPanel. Nothing used to coordinate them, so both could be open at once
     /// with separate conversations. Only one may be open now, and the owner of
     /// that rule has to be somewhere both sides can see.
-    @Published public var isTopDockPresented: Bool = false {
+    /// Starts presented: the Liquid Glass top dashboard is the main default page,
+    /// not something you have to pull down from the top edge first.
+    @Published public var isTopDockPresented: Bool = true {
         didSet {
             guard isTopDockPresented, oldValue != isTopDockPresented else { return }
             NotificationCenter.default.post(name: .genieDismissMenuBarDropdown, object: nil)

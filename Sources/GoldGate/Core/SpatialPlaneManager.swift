@@ -472,6 +472,37 @@ public final class SpatialPlaneManager: ObservableObject {
     // MARK: - Spatial App Location Registry
     /// Moves an app window in the persistent spatial registry so that it remains anchored
     /// and remembered on its assigned desktop sector (1–9 or -1 Mirrored) across the connected plane.
+    /// Moves a single window to a slot, keyed by window id rather than by app, so two
+    /// windows of the same app can sit on different screens instead of stacking.
+    public func moveWindowInSpatialRegistry(windowID: CGWindowID, targetDesktopIndex: Int) {
+        guard (targetDesktopIndex >= 1 && targetDesktopIndex <= 9) || targetDesktopIndex == -1 else { return }
+
+        var moved: ManagedWindowInfo?
+        for slotIndex in 1...Self.totalUniverseScreens {
+            guard let windows = spatialAppRegistry[slotIndex] else { continue }
+            if let hit = windows.first(where: { $0.id == windowID }) {
+                moved = hit
+                spatialAppRegistry[slotIndex] = windows.filter { $0.id != windowID }
+            }
+        }
+
+        if moved == nil {
+            let primaryHeight = NSScreen.screens.first?.frame.height ?? 1080
+            moved = SmartGridManager.shared
+                .getVisibleWindows(primaryHeight: primaryHeight)
+                .first { $0.id == windowID }
+        }
+
+        guard let window = moved else { return }
+        var targetWindows = spatialAppRegistry[targetDesktopIndex] ?? []
+        if !targetWindows.contains(where: { $0.id == window.id }) {
+            targetWindows.append(window)
+        }
+        spatialAppRegistry[targetDesktopIndex] = targetWindows
+
+        refreshAllRAMBuffers()
+    }
+
     public func moveAppInSpatialRegistry(pid: pid_t, targetDesktopIndex: Int) {
         guard (targetDesktopIndex >= 1 && targetDesktopIndex <= 9) || targetDesktopIndex == -1 else { return }
         var movedWindows: [ManagedWindowInfo] = []

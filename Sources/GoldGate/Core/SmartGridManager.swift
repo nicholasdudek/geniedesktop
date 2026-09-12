@@ -1132,11 +1132,9 @@ public final class SmartGridManager: ObservableObject {
             let title = (dict[kCGWindowName as String] as? String) ?? ""
             let frame = CGRect(x: x, y: y, width: w, height: h)
 
-            // Limit to 1-2 windows per app so all open apps get representation
-            let countForPid = results.filter { $0.pid == pid }.count
-            if countForPid < 2 {
-                results.append(ManagedWindowInfo(id: winId, pid: pid, ownerName: ownerName, title: title, frame: frame))
-            }
+            // Every window is its own grid citizen. Capping per app used to collapse an
+            // app's extra windows onto whichever one happened to come back first.
+            results.append(ManagedWindowInfo(id: winId, pid: pid, ownerName: ownerName, title: title, frame: frame))
         }
 
         return results
