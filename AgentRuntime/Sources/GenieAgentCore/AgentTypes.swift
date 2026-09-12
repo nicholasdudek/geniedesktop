@@ -38,6 +38,18 @@ public protocol AgentActivityLogProvider: Sendable {
     func recentActivityLog() async -> String
 }
 
+/// Virtual machine lifecycle, supplied by the host app the same way the activity
+/// log is. GenieAgentCore deliberately has no dependency and still builds for iOS,
+/// while GenieEnvironmentKit is macOS-only — so the VM tools reach it through this
+/// plain-Foundation protocol rather than a package dependency that would drop iOS.
+/// Identifiers cross the boundary as strings; the adapter parses them.
+public protocol AgentEnvironmentProvider: Sendable {
+    func listEnvironments() async throws -> String
+    func environmentStatus(id: String) async throws -> String
+    func startEnvironment(id: String) async throws -> String
+    func cloneEnvironment(templateID: String, name: String) async throws -> String
+}
+
 public struct AgentEvent: Codable, Identifiable, Sendable {
     public let id: UUID
     public let date: Date
@@ -92,7 +104,7 @@ public enum AgentToolCatalog {
     /// tool will use it, and a run that dead-ends on every attempt reads as a
     /// broken app to both the user and App Review.
     #if GENIE_MAS
-    static let sandboxUnavailable: Set<String> = ["run_command", "merge_files", "app_doc"]
+    static let sandboxUnavailable: Set<String> = ["run_command", "merge_files", "app_doc", "vm_list", "vm_status", "vm_start", "vm_clone"]
     #else
     static let sandboxUnavailable: Set<String> = []
     #endif
@@ -108,14 +120,14 @@ public enum AgentToolCatalog {
     #if os(macOS)
     static let platformUnavailable: Set<String> = []
     #else
-    static let platformUnavailable: Set<String> = ["run_command", "merge_files", "desktop_agent", "read_ui", "grab_text", "copy_text", "paste_text", "app_doc", "airdrop", "phone_bridge", "agent_network", "siri"]
+    static let platformUnavailable: Set<String> = ["run_command", "merge_files", "desktop_agent", "read_ui", "grab_text", "copy_text", "paste_text", "app_doc", "airdrop", "phone_bridge", "agent_network", "siri", "vm_list", "vm_status", "vm_start", "vm_clone"]
     #endif
 
     public static let mutatingNames: Set<String> = Set(
-        ["edit_file", "write_file", "copy_text", "paste_text", "run_command", "desktop_agent", "airdrop", "phone_bridge", "agent_network", "siri"])
+        ["edit_file", "write_file", "copy_text", "paste_text", "run_command", "desktop_agent", "airdrop", "phone_bridge", "agent_network", "siri", "vm_start", "vm_clone"])
         .subtracting(sandboxUnavailable).subtracting(platformUnavailable)
     public static let names: Set<String> = Set(
-        ["list_files", "read_file", "search_files", "edit_file", "write_file", "merge_files", "read_ui", "grab_text", "copy_text", "paste_text", "run_command", "desktop_agent", "app_doc", "airdrop", "phone_bridge", "agent_network", "siri", "activity_log"])
+        ["list_files", "read_file", "search_files", "edit_file", "write_file", "merge_files", "read_ui", "grab_text", "copy_text", "paste_text", "run_command", "desktop_agent", "app_doc", "airdrop", "phone_bridge", "agent_network", "siri", "activity_log", "vm_list", "vm_status", "vm_start", "vm_clone"])
         .subtracting(sandboxUnavailable).subtracting(platformUnavailable)
     public static func schema(_ name: String, _ description: String, _ fields: [String: String], required: [String]? = nil) -> [String: Any] {
         ["type": "function", "function": ["name": name, "description": description,
@@ -148,6 +160,10 @@ public enum AgentToolCatalog {
          schema("phone_bridge", "Send an iMessage to the user's own preconfigured phone. Cannot address arbitrary contacts. Requires explicit user approval.", ["text": "Exact message text to send"]),
          schema("agent_network", "Sovereign peer mesh networking. Discover, tunnel, ping, or exchange files with other Genie instances on LAN or across wide-area networks without third-party VPNs. Actions: advertise, discover, tunnel (host, port?), send (path, peer), clone (path), status, ping (peer). Requires explicit user approval.", ["action": "advertise, discover, tunnel, send, clone, status, or ping", "path": "File path, for action=send or action=clone", "peer": "Target peer name, tunnel alias, or host:port, for action=send or ping", "host": "Remote host IP/hostname, for action=tunnel", "port": "Port number, for action=tunnel (defaults to 8421)"], required: ["action"]),
          schema("siri", "Run Apple Shortcuts or execute tasks via Siri on macOS. Actions: run_shortcut (with shortcut_name and optional input), ask (query for Siri), or activate. Requires explicit user approval.", ["action": "run_shortcut, ask, or activate", "shortcut_name": "Name of Apple Shortcut to execute", "input": "Input text or query for Siri/Shortcut"], required: ["action"]),
-         schema("activity_log", "Read the user's recent app-switch and clipboard activity log, if they've turned on Activity Monitor in Settings > General & Privacy. Returns nothing if it's off. Clipboard entries are truncated previews, not full contents.", [:])]
+         schema("activity_log", "Read the user's recent app-switch and clipboard activity log, if they've turned on Activity Monitor in Settings > General & Privacy. Returns nothing if it's off. Clipboard entries are truncated previews, not full contents.", [:]),
+         schema("vm_list", "List the Genie virtual machines and their identifiers. Read-only; run this first to learn the ID a VM tool needs.", [:]),
+         schema("vm_status", "Report one virtual machine's current state. Read-only.", ["id": "VM UUID, from vm_list"]),
+         schema("vm_start", "Boot a virtual machine that already exists. Returns once the VM reports started, or fails after 60 seconds. Requires explicit user approval.", ["id": "VM UUID, from vm_list"]),
+         schema("vm_clone", "Create a new virtual machine by cloning an existing template, and return the new VM's identifier. Does not boot it — call vm_start after. Requires explicit user approval.", ["template_id": "Template VM UUID, from vm_list", "name": "Name for the new VM"])]
     }
 }

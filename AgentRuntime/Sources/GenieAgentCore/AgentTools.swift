@@ -98,9 +98,13 @@ public actor AgentTools {
     private var desktop: AgentDesktopTools?
     #endif
     private let activityLog: AgentActivityLogProvider?
-    public init(workspace: URL, activityLog: AgentActivityLogProvider? = nil) {
+    private let environment: AgentEnvironmentProvider?
+    public init(workspace: URL,
+                activityLog: AgentActivityLogProvider? = nil,
+                environment: AgentEnvironmentProvider? = nil) {
         self.workspace = workspace.standardizedFileURL.resolvingSymlinksInPath()
         self.activityLog = activityLog
+        self.environment = environment
     }
 
     public func resolve(_ path: String) throws -> URL {
@@ -136,6 +140,9 @@ public actor AgentTools {
         case "write_file": required = ["path", "expected_content", "content"]
         case "merge_files": required = ["path", "base_path", "incoming_path"]
         case "activity_log": required = []
+        case "vm_list": required = []
+        case "vm_status", "vm_start": required = ["id"]
+        case "vm_clone": required = ["template_id", "name"]
         #if os(macOS)
         case "read_ui": required = ["app"]
         case "grab_text", "copy_text": required = ["element_id", "scope"]
@@ -220,6 +227,22 @@ public actor AgentTools {
         try Task.checkCancellation()
         let args = try arguments(for: call)
         switch call.name {
+        case "vm_list", "vm_status", "vm_start", "vm_clone":
+            guard let environment else {
+                throw AgentFailure("Virtual machines are not available in this build.")
+            }
+            if AgentToolCatalog.mutatingNames.contains(call.name) && !approved {
+                throw AgentFailure("Starting or cloning a virtual machine requires approval.")
+            }
+            let output: String
+            switch call.name {
+            case "vm_list": output = try await environment.listEnvironments()
+            case "vm_status": output = try await environment.environmentStatus(id: args["id"] ?? "")
+            case "vm_start": output = try await environment.startEnvironment(id: args["id"] ?? "")
+            default: output = try await environment.cloneEnvironment(
+                templateID: args["template_id"] ?? "", name: args["name"] ?? "")
+            }
+            return AgentToolResult(success: true, output: output)
         case "activity_log":
             guard let activityLog else { throw AgentFailure("Activity log is not available in this build.") }
             let text = await activityLog.recentActivityLog()

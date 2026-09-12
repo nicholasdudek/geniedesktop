@@ -29,6 +29,7 @@ public actor AgentRuntime {
                         maxTurns: Int = 100, tokenBudget: Int = 1_000_000,
                         maxPayloadBytes: Int = 2_000_000, sessionTimeout: TimeInterval = 3600,
                         bypassApproval: Bool = false, activityLog: AgentActivityLogProvider? = nil,
+                        environment: AgentEnvironmentProvider? = nil,
                         approve: @escaping Approval, observe: @escaping Observer) async -> AgentRun {
         guard !busy else {
             var rejected = initial; rejected.status = "Failed"
@@ -38,7 +39,7 @@ public actor AgentRuntime {
         busy = true
         defer { busy = false }
         var run = initial
-        let tools = AgentTools(workspace: URL(fileURLWithPath: run.workspace), activityLog: activityLog)
+        let tools = AgentTools(workspace: URL(fileURLWithPath: run.workspace), activityLog: activityLog, environment: environment)
         let started = Date()
         do {
             try Task.checkCancellation()

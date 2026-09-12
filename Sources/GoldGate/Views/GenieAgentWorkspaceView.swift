@@ -49,7 +49,9 @@ final class GenieAgentWorkspaceModel: ObservableObject {
             }
             current = run; isRunning = true; error = nil
             task = Task {
-                let result = await runtime.execute(run, model: adapter, store: store, bypassApproval: autonomous, activityLog: GenieActivityLogAdapter(), approve: { call in
+                let result = await runtime.execute(run, model: adapter, store: store, bypassApproval: autonomous, activityLog: GenieActivityLogAdapter(),
+                                                  environment: GenieCapabilities.isAppStoreBuild ? nil : GenieEnvironmentAgentAdapter(),
+                                                  approve: { call in
                     return await self.requestApproval(call)
                 }, observe: { update in
                     await self.receive(update)
