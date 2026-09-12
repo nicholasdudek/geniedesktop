@@ -2039,11 +2039,11 @@
 
     .footer-columns {
       display: grid;
-      grid-template-columns: 1.8fr 1fr 1.3fr 1fr 1.1fr;
-      gap: 32px;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
       text-align: left;
-      max-width: 1180px;
-      margin: 0 auto 40px;
+      max-width: 1120px;
+      margin: 0 auto 48px;
     }
 
     .footer-col h5 {
@@ -2052,116 +2052,6 @@
       font-weight: 600;
       margin-bottom: 16px;
       letter-spacing: 0.02em;
-    }
-
-    /* Full Technical Documentation & Apache License Sections in Footer */
-    .footer-docs-section {
-      max-width: 1180px;
-      margin: 0 auto 36px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 28px;
-      text-align: left;
-    }
-    .footer-docs-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .footer-docs-header h4 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .footer-docs-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 18px;
-      margin-bottom: 20px;
-    }
-    .footer-doc-card {
-      background: rgba(255, 255, 255, 0.025);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 12px;
-      padding: 18px;
-      transition: all 0.2s ease;
-    }
-    .footer-doc-card:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: var(--border-accent);
-      transform: translateY(-2px);
-    }
-    .footer-doc-card h5 {
-      color: var(--gold);
-      font-size: 0.92rem;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .footer-doc-card p {
-      font-size: 0.83rem;
-      color: var(--text-muted);
-      line-height: 1.55;
-    }
-    .footer-doc-card code {
-      font-size: 0.76rem;
-      background: rgba(0, 0, 0, 0.35);
-      padding: 2px 5px;
-      border-radius: 4px;
-      color: #38bdf8;
-    }
-    .footer-apache-box {
-      max-width: 1180px;
-      margin: 0 auto 32px;
-      background: rgba(244, 195, 117, 0.03);
-      border: 1px solid rgba(244, 195, 117, 0.2);
-      border-radius: 14px;
-      padding: 22px;
-      text-align: left;
-    }
-    .footer-apache-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .apache-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(244, 195, 117, 0.15);
-      color: var(--gold);
-      border: 1px solid rgba(244, 195, 117, 0.4);
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.76rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-    .apache-legal-text {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 0.77rem;
-      color: var(--text-muted);
-      background: rgba(0, 0, 0, 0.45);
-      padding: 14px;
-      border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      line-height: 1.6;
-      max-height: 180px;
-      overflow-y: auto;
-      margin-top: 14px;
     }
 
     .footer-col ul {
@@ -5030,10 +4920,7 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
           <span>Genie</span>
         </div>
         <p data-i18n="footer_brand_desc">Next-generation spatial workspace and application launcher for macOS. Engineered natively with Swift and Metal shaders with absolute offline privacy.</p>
-        <p style="margin-top: 10px; font-size: 0.82rem; color: var(--gold); font-weight: 600;">Version 1.0.0 (Build 503) • Universal Binary</p>
-        <div style="margin-top: 10px;">
-          <span class="apache-badge">⚡ Apache 2.0 Open Source</span>
-        </div>
+        <p style="margin-top: 10px; font-size: 0.82rem; color: var(--gold); font-weight: 600;">Version 1.0.0 (Build 500) • Universal Binary</p>
       </div>
 
       <div class="footer-col">
@@ -5048,21 +4935,9 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
       </div>
 
       <div class="footer-col">
-        <h5>AI & Servers</h5>
-        <ul>
-          <li><a href="https://github.com/nicholasdudek/geniedesktop/blob/genie-linux-workspace/docs/AI_AND_SERVERS_ARCHITECTURE.md" target="_blank">AI & Server Specs ↗</a></li>
-          <li><a href="https://github.com/nicholasdudek/geniedesktop/blob/genie-linux-workspace/GENIE_MODEL_LITERATURE_AND_ARCHITECTURE.md" target="_blank">Model Literature ↗</a></li>
-          <li><a href="https://github.com/nicholasdudek/geniedesktop/blob/genie-linux-workspace/API_Server/genie_api_server.py" target="_blank">REST API Server (:8080) ↗</a></li>
-          <li><a href="https://github.com/nicholasdudek/geniedesktop/tree/genie-linux-workspace/AgentBridge/servers" target="_blank">MCP Bridges & Ollama ↗</a></li>
-          <li><a href="#genie-docs-section">Full Architecture Docs ↓</a></li>
-        </ul>
-      </div>
-
-      <div class="footer-col">
         <h5>Languages</h5>
         <ul>
           <li><a href="#languages" onclick="setSiteLanguage('en')">English (US)</a></li>
-          <li><a href="#languages" onclick="setSiteLanguage('ko')">한국어 (Korean)</a></li>
           <li><a href="#languages" onclick="setSiteLanguage('es')">Español</a></li>
           <li><a href="#languages" onclick="setSiteLanguage('fr')">Français</a></li>
           <li><a href="#languages" onclick="setSiteLanguage('de')">Deutsch</a></li>
@@ -5079,77 +4954,7 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
           <li><a href="https://github.com/nicholasdudek/geniedesktop" target="_blank">GitHub Repository</a></li>
           <li><a href="https://apps.apple.com/app/id6808165534" target="_blank">Mac App Store</a></li>
           <li><a href="privacy.html" data-i18n="nav_privacy">Privacy Policy</a></li>
-          <li><a href="#apache-license">Apache 2.0 License ↓</a></li>
         </ul>
-      </div>
-    </div>
-
-    <!-- Full Architecture Documentation Section at Website Footer -->
-    <div class="footer-docs-section" id="genie-docs-section">
-      <div class="footer-docs-header">
-        <h4><span>🧠</span> Complete Architecture Documentation: AI Cognition, Models & Server Infrastructure</h4>
-        <a href="https://github.com/nicholasdudek/geniedesktop/blob/genie-linux-workspace/docs/AI_AND_SERVERS_ARCHITECTURE.md" target="_blank" style="font-size: 0.82rem; color: var(--gold); text-decoration: none; font-weight: 600;">View on GitHub (Full Markdown) ↗</a>
-      </div>
-
-      <div class="footer-docs-grid">
-        <div class="footer-doc-card">
-          <h5><span>🧬</span> AI Model Taxonomy</h5>
-          <p><strong>genie-frontier</strong> (30B Dense+CLIP, 64k tokens): Flagship spatial multimodal model.<br>
-          <strong>genie3-30b</strong>: NeMo LoRA adapter (<code>r=16, &alpha;=32</code>) with zero hallucinated CLI flags.<br>
-          <strong>genie3-7b</strong>: Sub-second polyglot model for base M1–M4 MacBooks.<br>
-          <strong>genie3-iphone</strong>: Edge quantized model for iPhone Mirroring automation.<br>
-          <strong>goldgate</strong>: In-process AST command router with microsecond C/Swift dispatch.</p>
-        </div>
-
-        <div class="footer-doc-card">
-          <h5><span>⚙️</span> 18 Weight-Mapped Tools</h5>
-          <p>Deterministic system tools mapped into model activations: <code>list_files</code>, <code>read_file</code>, <code>search_files</code>, <code>edit_file</code> (atomic byte-read diff), <code>write_file</code>, <code>merge_files</code>, <code>run_command</code> (setsid process group, 300s ceiling, SIGKILL fallback), <code>desktop_agent</code> (Retina Quartz & Vision OCR clicks), <code>read_ui</code>, <code>spatial_dom</code>, <code>iphone_agent</code>, <code>phone_bridge</code>, <code>agent_network</code>, and <code>app_doc</code>.</p>
-        </div>
-
-        <div class="footer-doc-card">
-          <h5><span>⚡</span> Server Architectures & APIs</h5>
-          <p><strong>REST API Server</strong> (<code>genie_api_server.py</code> on <code>127.0.0.1:8080</code>): OpenAI-compatible <code>/v1/chat/completions</code>, model binding <code>/v1/models</code>, and dual-viewport dispatch <code>/v1/partitions/simultaneous-input</code>.<br>
-          <strong>AgentBridge MCP Suite</strong>: <code>ollama-antigravity-mcp</code>, <code>icloud_mcp</code>, and <code>tooling</code>.<br>
-          <strong>In-RAM Hypervisor</strong>: Ephemeral Linux microVMs booting in &le;340ms.<br>
-          <strong>Bonjour Swarm</strong>: <code>_genie-agent._tcp.local.</code> on port <code>8421</code>.</p>
-        </div>
-
-        <div class="footer-doc-card">
-          <h5><span>🛡️</span> Security & Core Algorithms</h5>
-          <p><strong>Inverse Probability Elimination (IPE)</strong>: 64-bit character bitmask filters &gt;90% candidates in &lt;50&mu;s, eliminating subprocess storms.<br>
-          <strong>Attention Sink Buffers</strong>: Caps agent memory under 1.5 MB during continuous operation.<br>
-          <strong>Quaternion SLERP</strong>: Gimbal-lock free 4D UI parallax.<br>
-          <strong>Zero-Telemetry Enforcement</strong>: Released without <code>com.apple.security.network.client</code> entitlement.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Apache License 2.0 Section in Footer -->
-    <div class="footer-apache-box" id="apache-license">
-      <div class="footer-apache-header">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="apache-badge">APACHE LICENSE, VERSION 2.0</span>
-          <span style="font-weight: 700; color: var(--text); font-size: 0.95rem;">Open Source AI & Server Infrastructure</span>
-        </div>
-        <a href="https://github.com/nicholasdudek/geniedesktop/blob/genie-linux-workspace/LICENSE-APACHE" target="_blank" style="font-size: 0.8rem; color: var(--gold); text-decoration: none;">View LICENSE-APACHE on GitHub ↗</a>
-      </div>
-      <p style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.6;">
-        The Genie AI model taxonomy, neural tool weight mapping catalogs, REST API Server (<code>API_Server/</code>), Model Context Protocol (MCP) bridges (<code>AgentBridge/</code>), in-RAM hypervisor specifications, and technical documentation are open source and licensed under the <strong>Apache License, Version 2.0</strong>. You may obtain a copy of the License at <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank" style="color: var(--gold);">http://www.apache.org/licenses/LICENSE-2.0</a>.
-      </p>
-      <div class="apache-legal-text">
-Copyright 2026 Nicholas M. Dudek
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
       </div>
     </div>
 
