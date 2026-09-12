@@ -47,6 +47,18 @@ public enum DuoFoldPage2Content: String, CaseIterable, Identifiable {
     case splitEditorAndSimulator = "Split: Edit + Movie"
     case appShades = "App Shades"
     case settings = "Settings"
+    case apps = "Apps"
+    case desktop = "Desktop"
+    case themes = "Themes"
+    case formations = "Formations"
+    case mouseAndTrails = "Mouse & Trails"
+    case entitiesAndPets = "Entities & Pets"
+    case sounds = "Sounds"
+    case wallpaper = "Wallpaper"
+    case motionAndFX = "Motion & FX"
+    case statusBar = "Status Bar"
+    case vipPacks = "VIP Packs"
+    case general = "General"
 
     public var id: String { rawValue }
 
@@ -57,6 +69,18 @@ public enum DuoFoldPage2Content: String, CaseIterable, Identifiable {
         case .splitEditorAndSimulator: return "rectangle.split.2x1.fill"
         case .appShades: return "square.3.layers.3d.top.filled"
         case .settings: return "gearshape.fill"
+        case .apps: return "app.badge"
+        case .desktop: return "macwindow"
+        case .themes: return "paintbrush.fill"
+        case .formations: return "square.grid.3x3.fill"
+        case .mouseAndTrails: return "cursorarrow.rays"
+        case .entitiesAndPets: return "pawprint.fill"
+        case .sounds: return "speaker.wave.2.fill"
+        case .wallpaper: return "photo.fill"
+        case .motionAndFX: return "sparkles"
+        case .statusBar: return "menubar.rectangle"
+        case .vipPacks: return "crown.fill"
+        case .general: return "slider.horizontal.3"
         }
     }
 }
@@ -352,15 +376,29 @@ public struct GenieDuoFoldContainerView<ChatContent: View>: View {
         VStack(spacing: 0) {
             // Page 2 Sub-Toolbar (Switcher)
             HStack(spacing: 8) {
-                HStack(spacing: 4) {
-                    page2TabButton(.codeEditor, title: "Code Editor", icon: "curlybraces")
-                    page2TabButton(.iphoneSimulator, title: "iPhone Movie Sim", icon: "iphone")
-                    page2TabButton(.splitEditorAndSimulator, title: "Split (Edit + Movie)", icon: "rectangle.split.2x1.fill")
-                    page2TabButton(.appShades, title: "App Shades", icon: "square.3.layers.3d.top.filled")
-                    page2TabButton(.settings, title: "Settings", icon: "gearshape.fill")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        page2TabButton(.codeEditor, title: "Code Editor", icon: "curlybraces")
+                        page2TabButton(.iphoneSimulator, title: "iPhone Movie Sim", icon: "iphone")
+                        page2TabButton(.splitEditorAndSimulator, title: "Split (Edit + Movie)", icon: "rectangle.split.2x1.fill")
+                        page2TabButton(.appShades, title: "App Shades", icon: "square.3.layers.3d.top.filled")
+                        page2TabButton(.settings, title: "Settings", icon: "gearshape.fill")
+                        page2TabButton(.apps, title: "Apps", icon: "app.badge")
+                        page2TabButton(.desktop, title: "Desktop", icon: "macwindow")
+                        page2TabButton(.themes, title: "Themes", icon: "paintbrush.fill")
+                        page2TabButton(.formations, title: "Formations", icon: "square.grid.3x3.fill")
+                        page2TabButton(.mouseAndTrails, title: "Mouse & Trails", icon: "cursorarrow.rays")
+                        page2TabButton(.entitiesAndPets, title: "Entities & Pets", icon: "pawprint.fill")
+                        page2TabButton(.sounds, title: "Sounds", icon: "speaker.wave.2.fill")
+                        page2TabButton(.wallpaper, title: "Wallpaper", icon: "photo.fill")
+                        page2TabButton(.motionAndFX, title: "Motion & FX", icon: "sparkles")
+                        page2TabButton(.statusBar, title: "Status Bar", icon: "menubar.rectangle")
+                        page2TabButton(.vipPacks, title: "VIP Packs", icon: "crown.fill")
+                        page2TabButton(.general, title: "General", icon: "slider.horizontal.3")
+                    }
+                    .padding(2.5)
+                    .background(Capsule().fill(Color.white.opacity(0.08)))
                 }
-                .padding(2.5)
-                .background(Capsule().fill(Color.white.opacity(0.08)))
 
                 Spacer()
 
@@ -374,13 +412,16 @@ public struct GenieDuoFoldContainerView<ChatContent: View>: View {
                             .foregroundColor(.yellow)
                     }
                     .padding(.horizontal, 6)
-                    .padding(.vertical, 2.5)
-                    .background(Capsule().fill(Color.yellow.opacity(0.18)))
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(Color.black.opacity(0.60))
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+
+            // Divider
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 1)
 
             // Page 2 Active Display
             Group {
@@ -397,7 +438,7 @@ public struct GenieDuoFoldContainerView<ChatContent: View>: View {
                 case .appShades:
                     GenieAppShadeStackPage()
 
-                case .settings:
+                case .settings, .apps, .desktop, .themes, .formations, .mouseAndTrails, .entitiesAndPets, .sounds, .wallpaper, .motionAndFX, .statusBar, .vipPacks, .general:
                     UnifiedSettingsView(isEmbedded: true)
 
                 case .splitEditorAndSimulator:
