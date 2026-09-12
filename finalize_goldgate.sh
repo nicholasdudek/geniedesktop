@@ -204,8 +204,7 @@ else
 fi
 
 # Verify the App Store bundle really is sandboxed before it goes any further.
-if codesign -d --entitlements :- "$APPSTORE_BUILD_DIR/$APP_NAME.app" 2>/dev/null | \
-   grep -A1 "com.apple.security.app-sandbox" | grep -q "<true/>"; then
+if codesign -d --xml --entitlements - "$APPSTORE_BUILD_DIR/$APP_NAME.app" 2>/dev/null | python3 -c 'import sys, plistlib; sys.exit(0 if plistlib.loads(sys.stdin.read().encode()).get("com.apple.security.app-sandbox", False) else 1)'; then
     echo "App Store bundle: app-sandbox enabled ✓"
 else
     echo "ERROR: App Store bundle is not sandboxed — App Review will reject it." >&2
@@ -213,8 +212,7 @@ else
 fi
 
 # And that the direct build is NOT sandboxed (it would lose its whole feature set).
-if codesign -d --entitlements :- "$DIRECT_BUILD_DIR/$APP_NAME.app" 2>/dev/null | \
-   grep -A1 "com.apple.security.app-sandbox" | grep -q "<true/>"; then
+if codesign -d --xml --entitlements - "$DIRECT_BUILD_DIR/$APP_NAME.app" 2>/dev/null | python3 -c 'import sys, plistlib; sys.exit(0 if plistlib.loads(sys.stdin.read().encode()).get("com.apple.security.app-sandbox", False) else 1)'; then
     echo "ERROR: the direct build came out sandboxed — wrong entitlements file." >&2
     exit 1
 fi
