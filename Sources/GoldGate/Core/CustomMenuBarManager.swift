@@ -2205,8 +2205,8 @@ public final class CustomMenuBarManager: ObservableObject {
         menuBarWindows.removeAll()
 
         if isEnabled {
-            AppDelegate.shared?.statusItem?.isVisible = false
-            AppDelegate.shared?.statusItem?.length = 0
+            AppDelegate.shared?.statusItem?.isVisible = true
+            AppDelegate.shared?.statusItem?.length = NSStatusItem.variableLength
             for screen in NSScreen.screens {
                 let win = CustomMenuBarWindow(screen: screen)
                 let hosting = CustomMenuBarHostingView(rootView: CustomMenuBarView(screen: screen))

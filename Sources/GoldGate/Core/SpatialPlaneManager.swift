@@ -1003,9 +1003,8 @@ public final class SpatialPlaneManager: ObservableObject {
         NSApp.presentationOptions = [.autoHideDock]
         if CustomMenuBarManager.shared.isEnabled {
             CustomMenuBarManager.shared.updateVisibility()
-        } else {
-            AppDelegate.shared?.statusItem?.isVisible = false
         }
+        AppDelegate.shared?.statusItem?.isVisible = true
     }
 
     private func hideOverlayWindow() {
@@ -1014,7 +1013,7 @@ public final class SpatialPlaneManager: ObservableObject {
         // ── Restore macOS Dock & Menu Bar on return to 1:1 Desktop Mode ──
         NSApp.presentationOptions = []
         CustomMenuBarManager.shared.updateVisibility()
-        AppDelegate.shared?.statusItem?.isVisible = !CustomMenuBarManager.shared.isEnabled
+        AppDelegate.shared?.statusItem?.isVisible = true
     }
 
     // MARK: - Continuous Webpage Canvas Pan & Momentum Physics

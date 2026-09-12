@@ -125,10 +125,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 3. Initialize Status Item with Dynamic Animated Battery & Menu Bar App Switcher
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.isVisible = !CustomMenuBarManager.shared.isEnabled
-        if CustomMenuBarManager.shared.isEnabled {
-            statusItem.length = 0
-        }
+        // Genie keeps its menu bar item whether or not its own custom bar is on.
+        // Hiding it with the custom bar meant the one place people look for a
+        // menu bar app had no Genie in it at all.
+        statusItem.isVisible = true
         setupStatusItemView()
         startAnimation()
 
