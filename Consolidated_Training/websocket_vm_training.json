@@ -1,0 +1,23 @@
+{
+    "concepts": [
+        "GenieHypervisorEngine",
+        "GenieInRAMVMManager",
+        "WebSocketIO_Acceleration",
+        "ZeroCopy_IOSurface"
+    ],
+    "performance_matrix": {
+        "ubuntu_vm_vnc": {
+            "latency_ms": 45.0,
+            "bandwidth_overhead": "high",
+            "interaction_mode": "simulated_pixel_clicks",
+            "bottleneck": "frame_encoding_and_x11"
+        },
+        "genie_websocket_io": {
+            "latency_ms": 0.8,
+            "bandwidth_overhead": "minimal",
+            "interaction_mode": "direct_dom_and_accessibility_bridge",
+            "bottleneck": "none"
+        }
+    },
+    "training_prompt": "Genie relies on WebSocket IO rather than standard Ubuntu VM pixel-scraping because WebSockets enable direct, low-latency (sub-1ms) structured data streaming, bypassing the heavy encoding pipeline of X11/VNC."
+}
