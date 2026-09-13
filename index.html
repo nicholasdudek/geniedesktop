@@ -3979,7 +3979,7 @@
         <img src="assets/images/app_icon.png" alt="Genie App Icon">
         <div class="sidebar-brand-text">
           <strong>Genie Studio</strong>
-          <span>v1.0.0 (Build 500)</span>
+          <span>v2.0.0 (Build 508)</span>
         </div>
       </div>
       <button class="sidebar-close-btn" onclick="closeSidebarDrawer()" aria-label="Close Sidebar">✕</button>
@@ -4086,6 +4086,15 @@
         <div class="sidebar-group-title">Developer & Support</div>
         <ul class="sidebar-nav-list">
           <li>
+            <a href="about.html" class="sidebar-nav-item highlight" onclick="closeSidebarDrawer()" style="color:#c084fc;">
+              <span class="sidebar-nav-left">
+                <span class="sidebar-nav-icon">ℹ️</span>
+                <span>About Nicholas M. Dudek</span>
+              </span>
+              <span class="sidebar-nav-arrow">↗</span>
+            </a>
+          </li>
+          <li>
             <a href="#contact" class="sidebar-nav-item" onclick="closeSidebarDrawer()">
               <span class="sidebar-nav-left">
                 <span class="sidebar-nav-icon">💬</span>
@@ -4120,7 +4129,7 @@
 
   <!-- Hero Section -->
   <header class="hero">
-    <div class="hero-badge" data-i18n="hero_badge">✨ Genie Build 500 • Autonomous Spatial Desktop for macOS</div>
+    <div class="hero-badge" data-i18n="hero_badge">✨ Genie Build 508 • Autonomous Spatial Desktop for macOS</div>
     <h1 data-i18n="hero_title">The Autonomous Spatial Desktop for macOS.</h1>
     <p data-i18n="hero_desc">CoreGraphics autonomous agent, in-RAM Linux micro-VMs, Duo Fold code studio, and 120 FPS spatial canvas. Zero telemetry, 0% idle CPU.</p>
     
@@ -4143,9 +4152,11 @@
         <span>✨ Feature Studio & Gestures Lab →</span>
       </a>
       <div class="version-callout">
-        <span class="version-pill" data-i18n="hero_version">Current Build: 1.0.0 (Build 507)</span>
+        <span class="version-pill" data-i18n="hero_version">Current Build: v2.0.0 (Build 508)</span>
         <span class="version-separator">•</span>
         <span data-i18n="hero_universal">Universal Binary (Apple Silicon & Intel)</span>
+        <span class="version-separator">•</span>
+        <span data-i18n="hero_battery" style="color:#34d399; font-weight:600;">⚡️ 0.1 Energy Score (14–18 Hr Battery Preserved)</span>
         <span class="version-separator">•</span>
         <span data-i18n="hero_privacy">Zero Telemetry</span>
       </div>
@@ -4178,7 +4189,7 @@
           <span class="traffic-light minimize"></span>
           <span class="traffic-light maximize"></span>
         </div>
-        <div class="mac-window-title" id="mac-window-title">Genie Build 500 — Autonomous OS Agent & Shadow Tool APIs</div>
+        <div class="mac-window-title" id="mac-window-title">Genie Build 508 — Autonomous OS Agent & Shadow Tool APIs</div>
         <div class="mac-header-badge">
           <span class="live-dot"></span> 120 FPS
         </div>
@@ -4192,7 +4203,7 @@
           <source src="assets/video/App_Preview_1_Spatial_Canvas_1080p.mp4" type="video/mp4">
         </video>
         <div class="video-floating-bar">
-          <span class="video-badge-build">Build 500</span>
+          <span class="video-badge-build">Build 508</span>
           <button id="video-play-pause-btn" class="video-control-btn" onclick="togglePlayPause()" title="Play / Pause">
             <svg id="play-icon" style="display:none;" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
             <svg id="pause-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -4617,40 +4628,55 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
         <thead>
           <tr>
             <th>Architecture Dimension</th>
-            <th class="genie-col">🪔 Genie Native (Build 500)</th>
+            <th class="genie-col">🪔 Genie Native (Build 508)</th>
             <th>Typical Electron / Chromium Workspace</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><strong>Memory Footprint (Idle)</strong></td>
-            <td class="genie-col">&lt; 35 MB unified memory</td>
-            <td>800 MB – 1,400 MB (Multiple Helper Processes)</td>
+            <td><strong>Battery Life Impact</strong></td>
+            <td class="genie-col"><span class="check">⚡️ 0.1 – 0.3 Energy Score</span><br><small style="color:var(--text-dim);">Preserves 14–18 hr MacBook battery; 0 dB fan</small></td>
+            <td><strong>7.5% – 14.0% drain / hr</strong><br><small style="color:var(--text-dim);">Continuous background drain; noisy fan spin</small></td>
+          </tr>
+          <tr>
+            <td><strong>Idle CPU Overhead</strong></td>
+            <td class="genie-col"><span class="check">0.0% – 0.2%</span><br><small style="color:var(--text-dim);">Mach event-driven runloop sleeping (zero polling)</small></td>
+            <td><strong>3.5% – 12.0%</strong><br><small style="color:var(--text-dim);">Continuous Chromium event loop & GC jitter</small></td>
+          </tr>
+          <tr>
+            <td><strong>Resident Memory (RAM)</strong></td>
+            <td class="genie-col"><span class="check">&lt; 35 MB Unified Memory</span><br><small style="color:var(--text-dim);">Pure compiled Swift 6.4 & Metal 3 pipeline</small></td>
+            <td><strong>800 MB – 1,400 MB</strong><br><small style="color:var(--text-dim);">V8 heap, Chromium renderer, Node helpers</small></td>
+          </tr>
+          <tr>
+            <td><strong>Search Latency (IPE)</strong></td>
+            <td class="genie-col"><span class="check">&lt; 5 µs</span><br><small style="color:var(--text-dim);">64-bit bitmask negative-selection (92%+ pruned in 1 cycle)</small></td>
+            <td><strong>45 ms – 180 ms</strong><br><small style="color:var(--text-dim);">Linear JavaScript substring filter in DOM</small></td>
+          </tr>
+          <tr>
+            <td><strong>Streaming Memory Bounds</strong></td>
+            <td class="genie-col"><span class="check">Strict O(1) Attention Sink</span><br><small style="color:var(--text-dim);">Anchor invariance; bounded ring buffer; zero leaks</small></td>
+            <td><strong>O(N) Unbounded</strong><br><small style="color:var(--text-dim);">Memory leaks over long streaming sessions</small></td>
+          </tr>
+          <tr>
+            <td><strong>Vector Search Latency</strong></td>
+            <td class="genie-col"><span class="check">&lt; 4 ms (100k vectors)</span><br><small style="color:var(--text-dim);">128-bit NEON SIMD cosine similarity in RAM</small></td>
+            <td><strong>120 ms – 450 ms</strong><br><small style="color:var(--text-dim);">Python bridge or external vector database</small></td>
           </tr>
           <tr>
             <td><strong>Rendering Engine</strong></td>
-            <td class="genie-col">Direct Metal 3 & SwiftUI @ 120 FPS</td>
-            <td>Chromium Blink WebGL / CSS @ 60 FPS</td>
-          </tr>
-          <tr>
-            <td><strong>Battery Drain / Hour</strong></td>
-            <td class="genie-col">&lt; 0.4% battery drain</td>
-            <td>7.5% – 14.0% continuous battery drain</td>
+            <td class="genie-col">Direct Metal 3 & SwiftUI @ 120 FPS<br><small style="color:var(--text-dim);">Native ProMotion hardware display link</small></td>
+            <td>Chromium Blink WebGL / CSS @ 60 FPS<br><small style="color:var(--text-dim);">Compositor lag and frame drops</small></td>
           </tr>
           <tr>
             <td><strong>Linux Hypervisor</strong></td>
-            <td class="genie-col">Native In-RAM <code>Hypervisor.framework</code> (340ms boot)</td>
-            <td>Heavy Docker Desktop / QEMU emulation (15–30s boot)</td>
+            <td class="genie-col">Native In-RAM <code>Hypervisor.framework</code> (340ms boot)<br><small style="color:var(--text-dim);">Direct Virtio-FS and vsock IPC</small></td>
+            <td>Heavy Docker Desktop / QEMU emulation (15–30s boot)<br><small style="color:var(--text-dim);">Heavy daemon and filesystem translation</small></td>
           </tr>
           <tr>
             <td><strong>Privacy & Telemetry</strong></td>
-            <td class="genie-col"><span class="check">✓ Zero bytes transmitted · 100% Local</span></td>
-            <td><span class="cross">✗ Continuous background analytics & cloud telemetry</span></td>
-          </tr>
-          <tr>
-            <td><strong>Display Support</strong></td>
-            <td class="genie-col">Native Duo Fold & ProMotion notch matching</td>
-            <td>Generic web canvas wrapper</td>
+            <td class="genie-col"><span class="check">✓ Zero bytes transmitted · 100% Offline</span></td>
+            <td><span class="cross">✗ Continuous cloud analytics & tracking telemetry</span></td>
           </tr>
         </tbody>
       </table>
@@ -4660,7 +4686,7 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
   <section id="architecture" class="dissection-section">
     <div class="section-title">
       <h2 data-i18n="dissection_title">Deep Architecture Dissection</h2>
-      <p data-i18n="dissection_desc">A technical breakdown of the 6 core subsystems powering Genie v1.0.0 (Build 500).</p>
+      <p data-i18n="dissection_desc">A technical breakdown of the 6 core subsystems powering Genie v2.0.0 (Build 508).</p>
     </div>
 
     <div class="dissection-grid">
@@ -4832,15 +4858,15 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
       </div>
     </div>
 
-        <!-- Latest Update — Build 500 Features -->
+        <!-- Latest Update — Build 508 Features -->
     <div class="menubar-update-band" style="margin-top: 20px;">
       <div class="menubar-update-grid">
         <div>
-          <span class="menubar-update-pill">New in Build 500</span>
-          <h3>Autonomous OS Agent, In-RAM Hypervisor &amp; Duo Fold Studio</h3>
-          <p>Genie's massive Build 500 is here. Genie is now an autonomous OS Agent operating directly inside macOS and Linux. Using native <b>CoreGraphics (CGEvent)</b> input injection, Genie snaps the cursor, executes clicks, double-clicks, drags, and enters keystrokes with zero-latency visual coordinate grounding. All 12 legacy control center tabs (Apps, Desktop, Themes, VIP Packs, etc.) have been fully restored and integrated natively into the iPad Duo Fold code editor as swipeable tabs. Under the hood, <b>GenieHypervisorEngine</b> boots instant macOS and Linux virtual machines directly inside RAM. By predictively memoizing visual states, UI rendering overhead drops to near zero—freeing 99.9% of CPU capacity for <b>Headless Background Swarms</b> that speculatively pre-compute code, run tests, and index data before you even click.</p>
+          <span class="menubar-update-pill" style="background:linear-gradient(135deg, #10b981, #059669); color:#fff;">New in Build 508: Final Release</span>
+          <h3>Smart 1/4 Screen Snapping, Slide-Into-Bar Layouts &amp; Futuristic Visual Chat</h3>
+          <p>Genie Build 508 arrives with intelligent horizontal subdivision snapping—cycling from 50% split screen to 1/4 screen quadrants (Top-Left, Bottom-Left, Top-Right, Bottom-Right) with a single gesture. The layouts bar now slides seamlessly into the top Genie Bar with dynamic docked view counts, and the visual canvas gains a glowing cyberpunk chat input with real-time Apple Silicon MPS Neural Core tensor predictions. Preserves 14–18 hours of MacBook battery life with an astonishing 0.1 Energy Score and 0 dB fan spin.</p>
           <div style="margin-top: 14px; display: flex; gap: 12px; flex-wrap: wrap;">
-            <a href="features.html#os-agent" class="menubar-details-cta" style="margin: 0; padding: 8px 16px; font-size: 0.85rem;">Explore Autonomous OS Agent →</a>
+            <a href="features.html#os-agent" class="menubar-details-cta" style="margin: 0; padding: 8px 16px; font-size: 0.85rem;">Explore Build 508 Features →</a>
             <a href="features.html#hypervisor-swarms" class="menubar-details-cta" style="margin: 0; padding: 8px 16px; font-size: 0.85rem;">In-RAM Hypervisor &amp; Swarms →</a>
             <a href="features.html#duo-fold" class="menubar-details-cta" style="margin: 0; padding: 8px 16px; font-size: 0.85rem;">iPad Duo Fold Studio →</a>
           </div>
@@ -5197,6 +5223,107 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
     </div>
   </section>
 
+  <!-- Build 508 Final Interface & Spatial Gallery Section -->
+  <section id="final-gallery" class="showcase-section" style="background: rgba(10,12,18,0.6); padding: 80px 24px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="section-title">
+      <div style="display:inline-block; padding: 6px 16px; border-radius: 20px; background: linear-gradient(135deg, rgba(52,211,153,0.15), rgba(16,185,129,0.25)); border: 1px solid #10b981; color: #34d399; font-size: 0.82rem; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">⚡️ Final Release • Build 508</div>
+      <h2 style="font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #fff 40%, var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Official Build 508 Final Interface Gallery</h2>
+      <p style="color: var(--text-dim); max-width: 720px; margin: 0 auto; font-size: 1.05rem;">Authentic 2880×1800 Retina captures of Genie Build 508 running natively on macOS Sonoma &amp; Sequoia. Pure Metal 3, 0.0% idle CPU, and 0.1 Energy Score.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; max-width: 1280px; margin: 40px auto 0;">
+      <!-- Card 1 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/appstore_screenshots/01_Spatial_Canvas_Camouflage_Mode.png" alt="Spatial Canvas Camouflage Mode" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(147,95,245,0.15); color: #c084fc; border: 1px solid rgba(147,95,245,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Spatial Canvas • Camouflage</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">Camouflage Desktop Ordering</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">Dual-level window ordering between clean desktop wallpaper and interactive floating canvas with zero Finder window clutter.</p>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/appstore_screenshots/02_Spatial_Canvas_Translucent_Mode.png" alt="Spatial Canvas Translucent Mode" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Liquid Glass • Translucent</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">Optical Glass &amp; 120 FPS ProMotion</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">Hardware-accelerated optical blur, specular rim reflections, and fluid spring physics locked at 120 frames per second.</p>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/appstore_screenshots/06_Studio_Tab_Formations.png" alt="Mathematical Formations & Snapping" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Formations • 1/4 Snapping</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">Smart 1/4 Horizontal Snapping</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">Instant horizontal subdivision cycling: 50% split ➔ Top-Left 1/4 ➔ Bottom-Left 1/4, plus Fibonacci spirals and lotus docks.</p>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/appstore_screenshots/12_Studio_Tab_VIP_Packs.png" alt="VIP Expansion Packs & Bespoke Store" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(236,72,153,0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">VIP Store • Expansions</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">VIP Expansion Packs &amp; Soundfonts</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">Instant zero-install themes, luxury sound design profiles, and custom dock snuggies integrated directly into the workspace.</p>
+        </div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/appstore_screenshots/10_Studio_Tab_Entities_Pets.png" alt="Living Dock Pets & Virtual Entities" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Living Pets • Physics</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">Living Dock Pets &amp; Entities</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">Autonomous physics-driven desktop companions that react to trackpad gestures, momentum, and system music playback.</p>
+        </div>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/appstore_screenshots/03_Studio_Tab_Apps.png" alt="Applications Matrix & Instant Launchpad" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(14,165,233,0.15); color: #38bdf8; border: 1px solid rgba(14,165,233,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">App Matrix • Microsecond IPE</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">Applications Matrix &amp; IPE Search</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">Full continuous universe indexed by 64-bit Inverse Probability Elimination (IPE), matching apps in under 5 microseconds.</p>
+        </div>
+      </div>
+
+      <!-- Card 7 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/screenshots/01_power_reserve_battery.png" alt="Power Reserve & Battery Telemetry" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Battery Lab • 0.1 Energy Score</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">Power Reserve &amp; Battery Telemetry</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">28+ custom battery styles, granular milliwatt draw, SMC health telemetry, and 14–18 hour battery preservation.</p>
+        </div>
+      </div>
+
+      <!-- Card 8 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/screenshots/20_system_diagnostics_sentinel.png" alt="Mach Kernel Sentinel & Diagnostics" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Diagnostics • Overheat Guard</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">Mach Kernel Sentinel &amp; Diagnostics</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">Real-time Apple Silicon performance cluster load, memory pressure, and Overheat Guard automatically unmapping AI weights.</p>
+        </div>
+      </div>
+
+      <!-- Card 9 -->
+      <div class="screenshot-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; background: rgba(18,21,30,0.8);">
+        <img src="assets/screenshots/22_genie_living_studio_chat.png" alt="Futuristic Visual Chat & Tensor HUD" loading="lazy" style="width:100%; aspect-ratio:16/10; object-fit:cover; display:block;">
+        <div class="screenshot-info" style="padding: 18px 20px;">
+          <span class="screenshot-badge" style="background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Visual Canvas • Tensor HUD</span>
+          <h4 style="margin: 10px 0 6px; font-size: 1.1rem; color: #fff;">Futuristic Visual Chat &amp; Tensor HUD</h4>
+          <p style="color: var(--text-dim); font-size: 0.88rem; line-height: 1.5; margin: 0;">Glowing cyberpunk glassmorphic chat input with live Apple Silicon MPS Neural Core tensor telemetry and one-tap mutations.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- International Languages & Localization Section -->
   <section id="languages" class="languages-section">
     <div class="section-title">
@@ -5461,10 +5588,10 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
         <div>
           <span class="contact-icon">🍏</span>
           <h4 data-i18n="contact_p1_c4_title">Mac App Store Verified</h4>
-          <p data-i18n="contact_p1_c4_desc">Official Apple Mac App Store listing for Build 500 with verified sandboxing and automatic updates.</p>
+          <p data-i18n="contact_p1_c4_desc">Official Apple Mac App Store listing for Build 508 with verified sandboxing and automatic updates.</p>
         </div>
         <div>
-          <span class="contact-link-text">App Store Listing (Build 500) →</span>
+          <span class="contact-link-text">App Store Listing (Build 508) →</span>
           <span style="display:block; margin-top:6px; font-size:0.75rem; color:var(--text-muted);">Apple Sandboxed & Notarized</span>
         </div>
       </a>
@@ -5472,7 +5599,7 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
 
     <!-- Page 2: Enterprise & Bespoke Inquiries -->
     <div id="contact-page-2" class="contact-page-content">
-      <a href="mailto:nicholas.dudek@icloud.com?subject=Genie%20Build%20500%20-%20Enterprise%20Volume%20Licensing" class="contact-card">
+      <a href="mailto:nicholas.dudek@icloud.com?subject=Genie%20Build%20508%20-%20Enterprise%20Volume%20Licensing" class="contact-card">
         <div>
           <span class="contact-icon">🏢</span>
           <h4 data-i18n="contact_p2_c1_title">Enterprise & Air-Gapped MDM</h4>
@@ -5484,7 +5611,7 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
         </div>
       </a>
 
-      <a href="mailto:nicholas.dudek@icloud.com?subject=Genie%20Build%20500%20-%20Bespoke%20Shader%20Commission" class="contact-card">
+      <a href="mailto:nicholas.dudek@icloud.com?subject=Genie%20Build%20508%20-%20Bespoke%20Shader%20Commission" class="contact-card">
         <div>
           <span class="contact-icon">🎨</span>
           <h4 data-i18n="contact_p2_c2_title">Custom Shaders & Display Bezels</h4>
@@ -5496,7 +5623,7 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
         </div>
       </a>
 
-      <a href="mailto:nicholas.dudek@icloud.com?subject=Genie%20Build%20500%20-%20Sovereign%20Agent%20Integration" class="contact-card">
+      <a href="mailto:nicholas.dudek@icloud.com?subject=Genie%20Build%20508%20-%20Sovereign%20Agent%20Integration" class="contact-card">
         <div>
           <span class="contact-icon">🤖</span>
           <h4 data-i18n="contact_p2_c3_title">Sovereign Agent & Hypervisor Swarms</h4>
@@ -5555,7 +5682,7 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
           <span>Genie</span>
         </div>
         <p data-i18n="footer_brand_desc">Next-generation spatial workspace and application launcher for macOS. Engineered natively with Swift and Metal shaders with absolute offline privacy.</p>
-        <p style="margin-top: 10px; font-size: 0.82rem; color: var(--gold); font-weight: 600;">Version 1.0.0 (Build 500) • Universal Binary</p>
+        <p style="margin-top: 10px; font-size: 0.82rem; color: var(--gold); font-weight: 600;">Version 2.0.0 (Build 508) • Universal Binary</p>
       </div>
 
       <div class="footer-col">

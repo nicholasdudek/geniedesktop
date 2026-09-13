@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Genie Block — Spatial AI Home, Duo Fold Workspace & Neural Cockpit</title>
-  <meta name="description" content="Genie Block is the ambient spatial desktop home, Duo Fold dual-screen studio, and local AI cockpit engineered natively for macOS with Swift and Metal. Zero telemetry, sub-35MB RAM, and 120 FPS ProMotion.">
+  <title>Genie Block — A whole new desktop</title>
+  <meta name="description" content="Explore Genie Block for Mac: a spatial workspace for your apps, conversations, world clocks, and dock companions. Try the interactive desktop demo.">
   <link rel="icon" type="image/png" href="assets/icons/app_icon.png">
   <link rel="stylesheet" href="assets/css/genie-apple-2028-themes.css">
 
@@ -986,366 +986,240 @@
       .duo-studio-grid { grid-template-columns: 1fr; }
       .footer-content { grid-template-columns: 1fr; }
     }
+
+    /* Genie Block refresh: dark glass, open space, and a warm desktop horizon. */
+    html { scroll-behavior: smooth; scroll-padding-top: 100px; color-scheme: dark; }
+    body { background: #080a0f; background-image: radial-gradient(ellipse at 75% 0, #30231655, transparent 40%); }
+    button, input { font: inherit; }
+    button { touch-action: manipulation; }
+    :focus-visible { outline: 3px solid #f4c375; outline-offset: 5px; }
+    [hidden] { display: none !important; }
+    .skip-link { position: fixed; top: -100px; left: 16px; z-index: 2000; padding: 12px 18px; background: #f4c375; color: #080a0f; }
+    .skip-link:focus { top: 12px; }
+    nav { max-width: 1600px; margin: auto; height: auto; min-height: 78px; gap: 24px; padding: 18px 5%; }
+    .nav-brand { white-space: nowrap; letter-spacing: -.04em; font-size: 1.35rem; }
+    .nav-brand b { color: var(--gold); font-weight: 500; }
+    .nav-links { gap: 30px; }
+    .nav-links a { font-size: .875rem; }
+    .btn-appstore { box-shadow: none; gap: 16px; min-height: 44px; }
+    .btn-ghost { min-height: 44px; cursor: pointer; }
+    .block-hero { max-width: 1376px; margin: auto; padding: 62px 40px 42px; display: grid; grid-template-columns: 1.45fr 1fr; gap: 64px; text-align: left; align-items: end; }
+    .hero-pill { border: 0; padding: 0; background: none; border-radius: 0; font-size: .75rem; letter-spacing: .13em; margin-bottom: 18px; color: #b9ab96; }
+    .hero h1 { font-size: clamp(2.5rem, 4.6vw, 4.4rem); font-weight: 600; letter-spacing: -.055em; line-height: 1.08; margin: 0; }
+    .hero p.lead { font-size: 1.0625rem; margin: 0 0 18px; max-width: 400px; color: #afb7c5; }
+    .hero-demo-link { color: var(--gold); font-size: .9375rem; text-decoration: none; display: inline-flex; gap: 18px; align-items: center; }
+    .simulator-section { max-width: 1376px; margin: 0 auto 76px; padding: 0 40px; }
+    .demo-heading { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; padding: 16px 2px; }
+    .demo-heading h2 { font-size: 1rem; font-weight: 500; color: #c8ced9; }
+    .demo-heading > span { font-size: .75rem; color: #9ba4b4; letter-spacing: .12em; }
+    .simulator-window { border-color: #ffffff26; border-radius: 20px; box-shadow: 0 30px 80px #0006; }
+    .sim-header { gap: 20px; background: #16191feF; padding: 14px 20px; flex-wrap: wrap; }
+    .sim-tabs { flex: 1; justify-content: center; border: 0; background: transparent; padding: 0; gap: 6px; }
+    .sim-tab-btn { white-space: nowrap; min-height: 40px; font-size: .875rem; border: 1px solid transparent; }
+    .sim-tab-btn.active { background: #f4c37517; border-color: #f4c37536; }
+    .talisman-cycle-btn { min-height: 40px; animation: none; box-shadow: none; background: #f4c37514; font-size: .875rem; white-space: nowrap; padding: 8px 13px; border-color: #f4c37536; }
+    .sim-stage { min-height: 550px; background: linear-gradient(100deg, #081019a8, #08101975), url('assets/wallpapers/GenieAerial4K.jpg') center / cover; }
+    .screen-view { padding: 28px; min-height: 550px; }
+    .workspace-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 22px; }
+    .workspace-heading h3 { font-size: 1.65rem; line-height: 1.25; font-weight: 500; letter-spacing: -.035em; margin-top: 5px; }
+    .eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .14em; color: #e3d5c3; }
+    .workspace-date { font-size: .875rem; color: #f2f0eb; text-align: right; }
+    .home-grid { grid-template-columns: 1.1fr 1fr; gap: 18px; }
+    .home-card, .duo-pane { min-width: 0; background: #0b101cde; backdrop-filter: blur(24px); border: 1px solid #ffffff25; box-shadow: inset 0 1px #ffffff08; }
+    .home-card { gap: 16px; padding: 24px; border-radius: 17px; }
+    .card-title { color: #f4f4f6; font-size: 1rem; flex-wrap: wrap; justify-content: space-between; gap: 5px 10px; }
+    .card-caption { font-size: .8125rem; color: #a8b3c3; font-weight: 400; }
+    .clock-pillow { background: #050810b3; box-shadow: none; gap: 24px; border-radius: 14px; padding: 18px 22px; flex-wrap: wrap; }
+    .clock-digital { font-size: clamp(1.75rem, 3vw, 2.7rem); font-weight: 500; letter-spacing: -.05em; line-height: 1.1; white-space: nowrap; }
+    .clock-zone { font-size: .875rem; color: #e1c999; }
+    .clock-date { font-size: .8125rem; color: #a8b3c3; }
+    .hand-second { animation: none; }
+    .clock-mark { position: absolute; color: #b2b7c3; font-size: 12px; line-height: 1; }
+    .mark-12 { top: 8px; left: 50%; transform: translateX(-50%); }.mark-3 { top: 50%; right: 8px; transform: translateY(-50%); }.mark-6 { bottom: 8px; left: 50%; transform: translateX(-50%); }.mark-9 { top: 50%; left: 8px; transform: translateY(-50%); }
+    .zone-select-chips { gap: 7px; margin: 0; }
+    .zone-chip { padding: 8px 10px; min-height: 40px; font-size: .875rem; border-radius: 8px; }
+    .sample-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 6px; }
+    .sample-row strong, .home-note strong { font-size: .9375rem; font-weight: 500; }
+    .sample-row p, .home-note p { font-size: .875rem; color: #a8b3c3; margin-top: 3px; }
+    .sample-row button { flex-shrink: 0; font-size: .875rem; }
+    .ocr-output-preview { min-height: 48px; max-height: 150px; font-size: .875rem; background: #0003; color: #a8c3dd; white-space: pre-line; }
+    .pet-spotlight { display: flex; align-items: center; gap: 26px; flex: 1; padding: 12px 10px; min-height: 116px; }
+    #activePetEmoji { font-size: 4.5rem; line-height: 1.2; filter: drop-shadow(0 12px 24px #0008); }
+    #activePetTitle { font-size: 1.45rem; font-weight: 500; letter-spacing: -.025em; }
+    #activePetMsg { font-size: .9375rem; color: #afb9ca; margin-top: 6px; }
+    .pets-strip { display: grid; grid-template-columns: repeat(4, 1fr); overflow: visible; gap: 8px; padding: 0; }
+    .pet-card { flex-direction: column; white-space: normal; padding: 10px 4px; border-radius: 10px; min-width: 0; color: inherit; }
+    .pet-name { font-size: .875rem; font-weight: 500; }
+    .pet-card.active { border-color: #f4c37570; background: #f4c37514; transform: none; }
+    .home-note { display: flex; align-items: center; gap: 14px; border-top: 1px solid #ffffff18; padding-top: 20px; margin-top: 10px; }
+    .home-note > span { color: var(--gold); font-size: 2rem; }
+    .round-link { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; border: 1px solid #ffffff30; background: #ffffff0a; color: var(--gold); cursor: pointer; margin-left: auto; }
+    .demo-bottom { background: #12151b; border-top: 1px solid #ffffff16; padding: 14px 22px; display: flex; justify-content: space-between; gap: 16px; color: #9ca7b8; font-size: .8125rem; }
+    #workspaceStatus { color: #e3c79b; white-space: nowrap; }
+    .demo-footnote { font-size: .8125rem; color: #909aaa; text-align: center; margin-top: 17px; }
+    .duo-studio-grid { min-height: 365px; }
+    .duo-pane-bar { font-size: .875rem; padding: 14px 18px; gap: 15px; flex-wrap: wrap; }
+    .duo-pane-content { font-family: inherit; font-size: 1rem; background: transparent; gap: 20px; padding: 22px; }
+    .chat-bubble { border-radius: 14px; padding: 15px 18px; font-size: 1rem; }
+    .user-bubble { background: #f4c3751a; color: #efd7af; align-self: flex-end; }
+    .assistant-bubble { color: #d5dcea; background: #ffffff06; }
+    .prompt-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+    .prompt-choices button { font-size: .875rem; }
+    .prompt-choices [aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+    .demo-disclaimer { color: #9ca7b8; font-size: .8125rem; }
+    .companion-content { justify-content: center; }
+    .companion-content h4 { font-size: 1.6rem; font-weight: 500; letter-spacing: -.035em; }
+    .companion-content p { color: #adb8ca; }
+    .companion-content ul { list-style: none; display: grid; gap: 10px; }
+    .companion-content li { border-bottom: 1px solid #ffffff14; padding: 8px 0; display: flex; justify-content: space-between; gap: 12px; }
+    .apps-atelier-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; gap: 14px; }
+    .app-icon-item { color: #fff; background: #0b101ce3; cursor: pointer; padding: 18px; min-width: 0; }
+    .app-icon-item.active { border-color: var(--gold); background: #271f18ee; }
+    .app-label { font-size: .9375rem; }
+    .app-detail { background: #0b101ce3; border: 1px solid #ffffff25; padding: 15px 20px; border-radius: 12px; margin-top: 18px; font-size: .9375rem; color: #d3dae5; }
+    .matrix-view { max-width: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .matrix-tile { min-height: 100px; background: #0b101ce3; color: #fff; cursor: pointer; gap: 8px; padding: 16px; }
+    .matrix-tile .matrix-coord { font-size: .75rem; }
+    .matrix-tile .sector-name { font-size: .9375rem; }
+    .matrix-tile.active-tile { background: #2b231be8; }
+    .deep-dive-section, .pricing-section { max-width: 1376px; padding-left: 40px; padding-right: 40px; }
+    .section-headline h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 500; letter-spacing: -.04em; }
+    .section-headline p, .deep-card p { font-size: 1rem; }
+    .deep-card { background: #11151d; box-shadow: none; min-width: 0; }
+    .feature-cards-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+    .deep-card ul li, .plan-features li, .plan-period, .footer-brand p, .footer-col a, .footer-bottom { font-size: .875rem; }
+    .card-badge, .pricing-badge, .footer-col h5 { font-size: .75rem; }
+    .pricing-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+    .pricing-card { padding: 30px 22px; min-width: 0; }
+    .pricing-badge { white-space: nowrap; }
+    @media (max-width: 1100px) {
+      .nav-links { gap: 18px; }.sim-header { gap: 10px; }.traffic-lights { display: none; }
+      .block-hero { gap: 28px; }.pricing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .clock-pillow { gap: 16px; padding: 16px; }.card-caption { width: 100%; }
+      .analog-face { width: 100px; height: 100px; }.home-card { padding: 18px; }
+    }
+    @media (max-width: 840px) {
+      nav { flex-wrap: wrap; padding: 14px 24px; gap: 14px; }.nav-links { display: flex; order: 3; flex-basis: 100%; overflow-x: auto; white-space: nowrap; gap: 25px; }.nav-brand { margin-right: auto; }
+      .block-hero { grid-template-columns: 1fr; padding: 36px 24px 24px; gap: 18px; }.hero p.lead { max-width: 600px; }
+      .simulator-section, .deep-dive-section, .pricing-section { padding-left: 24px; padding-right: 24px; }
+      .home-grid, .duo-studio-grid { grid-template-columns: 1fr; }.screen-view { padding: 20px; }
+      .sim-tabs { justify-content: flex-start; }.talisman-cycle-btn { width: 100%; justify-content: center; }
+      .demo-bottom { flex-direction: column; gap: 5px; }.workspace-date { max-width: 180px; }
+      .card-caption { width: auto; }.sim-stage, .screen-view { min-height: 0; }.companion-content { min-height: 280px; }
+    }
+    @media (max-width: 520px) {
+      nav { padding: 14px 16px; }.nav-links { gap: 22px; }.block-hero { padding: 30px 16px 20px; }.hero h1 { font-size: 2.6rem; }
+      .simulator-section, .deep-dive-section, .pricing-section { padding-left: 12px; padding-right: 12px; }
+      .demo-heading { align-items: flex-start; flex-direction: column; gap: 3px; padding-left: 5px; }.demo-heading > span { font-size: .75rem; }
+      .sim-header { padding: 10px; }.sim-tabs { display: grid; grid-template-columns: 1fr 1fr; }.sim-tab-btn { justify-content: center; white-space: normal; padding: 8px; }
+      .screen-view { padding: 16px 12px; }.workspace-heading { flex-direction: column; align-items: flex-start; gap: 10px; }.workspace-heading h3 { font-size: 1.5rem; }.workspace-date { max-width: none; text-align: left; }
+      .home-card { padding: 16px; }.clock-pillow { padding: 14px 10px; gap: 14px; }.analog-face { width: 90px; height: 90px; }.hand-minute { height: 34px; }.hand-second { height: 38px; }
+      .clock-digital { font-size: 1.8rem; }.sample-row { flex-wrap: wrap; }.pet-spotlight { gap: 18px; padding: 8px 0; }#activePetEmoji { font-size: 3.5rem; }
+      .apps-atelier-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.matrix-view { gap: 6px; }.matrix-tile { padding: 24px 6px 10px; }.matrix-tile .sector-name { font-size: .875rem; }
+      .pricing-grid { grid-template-columns: 1fr; gap: 26px; }.pricing-section, .deep-dive-section { margin-top: 56px; }.home-note { gap: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
+
   </style>
 </head>
 <body>
 
-  <!-- Navigation Bar -->
-  <nav>
-    <a href="index.html" class="nav-brand">
-      <img src="assets/icons/app_icon.png" alt="Genie Icon">
-      <span>Genie</span>
-      <span class="brand-badge">Block</span>
-    </a>
+
+  <a class="skip-link" href="#simulator">Skip to interactive demo</a>
+  <nav aria-label="Main navigation">
+    <a href="index.html" class="nav-brand"><img src="assets/icons/app_icon.png" alt="" width="38" height="38"><span>Genie <b>Block</b></span></a>
     <ul class="nav-links">
-      <li><a href="#simulator" class="active">Interactive Simulator</a></li>
-      <li><a href="#duo-fold">Duo Fold</a></li>
-      <li><a href="#vision-ingestion">Vision & PDF Ingestion</a></li>
-      <li><a href="#world-clock">World Clock</a></li>
-      <li><a href="#dock-pets">Living Pets</a></li>
-      <li><a href="#pricing">App Store & StoreKit</a></li>
-      <li><a href="about.html">About</a></li>
-      <li><a href="features.html">Features</a></li>
+      <li><a href="#simulator">Play with the demo</a></li>
+      <li><a href="#duo-fold">Explore features</a></li>
+      <li><a href="#pricing">Plans</a></li>
+      <li><a href="about.html">About Genie</a></li>
     </ul>
-    <div class="nav-actions">
-      <a href="https://apps.apple.com" target="_blank" class="btn-appstore">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.38c.62-.75 1.04-1.8 1.04-2.85 0-.15-.01-.29-.04-.44-.99.04-2.19.66-2.9 1.49-.57.65-1.07 1.71-1.07 2.77 0 .15.02.3.04.4.1.01.21.03.32.03.9 0 2.01-.58 2.61-1.4z"/>
-        </svg>
-        App Store 1.0
-      </a>
-    </div>
+    <a href="https://apps.apple.com/app/id6808165534" target="_blank" rel="noopener noreferrer" class="btn-appstore">Get Genie <span aria-hidden="true">↗</span></a>
   </nav>
-
-  <!-- Hero Section -->
-  <header class="hero">
-    <div class="hero-pill">✨ Build 507 • Native macOS 14 & 15 Sequoia • Apple Silicon</div>
-    <h1>The Ambient Spatial Desktop & <span class="gold-text">Genie Block</span></h1>
-    <p class="lead">
-      Consolidated Home Space, Duo Fold Dual-Screen Studio, 2-Finger Browser Trackpad Scrolling, Instant Vision & PDF OCR Ingestion, Living Metal Shaders, and Zero-Telemetry AI Cockpit on macOS.
-    </p>
-
-    <div class="hero-cta-group">
-      <a href="#simulator" class="btn-appstore" style="font-size: 1rem; padding: 12px 28px;">
-        ✨ Test Interactive Genie Block Simulator
-      </a>
-      <a href="#pricing" class="btn-ghost" style="font-size: 1rem; padding: 12px 24px;">
-        View StoreKit 2 Pricing
-      </a>
-      <a href="features.html" class="btn-ghost" style="font-size: 1rem; padding: 12px 24px;">
-        Explore All 10 Subsystems →
-      </a>
+  <main>
+  <header class="hero block-hero">
+    <div>
+      <div class="hero-pill">GENIE FOR MAC · SPATIAL WORKSPACE</div>
+      <h1>A little space.<br><span class="gold-text">A whole new desktop.</span></h1>
     </div>
-
-    <!-- Quick Spec Bar -->
-    <div class="spec-badges-bar">
-      <div class="spec-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        Sub-35MB RAM Footprint
-      </div>
-      <div class="spec-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        120 FPS ProMotion Metal Shaders
-      </div>
-      <div class="spec-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        100% App Sandboxed & Zero Telemetry
-      </div>
-      <div class="spec-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        2-Finger Browser Trackpad Scroll
-      </div>
-      <div class="spec-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Natural Layout Vision OCR
-      </div>
+    <div class="hero-intro">
+      <p class="lead">Your apps, conversations, world clocks, and a few familiar companions. Bring them together in Genie Block.</p>
+      <a class="hero-demo-link" href="#simulator">Make yourself at home <span aria-hidden="true">↓</span></a>
     </div>
   </header>
 
-  <!-- Interactive Genie Block Simulator -->
-  <section id="simulator" class="simulator-section">
-    <div class="section-headline">
-      <h2>Interactive Genie Block Simulator</h2>
-      <p>Click the <strong>✨ GENIE Talisman Button</strong> to cycle views lightning fast, or use 2-finger horizontal scroll over the header bar.</p>
-    </div>
-
+  <section id="simulator" class="simulator-section" aria-labelledby="demo-title">
+    <div class="demo-heading"><h2 id="demo-title">Your desktop, reimagined.</h2><span>INTERACTIVE WEB DEMO</span></div>
     <div class="simulator-window" id="simWindow">
-      <!-- Simulator Header Bar -->
       <div class="sim-header" id="simHeader">
-        <div class="traffic-lights">
-          <div class="tl-dot tl-red"></div>
-          <div class="tl-dot tl-yellow"></div>
-          <div class="tl-dot tl-green"></div>
+        <div class="traffic-lights" aria-hidden="true"><i class="tl-dot tl-red"></i><i class="tl-dot tl-yellow"></i><i class="tl-dot tl-green"></i></div>
+        <div class="sim-tabs" id="tabBar" role="tablist" aria-label="Workspace">
+          <button id="tab-home" class="sim-tab-btn active" role="tab" aria-selected="true" aria-controls="view-home" data-target="home">Home</button>
+          <button id="tab-duo" class="sim-tab-btn" role="tab" aria-selected="false" aria-controls="view-duo" tabindex="-1" data-target="duo">Duo Fold</button>
+          <button id="tab-apps" class="sim-tab-btn" role="tab" aria-selected="false" aria-controls="view-apps" tabindex="-1" data-target="apps">Applications</button>
+          <button id="tab-matrix" class="sim-tab-btn" role="tab" aria-selected="false" aria-controls="view-matrix" tabindex="-1" data-target="matrix">Spatial canvas</button>
         </div>
-
-        <div class="sim-tabs" id="tabBar">
-          <button class="sim-tab-btn active" data-target="home">
-            <span>✨</span> Genie Block Home
-          </button>
-          <button class="sim-tab-btn" data-target="duo">
-            <span>◫</span> Duo Fold Studio
-          </button>
-          <button class="sim-tab-btn" data-target="apps">
-            <span>田</span> Applications
-          </button>
-          <button class="sim-tab-btn" data-target="matrix">
-            <span>⛶</span> Spatial Desktop (81-Screen)
-          </button>
-        </div>
-
-        <!-- Master Talisman Cycle Button -->
-        <button class="talisman-cycle-btn" id="talismanBtn" title="Click to cycle views lightning fast!">
-          <span id="talismanIcon">✨</span>
-          <span id="talismanLabel">GENIE CYCLE</span>
-        </button>
+        <button class="talisman-cycle-btn" id="talismanBtn" aria-label="Next workspace: Duo Fold"><span aria-hidden="true">✦</span> <span id="talismanLabel">Next: Duo Fold</span></button>
       </div>
-
-      <!-- Stage Container -->
       <div class="sim-stage">
-        <!-- View 1: Genie Block Home -->
-        <div class="screen-view active" id="view-home">
+        <div class="screen-view active" id="view-home" role="tabpanel" aria-labelledby="tab-home" tabindex="0">
+          <div class="workspace-heading"><div><span class="eyebrow">HOME SPACE / 01</span><h3>A place for everything.</h3></div><span class="workspace-date" id="workspaceDate"></span></div>
           <div class="home-grid">
-            <!-- Left Column: Clock & Quick Launch -->
             <div class="home-card">
-              <div class="card-title">
-                <span>⏱</span> OLED World Clock Pillow & Time Travel
-              </div>
-
+              <div class="card-title">World clock <span class="card-caption">Always in the right time zone</span></div>
               <div class="clock-pillow">
-                <div class="analog-face">
-                  <div class="hand hand-hour"></div>
-                  <div class="hand hand-minute"></div>
-                  <div class="hand hand-second"></div>
-                  <div class="face-center"></div>
-                </div>
-                <div class="clock-info">
-                  <div class="clock-digital" id="simDigitalClock">11:24 PM</div>
-                  <div class="clock-zone" id="simClockZone">Seoul, South Korea (UTC+9)</div>
-                  <div class="zone-select-chips">
-                    <span class="zone-chip active" onclick="setZone('Seoul (UTC+9)', '11:24 PM')">Seoul</span>
-                    <span class="zone-chip" onclick="setZone('Tokyo (UTC+9)', '11:24 PM')">Tokyo</span>
-                    <span class="zone-chip" onclick="setZone('London (UTC+0)', '02:24 PM')">London</span>
-                    <span class="zone-chip" onclick="setZone('New York (UTC-5)', '09:24 AM')">New York</span>
-                    <span class="zone-chip" onclick="setZone('San Francisco (UTC-8)', '06:24 AM')">San Francisco</span>
-                  </div>
-                </div>
+                <div class="analog-face" aria-hidden="true"><span class="clock-mark mark-12">12</span><span class="clock-mark mark-3">3</span><span class="clock-mark mark-6">6</span><span class="clock-mark mark-9">9</span><div class="hand hand-hour"></div><div class="hand hand-minute"></div><div class="hand hand-second"></div><div class="face-center"></div></div>
+                <div class="clock-info"><div class="clock-digital" id="simDigitalClock">--:--</div><div class="clock-zone" id="simClockZone">San Francisco</div><div class="clock-date" id="clockDate"></div></div>
               </div>
-
-              <!-- Quick File & Prompt OCR Tester -->
-              <div class="card-title" style="margin-top: 8px;">
-                <span>📄</span> Drag & Drop / Test Image & PDF Ingestion
+              <div class="zone-select-chips" role="group" aria-label="Clock city">
+                <button class="zone-chip active" data-zone="America/Los_Angeles" aria-pressed="true">San Francisco</button><button class="zone-chip" data-zone="America/New_York" aria-pressed="false">New York</button><button class="zone-chip" data-zone="Europe/London" aria-pressed="false">London</button><button class="zone-chip" data-zone="Asia/Tokyo" aria-pressed="false">Tokyo</button><button class="zone-chip" data-zone="Asia/Seoul" aria-pressed="false">Seoul</button>
               </div>
-              <div class="ocr-drop-box" id="ocrDropBox" onclick="simulateFileUpload()">
-                <p style="font-weight: 700; color: #fff; margin-bottom: 4px;">Click to Ingest Mock Screenshot or PDF</p>
-                <p style="font-size: 0.78rem; color: var(--text-muted);">Supports .png, .jpg, .pdf, .swift, .py with Natural Visual Line Reading Order</p>
-              </div>
-              <div class="ocr-output-preview" id="ocrOutput">
-                Ready. Click the box above to simulate multi-line Apple Vision OCR extraction.
-              </div>
+              <div class="sample-row"><div><strong>From screenshot to context.</strong><p>Try a sample of Genie's text extraction.</p></div><button class="btn-ghost" id="ocrDropBox">Run sample <span aria-hidden="true">↗</span></button></div>
+              <div class="ocr-output-preview" id="ocrOutput" role="status">Sample ready. No file upload or AI connection needed.</div>
             </div>
-
-            <!-- Right Column: Living Dock Pets & System Sentinel -->
-            <div class="home-card">
-              <div class="card-title">
-                <span>🦊</span> Living Dock Pets (Interactive Reactions)
+            <div class="home-card companions-card">
+              <div class="card-title">A little company <span class="card-caption">Pick your dock companion</span></div>
+              <div class="pet-spotlight"><span id="activePetEmoji" aria-hidden="true">🦊</span><div><h4 id="activePetTitle">Cyber Fox</h4><p id="activePetMsg" role="status">Ready to explore your workspace.</p></div></div>
+              <div class="pets-strip" role="group" aria-label="Dock companion">
+                <button class="pet-card active" data-pet="fox" aria-pressed="true"><span class="pet-icon" aria-hidden="true">🦊</span><span class="pet-name">Fox</span></button>
+                <button class="pet-card" data-pet="dragon" aria-pressed="false"><span class="pet-icon" aria-hidden="true">🐉</span><span class="pet-name">Dragon</span></button>
+                <button class="pet-card" data-pet="kitten" aria-pressed="false"><span class="pet-icon" aria-hidden="true">🐱</span><span class="pet-name">Kitten</span></button>
+                <button class="pet-card" data-pet="owl" aria-pressed="false"><span class="pet-icon" aria-hidden="true">🦉</span><span class="pet-name">Owl</span></button>
               </div>
-              <p style="font-size: 0.82rem; color: var(--text-muted);">
-                Dock companions living directly on macOS Dock and Genie Block. Click any companion:
-              </p>
-
-              <div class="pets-strip">
-                <div class="pet-card active" onclick="selectPet('Cyber Fox', '🦊', 'Chasing cursor at 120 FPS...')">
-                  <span class="pet-icon">🦊</span>
-                  <div class="pet-meta">
-                    <span class="pet-name">Cyber Fox</span>
-                    <span class="pet-status">Active</span>
-                  </div>
-                </div>
-                <div class="pet-card" onclick="selectPet('Neon Dragon', '🐉', 'Breathing bioluminescent plasma')">
-                  <span class="pet-icon">🐉</span>
-                  <div class="pet-meta">
-                    <span class="pet-name">Neon Dragon</span>
-                    <span class="pet-status">Idle</span>
-                  </div>
-                </div>
-                <div class="pet-card" onclick="selectPet('Quantum Kitten', '🐱', 'Purring in quantum superposition')">
-                  <span class="pet-icon">🐱</span>
-                  <div class="pet-meta">
-                    <span class="pet-name">Kitten</span>
-                    <span class="pet-status">Purring</span>
-                  </div>
-                </div>
-                <div class="pet-card" onclick="selectPet('Cosmic Owl', '🦉', 'Scanning AST syntax tree')">
-                  <span class="pet-icon">🦉</span>
-                  <div class="pet-meta">
-                    <span class="pet-name">Cosmic Owl</span>
-                    <span class="pet-status">Scanning</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Pet Dialogue Bubble -->
-              <div style="background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
-                <span id="activePetEmoji" style="font-size: 1.6rem;">🦊</span>
-                <div>
-                  <div id="activePetTitle" style="font-size: 0.85rem; font-weight: 700; color: #fff;">Cyber Fox</div>
-                  <div id="activePetMsg" style="font-size: 0.78rem; color: var(--gold);">Chasing cursor at 120 FPS with zero CPU overhead!</div>
-                </div>
-              </div>
-
-              <!-- System Sentinel HUD -->
-              <div class="card-title" style="margin-top: 8px;">
-                <span>⚡</span> Sub-35MB RAM Sentinel & Attention Sink Ring Buffer
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-                  <div style="font-size: 0.72rem; color: var(--text-muted);">Resident Memory</div>
-                  <div style="font-size: 1.1rem; font-weight: 800; color: var(--cyan);">28.4 MB</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-                  <div style="font-size: 0.72rem; color: var(--text-muted);">Idle CPU Usage</div>
-                  <div style="font-size: 1.1rem; font-weight: 800; color: var(--green);">0.0%</div>
-                </div>
-              </div>
+              <div class="home-note"><span aria-hidden="true">◫</span><div><strong>One thought. Two panes.</strong><p>Explore a conversation alongside its companion view.</p></div><button class="round-link" data-open="duo" aria-label="Explore Duo Fold">↗</button></div>
             </div>
           </div>
         </div>
-
-        <!-- View 2: Duo Fold Studio -->
-        <div class="screen-view" id="view-duo">
+        <div class="screen-view" id="view-duo" role="tabpanel" aria-labelledby="tab-duo" tabindex="0" hidden>
+          <div class="workspace-heading"><div><span class="eyebrow">DUO FOLD / 02</span><h3>Keep both sides of an idea.</h3></div><span class="workspace-date">Guided conversation preview</span></div>
           <div class="duo-studio-grid">
-            <!-- Left Pane: Unified Chat -->
-            <div class="duo-pane">
-              <div class="duo-pane-bar">
-                <span>💬 Unified Chat Studio</span>
-                <span style="color: var(--gold);">Ollama • genie-frontier:latest</span>
-              </div>
-              <div class="duo-pane-content">
-                <div style="color: var(--text-muted);">// User Prompt:</div>
-                <div style="color: #fff;">"Analyze Screenshot 2026-09-12 at 10.59.18 PM.png and mirror genie block home to duo fold space"</div>
-                <div style="margin-top: 10px; color: var(--text-muted);">// Genie Response:</div>
-                <div style="color: var(--cyan); line-height: 1.5;">
-                  Resolved file token to filesystem. Vision OCR extracted 4 visual lines with zero inversion drift.<br>
-                  Routing companion view to Live Web Studio in Duo Fold pane 2...
-                </div>
-                <div style="margin-top: auto; display: flex; gap: 8px; align-items: center;">
-                  <button style="background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.6); border-radius: 6px; padding: 6px 9px; color: #4ade80; cursor: pointer; font-size: 0.82rem;" title="Camera On • FaceTime HD Active">📷</button>
-                  <input type="text" placeholder="Type prompt or /finder, /editor, /tail..." style="flex-grow: 1; background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: #fff; font-size: 0.78rem;" readonly value="✨ Cycle button switched to Duo Fold">
-                </div>
-              </div>
-            </div>
-
-            <!-- Right Pane: Live Web Studio / Companion -->
-            <div class="duo-pane">
-              <div class="duo-pane-bar">
-                <span>🌐 Companion: Live Web Studio</span>
-                <span style="color: var(--green);">● Live Preview (Port 8080)</span>
-              </div>
-              <div class="duo-pane-content" style="background: #060910;">
-                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px;">
-                  <span style="font-weight: 700; color: var(--gold);">GenieBlockPreview.swift</span>
-                  <span style="font-size: 0.7rem; color: var(--text-muted);">Smart View Routing: ACTIVE</span>
-                </div>
-                <pre style="color: #cbd5e1; font-size: 0.76rem; overflow-x: auto;">
-struct GenieBlockView: View {
-    @StateObject var hub = GenieHub.shared
-    var body: some View {
-        HStack(spacing: 0) {
-            ChatPrimaryPane()
-            Divider()
-            DuoFoldCompanionPane()
-        }
-        .scrollWheelNavigation(enabled: true)
-    }
-}</pre>
-                <div style="margin-top: auto; padding: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; font-size: 0.74rem; color: #34d399;">
-                  ✓ Smart View Routing: Open chat automatically claimed vacant right-side companion slot.
-                </div>
-              </div>
-            </div>
+            <div class="duo-pane"><div class="duo-pane-bar">Conversation <span>Sample prompts</span></div><div class="duo-pane-content">
+              <div class="chat-bubble user-bubble" id="demoPrompt">Show me my workspace.</div><div class="chat-bubble assistant-bubble" id="demoReply" role="status">Your home space brings your clock, dock companions, and app shortcuts together. Pick a prompt to see the companion pane change.</div>
+              <div class="prompt-choices" role="group" aria-label="Try a sample prompt"><button class="btn-ghost" data-prompt="workspace" aria-pressed="true">Show my workspace</button><button class="btn-ghost" data-prompt="clock" aria-pressed="false">Compare time zones</button><button class="btn-ghost" data-prompt="capture" aria-pressed="false">Read a screenshot</button></div>
+              <p class="demo-disclaimer">Scripted preview · The Mac app connects to your configured AI provider.</p>
+            </div></div>
+            <div class="duo-pane"><div class="duo-pane-bar">Companion <span id="companionLabel">Home overview</span></div><div class="duo-pane-content companion-content" id="companionContent"></div></div>
           </div>
         </div>
-
-        <!-- View 3: Applications Atelier -->
-        <div class="screen-view" id="view-apps">
-          <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-weight: 700; font-size: 0.92rem; color: var(--gold);">Applications Atelier • Geometric Responsive Formations</div>
-            <div style="font-size: 0.78rem; color: var(--text-muted);">Formation: Responsive Grid (6 Formations Available)</div>
-          </div>
-          <div class="apps-atelier-grid">
-            <div class="app-icon-item">
-              <div class="app-symbol">🧞‍♂️</div>
-              <span class="app-label">Genie Studio</span>
-            </div>
-            <div class="app-icon-item">
-              <div class="app-symbol">💻</div>
-              <span class="app-label">Terminal</span>
-            </div>
-            <div class="app-icon-item">
-              <div class="app-symbol">🛠️</div>
-              <span class="app-label">Xcode</span>
-            </div>
-            <div class="app-icon-item">
-              <div class="app-symbol">🌐</div>
-              <span class="app-label">Safari</span>
-            </div>
-            <div class="app-icon-item">
-              <div class="app-symbol">📁</div>
-              <span class="app-label">Finder</span>
-            </div>
-            <div class="app-icon-item">
-              <div class="app-symbol">⚙️</div>
-              <span class="app-label">Settings</span>
-            </div>
-            <div class="app-icon-item">
-              <div class="app-symbol">🎨</div>
-              <span class="app-label">Shaders</span>
-            </div>
-            <div class="app-icon-item">
-              <div class="app-symbol">⏱</div>
-              <span class="app-label">World Clock</span>
-            </div>
-          </div>
+        <div class="screen-view" id="view-apps" role="tabpanel" aria-labelledby="tab-apps" tabindex="0" hidden>
+          <div class="workspace-heading"><div><span class="eyebrow">APPLICATIONS / 03</span><h3>Your everyday essentials.</h3></div><span class="workspace-date">Select an app to preview its role</span></div>
+          <div class="apps-atelier-grid" id="appsGrid"></div><div class="app-detail" id="appDetail" role="status">Choose an app above. This demo does not open applications on your computer.</div>
         </div>
-
-        <!-- View 4: Imaginary Desktop -->
-        <div class="screen-view" id="view-matrix">
-          <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-weight: 700; font-size: 0.92rem; color: var(--gold);">81-Screen Spatial Canvas Universe (Frustum Culled at 120 FPS)</div>
-            <div style="font-size: 0.78rem; color: var(--cyan);">Current Sector: Alpha [1, 1] Home Space</div>
-          </div>
-          <div class="matrix-view">
-            <div class="matrix-tile"><span class="matrix-coord">[0,0]</span><span style="font-size: 1.4rem;">📊</span><span style="font-size: 0.75rem; color: var(--text-muted);">Analytics Station</span></div>
-            <div class="matrix-tile"><span class="matrix-coord">[0,1]</span><span style="font-size: 1.4rem;">🌐</span><span style="font-size: 0.75rem; color: var(--text-muted);">Web Development</span></div>
-            <div class="matrix-tile"><span class="matrix-coord">[0,2]</span><span style="font-size: 1.4rem;">🐧</span><span style="font-size: 0.75rem; color: var(--text-muted);">Linux Hypervisor</span></div>
-            <div class="matrix-tile"><span class="matrix-coord">[1,0]</span><span style="font-size: 1.4rem;">🛠️</span><span style="font-size: 0.75rem; color: var(--text-muted);">Xcode Workspace</span></div>
-            <div class="matrix-tile active-tile"><span class="matrix-coord">[1,1]</span><span style="font-size: 1.6rem;">✨</span><span style="font-size: 0.8rem; font-weight: 800; color: var(--gold);">Genie Block Home</span></div>
-            <div class="matrix-tile"><span class="matrix-coord">[1,2]</span><span style="font-size: 1.4rem;">💬</span><span style="font-size: 0.75rem; color: var(--text-muted);">Duo Fold Studio</span></div>
-            <div class="matrix-tile"><span class="matrix-coord">[2,0]</span><span style="font-size: 1.4rem;">⏱</span><span style="font-size: 0.75rem; color: var(--text-muted);">World Clock Pillows</span></div>
-            <div class="matrix-tile"><span class="matrix-coord">[2,1]</span><span style="font-size: 1.4rem;">🦊</span><span style="font-size: 0.75rem; color: var(--text-muted);">Living Dock Pets</span></div>
-            <div class="matrix-tile"><span class="matrix-coord">[2,2]</span><span style="font-size: 1.4rem;">⚡</span><span style="font-size: 0.75rem; color: var(--text-muted);">Metal Shaders HUD</span></div>
-          </div>
+        <div class="screen-view" id="view-matrix" role="tabpanel" aria-labelledby="tab-matrix" tabindex="0" hidden>
+          <div class="workspace-heading"><div><span class="eyebrow">SPATIAL CANVAS / 04</span><h3>Give every project a place.</h3></div><span class="workspace-date">Explore nine spaces in this demo</span></div>
+          <div class="matrix-view" id="matrixGrid" role="group" aria-label="Spatial workspaces"></div><div class="app-detail" id="sectorDetail" role="status">[1,1] Home — Your starting point for clocks, apps, and companions.</div>
         </div>
       </div>
-
-      <!-- Trackpad Scroll Hint Bar -->
-      <div style="padding: 12px 20px; background: rgba(12, 16, 24, 0.95); border-top: 1px solid var(--border);">
-        <div class="trackpad-scroll-hint">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span>👆</span>
-            <span><strong>Scroll, Not Swipe:</strong> In Genie for Mac, 2-finger horizontal scroll or mouse wheel on the header bar cycles workspace views effortlessly just like tabs in Safari.</span>
-          </div>
-          <span class="scroll-badge">Browser-Style Scrolling</span>
-        </div>
-      </div>
+      <div class="demo-bottom"><span id="workspaceStatus" role="status">01 / 04 — Home</span><span>Click a tab, use arrow keys, or scroll horizontally over the tabs.</span></div>
     </div>
+    <p class="demo-footnote">A browser preview of Genie Block. Clocks show live time; AI responses and text extraction use samples.</p>
   </section>
 
   <!-- Architectural Deep Dive Cards -->
   <section class="deep-dive-section" id="duo-fold">
     <div class="section-headline">
-      <h2>Architectural Pillars of Genie Block</h2>
-      <p>Engineered strictly from first principles for Apple Silicon Unified Memory, Metal 3, and macOS 14/15.</p>
+      <h2>A desktop that feels like yours.</h2>
+      <p>Move from a quiet home space to a focused studio, with the tools you use close at hand.</p>
     </div>
 
     <div class="feature-cards-grid">
@@ -1426,8 +1300,8 @@ struct GenieBlockView: View {
   <!-- StoreKit 2 & App Store Pricing -->
   <section class="pricing-section" id="pricing">
     <div class="section-headline">
-      <h2>App Store Connect & StoreKit 2 Pricing</h2>
-      <p>Available on the Mac App Store with a 30-Day Free Trial across all subscription tiers.</p>
+      <h2>Find your place with Genie.</h2>
+      <p>Explore the plans below. Check the Mac App Store for current availability, prices, and trial eligibility.</p>
     </div>
 
     <div class="pricing-grid">
@@ -1445,7 +1319,7 @@ struct GenieBlockView: View {
             <li><span>✓</span> Cancel anytime in App Store settings</li>
           </ul>
         </div>
-        <a href="https://apps.apple.com" target="_blank" class="btn-ghost" style="text-align: center; justify-content: center;">
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" rel="noopener noreferrer" class="btn-ghost" style="text-align: center; justify-content: center;">
           Subscribe Monthly
         </a>
       </div>
@@ -1465,7 +1339,7 @@ struct GenieBlockView: View {
             <li><span>✓</span> Priority Apple Silicon Neural Updates</li>
           </ul>
         </div>
-        <a href="https://apps.apple.com" target="_blank" class="btn-appstore" style="text-align: center; justify-content: center;">
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" rel="noopener noreferrer" class="btn-appstore" style="text-align: center; justify-content: center;">
           Start 30-Day Free Trial
         </a>
       </div>
@@ -1484,7 +1358,7 @@ struct GenieBlockView: View {
             <li><span>✓</span> Dedicated developer support</li>
           </ul>
         </div>
-        <a href="https://apps.apple.com" target="_blank" class="btn-ghost" style="text-align: center; justify-content: center;">
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" rel="noopener noreferrer" class="btn-ghost" style="text-align: center; justify-content: center;">
           Get Founder's Tier
         </a>
       </div>
@@ -1503,13 +1377,14 @@ struct GenieBlockView: View {
             <li><span>✓</span> No subscriptions required</li>
           </ul>
         </div>
-        <a href="https://apps.apple.com" target="_blank" class="btn-ghost" style="text-align: center; justify-content: center;">
+        <a href="https://apps.apple.com/app/id6808165534" target="_blank" rel="noopener noreferrer" class="btn-ghost" style="text-align: center; justify-content: center;">
           Unlock Lifetime
         </a>
       </div>
     </div>
   </section>
 
+  </main>
   <!-- Footer -->
   <footer>
     <div class="footer-content">
@@ -1539,7 +1414,7 @@ struct GenieBlockView: View {
           <li><a href="about.html">About & Trackpad</a></li>
           <li><a href="privacy.html">Privacy Policy</a></li>
           <li><a href="https://github.com/nicholasdudek/geniedesktop" target="_blank">GitHub Repository</a></li>
-          <li><a href="https://apps.apple.com" target="_blank">App Store Connect</a></li>
+          <li><a href="https://apps.apple.com/app/id6808165534" target="_blank" rel="noopener noreferrer">App Store Connect</a></li>
         </ul>
       </div>
 
@@ -1562,124 +1437,164 @@ struct GenieBlockView: View {
 
   <!-- Interactive Simulator Logic -->
   <script>
+
     const views = ['home', 'duo', 'apps', 'matrix'];
-    const viewIcons = {
-      'home': '✨',
-      'duo': '◫',
-      'apps': '田',
-      'matrix': '⛶'
-    };
-    const viewLabels = {
-      'home': 'GENIE HOME',
-      'duo': 'DUO FOLD',
-      'apps': 'APPLICATIONS',
-      'matrix': 'SPATIAL DESKTOP'
-    };
-
+    const labels = {home: 'Home', duo: 'Duo Fold', apps: 'Applications', matrix: 'Spatial canvas'};
     let currentViewIndex = 0;
-
-    function switchView(viewKey) {
-      currentViewIndex = views.indexOf(viewKey);
-      if (currentViewIndex === -1) currentViewIndex = 0;
-
-      // Update tabs
-      document.querySelectorAll('.sim-tab-btn').forEach(btn => {
-        if (btn.dataset.target === viewKey) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
+    function switchView(key, focus = false) {
+      if (!views.includes(key)) return;
+      currentViewIndex = views.indexOf(key);
+      document.querySelectorAll('.sim-tab-btn').forEach(button => {
+        const active = button.dataset.target === key;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', String(active));
+        button.tabIndex = active ? 0 : -1;
+        if (active && focus) button.focus();
       });
-
-      // Update screen views
-      document.querySelectorAll('.screen-view').forEach(view => {
-        if (view.id === 'view-' + viewKey) {
-          view.classList.add('active');
-        } else {
-          view.classList.remove('active');
-        }
+      document.querySelectorAll('.screen-view').forEach(panel => {
+        const active = panel.id === 'view-' + key;
+        panel.classList.toggle('active', active);
+        panel.hidden = !active;
       });
-
-      // Update Talisman button
-      const nextIndex = (currentViewIndex + 1) % views.length;
-      const nextKey = views[nextIndex];
-      document.getElementById('talismanIcon').textContent = viewIcons[nextKey];
-      document.getElementById('talismanLabel').textContent = 'CYCLE: ' + viewLabels[nextKey];
+      const next = labels[views[(currentViewIndex + 1) % views.length]];
+      document.getElementById('talismanLabel').textContent = 'Next: ' + next;
+      document.getElementById('talismanBtn').setAttribute('aria-label', 'Next workspace: ' + next);
+      document.getElementById('workspaceStatus').textContent = '0' + (currentViewIndex + 1) + ' / 04 — ' + labels[key];
     }
-
-    // Attach tab clicks
-    document.querySelectorAll('.sim-tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        switchView(btn.dataset.target);
-      });
+    document.querySelectorAll('[data-target]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.target)));
+    document.querySelectorAll('[data-open]').forEach(button => button.addEventListener('click', () => switchView(button.dataset.open, true)));
+    document.getElementById('talismanBtn').addEventListener('click', () => switchView(views[(currentViewIndex + 1) % views.length]));
+    const tabBar = document.getElementById('tabBar');
+    tabBar.addEventListener('keydown', event => {
+      const offsets = {ArrowRight: 1, ArrowLeft: -1};
+      if (!(event.key in offsets) && event.key !== 'Home' && event.key !== 'End') return;
+      event.preventDefault();
+      const index = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (currentViewIndex + offsets[event.key] + views.length) % views.length;
+      switchView(views[index], true);
     });
+    let wheelTotal = 0, lastWheel = 0, lastSwitch = 0;
+    tabBar.addEventListener('wheel', event => {
+      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastWheel > 160) wheelTotal = 0;
+      lastWheel = now;
+      if (now - lastSwitch < 450) return;
+      const delta = event.deltaX * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 300 : 1);
+      if (Math.sign(delta) !== Math.sign(wheelTotal)) wheelTotal = 0;
+      wheelTotal += delta;
+      if (Math.abs(wheelTotal) < 55) return;
+      switchView(views[(currentViewIndex + Math.sign(wheelTotal) + views.length) % views.length]);
+      wheelTotal = 0; lastSwitch = now;
+    }, {passive: false});
 
-    // Talisman button click cycles forward
-    document.getElementById('talismanBtn').addEventListener('click', () => {
-      const nextIndex = (currentViewIndex + 1) % views.length;
-      switchView(views[nextIndex]);
-    });
-
-    // Two-finger scroll over simulator header bar
-    const simHeader = document.getElementById('simHeader');
-    let scrollDebounce = false;
-    simHeader.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      if (scrollDebounce) return;
-      if (Math.abs(e.deltaX) > 20 || Math.abs(e.deltaY) > 20) {
-        scrollDebounce = true;
-        if (e.deltaX > 0 || e.deltaY > 0) {
-          // Scroll right/down -> next view
-          const nextIndex = (currentViewIndex + 1) % views.length;
-          switchView(views[nextIndex]);
-        } else {
-          // Scroll left/up -> prev view
-          const prevIndex = (currentViewIndex - 1 + views.length) % views.length;
-          switchView(views[prevIndex]);
-        }
-        setTimeout(() => { scrollDebounce = false; }, 300);
-      }
-    }, { passive: false });
-
-    // Clock World Zone Switcher
-    function setZone(zoneName, timeStr) {
-      document.getElementById('simClockZone').textContent = zoneName;
-      document.getElementById('simDigitalClock').textContent = timeStr;
-      document.querySelectorAll('.zone-chip').forEach(chip => {
-        if (chip.textContent.includes(zoneName.split(' ')[0])) {
-          chip.classList.add('active');
-        } else {
-          chip.classList.remove('active');
-        }
-      });
+    let activeZone = 'America/Los_Angeles';
+    function clockParts(date, zone) {
+      return Object.fromEntries(new Intl.DateTimeFormat('en-GB', {timeZone: zone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'}).formatToParts(date).map(part => [part.type, part.value]));
     }
-
-    // Pet Selector
-    function selectPet(name, emoji, msg) {
-      document.getElementById('activePetEmoji').textContent = emoji;
+    function updateClock() {
+      const date = new Date();
+      const parts = clockParts(date, activeZone);
+      document.getElementById('simDigitalClock').textContent = new Intl.DateTimeFormat('en-US', {timeZone: activeZone, hour: 'numeric', minute: '2-digit'}).format(date);
+      document.getElementById('clockDate').textContent = new Intl.DateTimeFormat('en-US', {timeZone: activeZone, weekday: 'short', month: 'short', day: 'numeric', timeZoneName: 'short'}).format(date);
+      document.querySelector('.hand-hour').style.transform = `rotate(${(Number(parts.hour) % 12) * 30 + Number(parts.minute) / 2}deg)`;
+      document.querySelector('.hand-minute').style.transform = `rotate(${Number(parts.minute) * 6 + Number(parts.second) / 10}deg)`;
+      document.querySelector('.hand-second').style.transform = `rotate(${Number(parts.second) * 6}deg)`;
+      document.getElementById('workspaceDate').textContent = new Intl.DateTimeFormat('en-US', {weekday: 'long', month: 'short', day: 'numeric'}).format(date);
+      if (activePrompt === 'clock') renderTimeComparison();
+    }
+    document.querySelectorAll('[data-zone]').forEach(button => button.addEventListener('click', () => {
+      activeZone = button.dataset.zone;
+      document.getElementById('simClockZone').textContent = button.textContent;
+      document.querySelectorAll('[data-zone]').forEach(chip => { const selected = chip === button; chip.classList.toggle('active', selected); chip.setAttribute('aria-pressed', String(selected)); });
+      updateClock();
+    }));
+    const pets = {
+      fox: ['Cyber Fox', '🦊', 'Ready to explore your workspace.'],
+      dragon: ['Neon Dragon', '🐉', 'A little spark for your next big idea.'],
+      kitten: ['Quantum Kitten', '🐱', 'Keeping your keyboard company.'],
+      owl: ['Cosmic Owl', '🦉', 'Here for the late-night inspiration.']
+    };
+    document.querySelectorAll('[data-pet]').forEach(button => button.addEventListener('click', () => {
+      const [name, emoji, message] = pets[button.dataset.pet];
       document.getElementById('activePetTitle').textContent = name;
-      document.getElementById('activePetMsg').textContent = msg;
-      document.querySelectorAll('.pet-card').forEach(card => {
-        if (card.querySelector('.pet-name').textContent === name) {
-          card.classList.add('active');
-        } else {
-          card.classList.remove('active');
-        }
-      });
-    }
+      document.getElementById('activePetEmoji').textContent = emoji;
+      document.getElementById('activePetMsg').textContent = message;
+      document.querySelectorAll('[data-pet]').forEach(pet => { const selected = pet === button; pet.classList.toggle('active', selected); pet.setAttribute('aria-pressed', String(selected)); });
+    }));
+    const sampleText = 'GENIE BLOCK / HOME SPACE\nProject: A calmer desktop\nNext: Review the design in Duo Fold\nNote: Keep the conversation beside the preview.';
+    const ocrButton = document.getElementById('ocrDropBox');
+    ocrButton.addEventListener('click', () => {
+      ocrButton.disabled = true;
+      const output = document.getElementById('ocrOutput');
+      output.setAttribute('aria-busy', 'true');
+      output.textContent = 'Reading the sample screenshot…';
+      setTimeout(() => {
+        output.textContent = 'SAMPLE EXTRACTION · 4 lines\n' + sampleText;
+        output.setAttribute('aria-busy', 'false');
+        ocrButton.disabled = false; ocrButton.textContent = 'Run again ↗';
+      }, 650);
+    });
 
-    // Vision Ingestion Simulation
-    function simulateFileUpload() {
-      const ocrOutput = document.getElementById('ocrOutput');
-      ocrOutput.innerHTML = `
-        <div style="color: var(--gold); font-weight: bold;">[Apple Vision OCR Line-Sorted Output]</div>
-        <div>Line 1 (Y: 0.92, X: 0.12): ✨ GENIE Spatial Workstation [Mode: Duo Fold]</div>
-        <div>Line 2 (Y: 0.84, X: 0.12): Unified Chat Studio • Ollama genie-frontier:latest</div>
-        <div>Line 3 (Y: 0.52, X: 0.50): Companion Pane: Live Web Studio (Port 8080 active)</div>
-        <div>Line 4 (Y: 0.18, X: 0.12): Resident Memory: 28.4 MB | Frame Time: 8.3ms (120 FPS)</div>
-        <div style="color: #34d399; margin-top: 4px;">✓ Natural visual reading order preserved with zero inversion drift.</div>
-      `;
+    let activePrompt = 'workspace';
+    const prompts = {
+      workspace: ['Show me my workspace.', 'Your home space brings your clock, dock companions, and app shortcuts together. Pick a prompt to see the companion pane change.', 'Home overview'],
+      clock: ['Compare time zones.', 'Here is the current local time in San Francisco, London, and Tokyo. These clocks update live and account for daylight saving time.', 'World clocks'],
+      capture: ['Read a screenshot.', 'This sample shows how extracted text can sit beside a conversation. In the Mac app, you provide the screenshot or PDF.', 'Sample extraction']
+    };
+    function renderTimeComparison() {
+      const content = document.getElementById('companionContent');
+      content.replaceChildren();
+      const heading = document.createElement('h4'); heading.textContent = 'Same moment. Different places.'; content.append(heading);
+      const list = document.createElement('ul');
+      [['San Francisco', 'America/Los_Angeles'], ['London', 'Europe/London'], ['Tokyo', 'Asia/Tokyo']].forEach(([name, zone]) => {
+        const row = document.createElement('li'); const city = document.createElement('span'); city.textContent = name;
+        const time = document.createElement('strong'); time.textContent = new Intl.DateTimeFormat('en-US', {timeZone: zone, hour: 'numeric', minute: '2-digit'}).format(new Date()); row.append(city, time); list.append(row);
+      }); content.append(list);
     }
+    function showPrompt(key) {
+      activePrompt = key;
+      const [prompt, reply, label] = prompts[key];
+      document.getElementById('demoPrompt').textContent = prompt;
+      document.getElementById('demoReply').textContent = reply;
+      document.getElementById('companionLabel').textContent = label;
+      document.querySelectorAll('[data-prompt]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.prompt === key)));
+      const content = document.getElementById('companionContent'); content.replaceChildren();
+      if (key === 'clock') { renderTimeComparison(); return; }
+      const heading = document.createElement('h4'); heading.textContent = key === 'workspace' ? 'Everything within reach.' : 'A screenshot, made readable.';
+      const description = document.createElement('p'); description.textContent = key === 'workspace' ? 'Move between Home, Duo Fold, Applications, and your spatial canvas without losing your place.' : 'Sample text · no file is uploaded';
+      content.append(heading, description);
+      if (key === 'workspace') {
+        const list = document.createElement('ul'); ['World clocks', 'Dock companions', 'Application shortcuts', 'Spatial workspaces'].forEach(text => { const li = document.createElement('li'); li.textContent = text; list.append(li); }); content.append(list);
+      } else { const sample = document.createElement('div'); sample.className = 'ocr-output-preview'; sample.textContent = sampleText; content.append(sample); }
+    }
+    document.querySelectorAll('[data-prompt]').forEach(button => button.addEventListener('click', () => showPrompt(button.dataset.prompt)));
+
+    const apps = [['✦', 'Genie Studio', 'Bring a conversation and its companion view together in Duo Fold.'], ['⌘', 'Terminal', 'Keep command-line work close to the rest of your project.'], ['🛠️', 'Xcode', 'A dedicated place for building native Mac apps.'], ['🌐', 'Safari', 'Keep web research alongside your active workspace.'], ['📁', 'Finder', 'Bring project files into reach.'], ['⚙️', 'Settings', 'Personalize the Genie experience in the Mac app.'], ['🎨', 'Shaders', 'Explore living desktop effects in Genie for Mac.'], ['◷', 'World Clock', 'Follow the time in the cities that matter to you.']];
+    apps.forEach(([icon, name, detail]) => {
+      const button = document.createElement('button'); button.className = 'app-icon-item'; button.setAttribute('aria-pressed', 'false');
+      const symbol = document.createElement('span'); symbol.className = 'app-symbol'; symbol.textContent = icon; symbol.setAttribute('aria-hidden', 'true');
+      const label = document.createElement('span'); label.className = 'app-label'; label.textContent = name; button.append(symbol, label);
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.app-icon-item').forEach(item => { item.classList.toggle('active', item === button); item.setAttribute('aria-pressed', String(item === button)); });
+        document.getElementById('appDetail').textContent = name + ' — ' + detail + ' Preview only; no application is launched.';
+      }); document.getElementById('appsGrid').append(button);
+    });
+    const sectors = [['Analytics', 'Keep dashboards and reports together.'], ['Web studio', 'Make room for research and web projects.'], ['Linux station', 'A place for your virtual machine workspace.'], ['Code', 'Keep the editor and project files side by side.'], ['Home', 'Your starting point for clocks, apps, and companions.'], ['Duo Fold', 'Pair a conversation with a companion view.'], ['World clocks', 'Stay connected across time zones.'], ['Companions', 'Give your dock pets a home.'], ['Living themes', 'Personalize your desktop atmosphere.']];
+    sectors.forEach(([name, detail], index) => {
+      const coord = '[' + Math.floor(index / 3) + ',' + index % 3 + ']';
+      const button = document.createElement('button'); button.className = 'matrix-tile' + (index === 4 ? ' active-tile' : ''); button.setAttribute('aria-pressed', String(index === 4));
+      const coordinates = document.createElement('span'); coordinates.className = 'matrix-coord'; coordinates.textContent = coord;
+      const label = document.createElement('span'); label.className = 'sector-name'; label.textContent = name; button.append(coordinates, label);
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.matrix-tile').forEach(tile => { tile.classList.toggle('active-tile', tile === button); tile.setAttribute('aria-pressed', String(tile === button)); });
+        document.getElementById('sectorDetail').textContent = coord + ' ' + name + ' — ' + detail;
+      }); document.getElementById('matrixGrid').append(button);
+    });
+    showPrompt('workspace'); updateClock(); switchView('home');
+    setInterval(() => { if (!document.hidden) updateClock(); }, 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) updateClock(); });
+
   </script>
 </body>
 </html>
