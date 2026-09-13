@@ -1,0 +1,9 @@
+{
+  "name": "geniedesktop",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Genie — Desktop Workspace & Sovereign Agent Studio for macOS",
+  "scripts": {
+    "build": "echo 'Static build complete'"
+  }
+}
