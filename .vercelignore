@@ -1,0 +1,76 @@
+# Vercel Deployment Ignore Configuration
+# Prevents uploading the 2GB+ native macOS Swift codebase, build caches, and raw media
+
+# macOS / SwiftPM Engine & Application Code
+Sources/
+Package.swift
+Package.resolved
+Genie.storekit
+Genie.pkg
+*.pkg
+*.dmg
+*.zip
+*.app
+*.entitlements
+*.plist
+*.icns
+*.sh
+*.py
+*.md
+.github/
+.vscode/
+
+# Heavy Non-Web Repositories & Training Sets
+Marketing/
+Wallpapers/
+AppStore_Screenshots/
+.backups/
+Genie_Isolated_Build/
+Consolidated_Training/
+UnifiedTraining/
+web/
+
+# Build caches & temporary files
+.build/
+.build-mas/
+build/
+DerivedData/
+*.tmp
+*.log
+
+# Large Raw Video Dumps (Keep only the 1080p web preview)
+assets/videos/
+assets/wallpapers/
+assets/previews/
+assets/video/*.mp4
+!assets/video/App_Preview_1_Spatial_Canvas_1080p.mp4
+assets/video/App_Preview_1_Spatial_Canvas_1080p_poster.png
+
+# Heavy Unused Screenshots & Duplicate Postcards
+assets/appstore_screenshots/*_Mode.png
+assets/appstore_screenshots/*_Tab_*.png
+assets/postcards/01_postcard_os_agent.png
+assets/postcards/02_postcard_hypervisor_vm.png
+assets/postcards/03_postcard_duo_fold_studio.png
+assets/postcards/04_postcard_world_clock_pillows.png
+assets/postcards/05_postcard_spatial_canvas.png
+assets/postcards/06_postcard_diagnostics_sentinel.png
+assets/postcards/07_postcard_battery_telemetry.png
+assets/postcards/08_postcard_living_themes_shaders.png
+assets/postcards/09_postcard_application_atelier.png
+assets/postcards/10_postcard_security_governance.png
+assets/images/1024_*.png
+assets/images/header_*.png
+assets/images/marketing_*.png
+assets/screenshots/01_*.png
+assets/screenshots/02_*.png
+assets/screenshots/03_*.png
+assets/screenshots/04_*.png
+assets/screenshots/05_*.png
+assets/screenshots/06_*.png
+assets/screenshots/07_*.png
+assets/screenshots/08_*.png
+assets/screenshots/09_*.png
+assets/screenshots/10_*.png
+assets/screenshots/11_*.png
+assets/screenshots/22_*.png
