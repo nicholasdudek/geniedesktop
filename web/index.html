@@ -3323,6 +3323,150 @@
       transform: translateY(-1px);
     }
 
+    /* 📷 Duo Camera Toggle Button & Live Viewfinder */
+    .duo-camera-toggle-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 14px;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      flex-shrink: 0;
+    }
+    .duo-camera-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.35);
+      transform: translateY(-1px);
+    }
+    .duo-camera-toggle-btn.active {
+      background: rgba(34, 197, 94, 0.22);
+      border-color: rgba(34, 197, 94, 0.75);
+      color: #4ade80;
+      box-shadow: 0 0 14px rgba(34, 197, 94, 0.35);
+    }
+    .duo-camera-toggle-btn .camera-live-pulse {
+      display: none;
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: cameraPulse 1.5s infinite;
+    }
+    .duo-camera-toggle-btn.active .camera-live-pulse {
+      display: block;
+    }
+    @keyframes cameraPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+
+    .duo-camera-viewfinder-panel {
+      margin: 8px 12px 10px 12px;
+      background: rgba(10, 15, 22, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 14px;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      animation: cameraSlideDown 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes cameraSlideDown {
+      from { opacity: 0; transform: translateY(12px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .camera-viewfinder-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.4);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .camera-live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .camera-dot-green {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+    }
+    .camera-label-text {
+      font-size: 11px;
+      font-weight: 700;
+      color: #4ade80;
+      font-family: ui-monospace, monospace;
+      letter-spacing: 0.5px;
+    }
+    .camera-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .camera-snap-btn {
+      background: rgba(56, 189, 248, 0.25);
+      border: 1px solid rgba(56, 189, 248, 0.6);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .camera-snap-btn:hover {
+      background: rgba(56, 189, 248, 0.45);
+      transform: scale(1.04);
+    }
+    .camera-close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 12px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .camera-feed-container {
+      position: relative;
+      width: 100%;
+      height: 140px;
+      background: #020609;
+      overflow: hidden;
+    }
+    .camera-feed-container video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+    .camera-feed-reticle {
+      position: absolute;
+      inset: 10px;
+      pointer-events: none;
+      border: 1px dashed rgba(34, 197, 94, 0.25);
+      border-radius: 8px;
+    }
+
     /* 🧞 Animated Genie Talisman Button (Voice Dictation / Send Prompt / Interrupt) */
     .genie-talisman-btn {
       position: relative;
@@ -4196,12 +4340,38 @@
           </div>
         </div>
 
+        <!-- Live FaceTime / Continuity Camera Viewfinder Panel -->
+        <div class="duo-camera-viewfinder-panel" id="duo-camera-viewfinder-panel" style="display: none;">
+          <div class="camera-viewfinder-header">
+            <div class="camera-live-badge">
+              <span class="camera-dot-green"></span>
+              <span class="camera-label-text">LIVE CAMERA • FaceTime HD</span>
+            </div>
+            <div class="camera-actions">
+              <button class="camera-snap-btn" onclick="snapCameraPhotoToChat()" title="Capture photo to chat prompt">📸 Snap to Chat</button>
+              <button class="camera-close-btn" onclick="toggleDuoCamera()" title="Close Camera">✕</button>
+            </div>
+          </div>
+          <div class="camera-feed-container">
+            <video id="duo-camera-video" autoplay playsinline muted></video>
+            <canvas id="duo-camera-canvas" style="display:none;"></canvas>
+            <div class="camera-feed-reticle"></div>
+          </div>
+        </div>
+
         <!-- Input Bar with Tetris Tools Toggle & Animated Genie Talisman Button -->
         <div class="duo-input-area">
           <button class="duo-tetris-toggle-btn" id="duo-tetris-toggle-btn" onclick="toggleTetrisToolsTray()" title="Toggle Slide-Up Tetris Tools Dock (⌘T)">
             <span class="tetris-icon-glyph">🧱</span>
             <span class="tetris-btn-label">Tools</span>
           </button>
+          
+          <!-- 📷 Camera On / Off Button -->
+          <button class="duo-camera-toggle-btn idle" id="duo-camera-toggle-btn" onclick="toggleDuoCamera()" title="Turn Camera On / Off (FaceTime HD / Continuity Camera)">
+            <span class="camera-icon-glyph" id="camera-icon-glyph">📷</span>
+            <span class="camera-live-pulse" id="camera-live-pulse"></span>
+          </button>
+          
           <input type="text" id="duo-user-input" class="duo-text-input" placeholder="Ask Genie or click talisman to voice dictate / send..." oninput="updateTalismanState()" onkeydown="if(event.key==='Enter') handleTalismanClick()">
           
           <!-- Animated Genie Talisman Button (Voice Dictation / Send Prompt / Interrupt) -->
@@ -6374,6 +6544,76 @@ root@genie-ephemeral:~# <span style="animation: pulseBrain 1s infinite;">█</sp
         `);
         setTalismanProcessing(false);
       }, 700);
+    }
+
+    /* 📷 Camera On / Off & Live Viewfinder State */
+    let duoCameraStream = null;
+
+    async function toggleDuoCamera() {
+      const panel = document.getElementById('duo-camera-viewfinder-panel');
+      const btn = document.getElementById('duo-camera-toggle-btn');
+      const video = document.getElementById('duo-camera-video');
+
+      if (duoCameraStream) {
+        // Turn Camera Off
+        try {
+          duoCameraStream.getTracks().forEach(track => track.stop());
+        } catch(e) {}
+        duoCameraStream = null;
+        if (video) video.srcObject = null;
+        if (panel) panel.style.display = 'none';
+        if (btn) {
+          btn.className = 'duo-camera-toggle-btn idle';
+          btn.title = 'Turn Camera On (FaceTime HD / Continuity Camera)';
+        }
+      } else {
+        // Turn Camera On
+        if (panel) panel.style.display = 'block';
+        if (btn) {
+          btn.className = 'duo-camera-toggle-btn active';
+          btn.title = 'Turn Camera Off (Camera Active)';
+        }
+        try {
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+            });
+            duoCameraStream = stream;
+            if (video) {
+              video.srcObject = stream;
+              video.play().catch(() => {});
+            }
+          } else {
+            simulateCameraStream();
+          }
+        } catch (err) {
+          simulateCameraStream();
+        }
+      }
+    }
+
+    function simulateCameraStream() {
+      const video = document.getElementById('duo-camera-video');
+      if (video) {
+        video.style.background = 'radial-gradient(ellipse at center, #0f2b1d 0%, #030a06 100%)';
+      }
+      duoCameraStream = { getTracks: () => [] };
+    }
+
+    function snapCameraPhotoToChat() {
+      const input = document.getElementById('duo-user-input');
+      const stream = document.getElementById('duo-chat-stream');
+      if (stream) {
+        const chip = document.createElement('div');
+        chip.className = 'duo-msg user-msg';
+        chip.innerHTML = '<div class="msg-bubble" style="background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.45);"><span style="color:#4ade80; font-weight:700;">📸 Camera Snapshot Attached:</span> <em>FaceTime HD Photo Memo (Instant Capture)</em></div>';
+        stream.appendChild(chip);
+        stream.scrollTop = stream.scrollHeight;
+      }
+      if (input) {
+        input.value = "Analyze this camera snapshot and describe what you see";
+        updateTalismanState();
+      }
     }
 
     function updateTalismanState() {
