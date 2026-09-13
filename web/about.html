@@ -606,6 +606,7 @@
 
     <div class="nav-links">
       <a href="index.html" class="nav-link">Home</a>
+      <a href="genieblock.html" class="nav-link highlight" style="color:var(--gold); font-weight:800;">✨ Genie Block</a>
       <a href="about.html" class="nav-link active">About</a>
       <a href="features.html" class="nav-link">Studio Lab</a>
       <a href="previews.html" class="nav-link">Previews</a>
@@ -632,6 +633,9 @@
         <a href="https://apps.apple.com/app/id6808165534" target="_blank" class="btn-primary">
           <span>🍏</span> Download on Mac App Store
         </a>
+        <button onclick="confirmStarGitHub()" class="btn-primary" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.28), rgba(245, 158, 11, 0.16)); border: 1px solid rgba(234, 179, 8, 0.55); color: #fef08a; cursor: pointer;">
+          <span style="color: #facc15;">★</span> Star on GitHub
+        </button>
         <a href="https://github.com/nicholasdudek/geniedesktop/blob/main/README.md" target="_blank" class="btn-secondary">
           <span>📖</span> Read README.md on GitHub ↗
         </a>
@@ -958,6 +962,15 @@
           <span class="contact-cta">github.com/nicholasdudek/geniedesktop →</span>
         </a>
 
+        <div class="contact-card" style="cursor: pointer; border-color: rgba(234, 179, 8, 0.4);" onclick="confirmStarGitHub()">
+          <div>
+            <span class="contact-icon">⭐</span>
+            <h4>Support Nicholas on GitHub</h4>
+            <p>Star the open-source Genie repository to support independent macOS systems architecture and stay notified on updates.</p>
+          </div>
+          <span class="contact-cta" style="color: #fde047;">★ Star nicholasdudek/geniedesktop →</span>
+        </div>
+
         <div class="contact-card" style="cursor: pointer;" onclick="copyDiagnostics()">
           <div>
             <span class="contact-icon">📋</span>
@@ -1070,6 +1083,51 @@
         showToast("Error copying to clipboard");
       });
     }
+
+    // Apple App Store Review Compliant External Link Confirmation
+    function confirmStarGitHub() {
+      const modal = document.getElementById('github-star-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeStarModal() {
+      const modal = document.getElementById('github-star-modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeStarModal();
+    });
   </script>
+
+  <!-- Apple App Store Review Compliant External Link Disclosure Modal -->
+  <div id="github-star-modal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(0, 0, 0, 0.78); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); align-items: center; justify-content: center; padding: 20px;" onclick="if(event.target === this) closeStarModal();">
+    <div style="background: rgba(15, 23, 42, 0.96); border: 1px solid rgba(234, 179, 8, 0.45); border-radius: 20px; max-width: 480px; width: 100%; padding: 28px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(234, 179, 8, 0.15); text-align: left; color: #f8fafc;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(234, 179, 8, 0.18); border: 1px solid rgba(234, 179, 8, 0.5); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #facc15;">★</div>
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #fff;">Star Genie on GitHub</h3>
+          <span style="font-size: 0.76rem; color: #94a3b8; font-weight: 500;">Apple External Link Disclosure • Review Compliant</span>
+        </div>
+      </div>
+      <p style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.55; margin-bottom: 18px;">
+        You are leaving Genie to open external repository:<br>
+        <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 2px 6px; border-radius: 4px; font-size: 0.82rem;">https://github.com/nicholasdudek/geniedesktop</code><br><br>
+        A registered GitHub account is required to star the repository. Stars help support independent Apple Silicon development.
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button onclick="closeStarModal()" style="padding: 10px 18px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); color: #cbd5e1; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+          Cancel
+        </button>
+        <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank" onclick="closeStarModal()" style="padding: 10px 20px; border-radius: 10px; background: linear-gradient(135deg, #eab308, #ca8a04); border: 1px solid #fde047; color: #000; font-size: 0.88rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 14px rgba(234, 179, 8, 0.35);">
+          Continue to GitHub ★ ↗
+        </a>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
