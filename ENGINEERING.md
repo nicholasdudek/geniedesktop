@@ -111,7 +111,7 @@ a full agentic loop independent of any one model:
   (`sandbox-exec` plus `GenieDesktopFileGuard`), independent of and in
   addition to the workspace-path sandboxing inside `AgentTools`.
 - Dead code has been actively identified and removed rather than left to rot:
-  `EmbeddedVSCodeStudioView` and `AIEditorBridgeEngine` are confirmed dead
+  legacy bridge code and unused views have been excised
   (chat writes actually live in `LocalModelManager`), and an HTML overlay
   manager/generator pair was deleted outright this week.
 

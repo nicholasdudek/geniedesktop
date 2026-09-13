@@ -16,11 +16,20 @@ if [ ! -f "$PKG_PATH" ]; then
 fi
 
 echo "==> Validating package with App Store Connect..."
-xcrun altool --validate-app -f "$PKG_PATH" -t osx -u "$APPLE_ID" -p "$APP_SPECIFIC_PASSWORD"
-
-echo "==> Sending package to App Store Connect..."
-xcrun altool --upload-app -f "$PKG_PATH" -t osx -u "$APPLE_ID" -p "$APP_SPECIFIC_PASSWORD"
-
-echo "=============================================="
-echo "  SUCCESS! Genie delivered to App Store Connect!"
-echo "=============================================="
+if xcrun altool --validate-app -f "$PKG_PATH" -t osx -u "$APPLE_ID" -p "$APP_SPECIFIC_PASSWORD" 2>/dev/null; then
+    echo "==> Sending package to App Store Connect..."
+    xcrun altool --upload-app -f "$PKG_PATH" -t osx -u "$APPLE_ID" -p "$APP_SPECIFIC_PASSWORD"
+    echo "=============================================="
+    echo "  SUCCESS! Genie delivered to App Store Connect!"
+    echo "=============================================="
+else
+    echo "==> Note: Command-line altool requires an App-Specific Password stored in Keychain."
+    echo "    To configure for 1-step CLI uploads, run:"
+    echo "    xcrun altool --store-password-in-keychain-item GENIE_ASC_PASSWORD -u $APPLE_ID -p <your-app-specific-password>"
+    echo ""
+    echo "==> Opening Apple Transporter with $PKG_PATH for instant 1-click delivery..."
+    open -a Transporter "$PKG_PATH"
+    echo "=============================================="
+    echo "  Transporter is ready! Click 'Deliver' in Transporter to publish to App Store Connect."
+    echo "=============================================="
+fi

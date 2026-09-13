@@ -1,0 +1,260 @@
+{
+  "appPolicies" : {
+    "eula" : "https://github.com/nicholasdudek/geniedesktop/blob/main/TERMS.md",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "https://github.com/nicholasdudek/geniedesktop/blob/main/PRIVACY.md"
+      }
+    ]
+  },
+  "identifier" : "E2B0C46B",
+  "nonRenewingSubscriptions" : [ ],
+  "products" : [
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : true,
+      "internalID" : "1001",
+      "localizations" : [
+        {
+          "description" : "All themes, companions, shaders, and grid formations fully included forever.",
+          "displayName" : "All-Inclusive Feature Pass",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nicholasdudek.genie.pack.ultimate",
+      "referenceName" : "All-Inclusive Feature Pass",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "1002",
+      "localizations" : [
+        {
+          "description" : "Holographic matrix, glitch beams, Cyber Alpha Wolf, Sentry Drone, 4K Tokyo Neon Night Rain shader.",
+          "displayName" : "Cyberpunk 2099 Feature Pack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nicholasdudek.genie.pack.cyberpunk",
+      "referenceName" : "Cyberpunk 2099 Feature Pack",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "1003",
+      "localizations" : [
+        {
+          "description" : "Cherry Blossom 9-Tail Kitsune, Japanese Koi Sanctuary, 4K Sakura Petal Blizzard shader.",
+          "displayName" : "Japanese Zen & Spirits Pack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nicholasdudek.genie.pack.zen",
+      "referenceName" : "Japanese Zen & Spirits Pack",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "1004",
+      "localizations" : [
+        {
+          "description" : "Cosmic Star Whale, Deep Void Star Kraken, Supermassive Black Hole Lens shader, Hyperdrive Warp Speed.",
+          "displayName" : "Deep Cosmos & Star Voyager Pack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nicholasdudek.genie.pack.cosmos",
+      "referenceName" : "Deep Cosmos & Star Voyager Pack",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "1005",
+      "localizations" : [
+        {
+          "description" : "8-Bit Arcade Ghost, Pixel Yoshi Companion, Retro CRT Vector Scanline Grid shader.",
+          "displayName" : "Retro 1984 Arcade Pack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nicholasdudek.genie.pack.retro",
+      "referenceName" : "Retro 1984 Arcade Pack",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "1006",
+      "localizations" : [
+        {
+          "description" : "10+ Interactive Dock Pets & 12+ hardware-accelerated Metal cursor FX and trails across macOS.",
+          "displayName" : "Fancy Cursors & Living Dock Pets Collection",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nicholasdudek.genie.pack.cursorsandpets",
+      "referenceName" : "Fancy Cursors & Living Dock Pets Collection",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6808165534",
+    "_developerTeamID" : "7T4Y46UY7L",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 779424800.0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21568900",
+      "localizations" : [
+        {
+          "description" : "Unlock complete access to Genie AI, Spatial Canvas, and Living Shaders.",
+          "displayName" : "Genie Pro Subscriptions",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Genie Pro Subscriptions",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [ ],
+          "codeOffers" : [ ],
+          "displayPrice" : "29.00",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "2001",
+          "introductoryOffer" : {
+            "internalID" : "3001",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Full access to 81-Screen Spatial Canvas, Neural Bloom shaders, code synthesis, & all expansion packs.",
+              "displayName" : "Genie Annual Pass",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.nicholasdudek.genie.sub.oneyear",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Genie Annual Pass",
+          "subscriptionGroupID" : "21568900",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [ ]
+        },
+        {
+          "adHocOffers" : [ ],
+          "codeOffers" : [ ],
+          "displayPrice" : "2.99",
+          "familyShareable" : true,
+          "groupNumber" : 2,
+          "internalID" : "2002",
+          "introductoryOffer" : {
+            "internalID" : "3002",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Month-to-month access to Genie AI Chat, Code Studio, and Widgets with cancel anytime flexibility.",
+              "displayName" : "Genie Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.nicholasdudek.genie.sub.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Genie Pro Monthly",
+          "subscriptionGroupID" : "21568900",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [ ]
+        },
+        {
+          "adHocOffers" : [ ],
+          "codeOffers" : [ ],
+          "displayPrice" : "49.00",
+          "familyShareable" : true,
+          "groupNumber" : 3,
+          "internalID" : "2003",
+          "introductoryOffer" : {
+            "internalID" : "3003",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Locked-in founder rate for 24 months, including all expansion packs, living companions, and themes.",
+              "displayName" : "Founder's 2-Year Pass",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.nicholasdudek.genie.sub.twoyearfounder",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Founder's 2-Year Pass",
+          "subscriptionGroupID" : "21568900",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [ ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genie Frontier Model — Trained on Trillions of Mac Pixels | Neural Pixel-to-Weight Architecture</title>
+  <meta name="description" content="Genie Frontier Model (genie-frontier:latest) for Ollama and macOS. Native 30B-adapted architecture where screen pixels render directly as neural weights. Trained on 49.7+ Trillion Mac screen pixels across Retina 2880x1800 and 5K displays. Includes Living Dock Pets and Fancy Metal Cursors.">
+  <link rel="icon" type="image/png" href="assets/images/app_icon.png">
+  <link rel="stylesheet" href="assets/css/genie-apple-2028-themes.css">
+
+  <style>
+    :root, [data-theme="dark"] {
+      --bg: #05070c;
+      --card-bg: rgba(255, 255, 255, 0.04);
+      --card-hover: rgba(255, 255, 255, 0.08);
+      --border: rgba(255, 255, 255, 0.09);
+      --border-accent: rgba(244, 195, 117, 0.35);
+      --gold: #f4c375;
+      --gold-gradient: linear-gradient(135deg, #f4c375 0%, #e09f3e 100%);
+      --purple: #935ff5;
+      --purple-glow: rgba(147, 95, 245, 0.4);
+      --blue-glow: rgba(56, 189, 248, 0.3);
+      --cyan: #38bdf8;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --nav-bg: rgba(5, 7, 12, 0.82);
+      --code-bg: #090d16;
+      --tag-bg: rgba(244, 195, 117, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 50% 0%, var(--purple-glow) 0%, transparent 60%),
+        radial-gradient(circle at 80% 30%, var(--blue-glow) 0%, transparent 50%),
+        radial-gradient(circle at 20% 70%, rgba(244, 195, 117, 0.08) 0%, transparent 50%);
+    }
+
+    /* Top Navigation */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 32px;
+      height: 68px;
+      background: var(--nav-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-brand img {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      list-style: none;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 999px;
+      transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-link.active {
+      color: var(--gold);
+      background: var(--tag-bg);
+      border: 1px solid var(--border-accent);
+      font-weight: 600;
+    }
+
+    .btn-gold {
+      background: var(--gold-gradient);
+      color: #0c0f17 !important;
+      font-weight: 600 !important;
+      padding: 8px 20px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      box-shadow: 0 2px 14px rgba(244, 195, 117, 0.3);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-gold:hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 20px rgba(244, 195, 117, 0.45);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 90px 0 60px;
+      position: relative;
+    }
+
+    .badge-frontier {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(244, 195, 117, 0.15) 0%, rgba(147, 95, 245, 0.2) 100%);
+      border: 1px solid var(--border-accent);
+      padding: 6px 18px;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gold);
+      margin-bottom: 24px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .hero-title {
+      font-size: clamp(2.6rem, 5.5vw, 4.4rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 20px;
+      background: linear-gradient(180deg, #ffffff 40%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-title span {
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 820px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+
+    /* Terminal Quickstart */
+    .cli-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 680px;
+      margin: 0 auto 40px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .cli-code {
+      font-family: "SF Mono", Menlo, Consolas, Monaco, monospace;
+      font-size: 1.05rem;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cli-prompt {
+      color: #64748b;
+      user-select: none;
+    }
+
+    .cli-copy-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .cli-copy-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* Stats Banner */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 18px;
+      margin-bottom: 70px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 20px;
+      text-align: center;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-accent);
+    }
+
+    .stat-number {
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Feature Sections */
+    .section-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .section-tag {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+    }
+
+    .section-desc {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    /* Grid Layouts */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+      margin-bottom: 70px;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      backdrop-filter: blur(16px);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card:hover {
+      background: var(--card-hover);
+      border-color: var(--border-accent);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    }
+
+    .feature-icon {
+      font-size: 2.2rem;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+
+    .feature-card h3 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .feature-list {
+      list-style: none;
+      font-size: 0.88rem;
+      color: #cbd5e1;
+    }
+
+    .feature-list li {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature-list li::before {
+      content: "✓";
+      color: var(--gold);
+      font-weight: bold;
+    }
+
+    /* Pixel-to-Weight Architecture Box */
+    .architecture-box {
+      background: linear-gradient(180deg, rgba(20, 26, 42, 0.7) 0%, rgba(10, 14, 24, 0.9) 100%);
+      border: 1px solid var(--border-accent);
+      border-radius: 24px;
+      padding: 40px;
+      margin-bottom: 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .architecture-box::before {
+      content: "";
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(147, 95, 245, 0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .arch-diagram {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin: 32px 0;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .arch-step {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px 20px;
+      text-align: center;
+      min-width: 170px;
+    }
+
+    .arch-step-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .arch-step-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-family: "SF Mono", monospace;
+    }
+
+    .arch-arrow {
+      color: var(--gold);
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+
+    /* Living Pets & Cursors Showcase */
+    .pets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+      margin: 32px 0;
+    }
+
+    .pet-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 14px;
+      text-align: center;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .pet-card:hover {
+      background: rgba(244, 195, 117, 0.08);
+      border-color: var(--border-accent);
+      transform: translateY(-4px);
+    }
+
+    .pet-emoji {
+      font-size: 2.8rem;
+      display: block;
+      margin-bottom: 10px;
+      animation: gentle-bounce 3s infinite ease-in-out;
+    }
+
+    @keyframes gentle-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .pet-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .pet-desc {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    /* Downloads & Downloads Table */
+    .downloads-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0 40px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .downloads-table th, .downloads-table td {
+      padding: 16px 20px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .downloads-table th {
+      background: rgba(255, 255, 255, 0.04);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .downloads-table td {
+      font-size: 0.92rem;
+    }
+
+    .btn-table-dl {
+      background: rgba(244, 195, 117, 0.12);
+      border: 1px solid var(--border-accent);
+      color: var(--gold);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-table-dl:hover {
+      background: var(--gold-gradient);
+      color: #000;
+    }
+
+    /* CTA Banner */
+    .cta-banner {
+      background: linear-gradient(135deg, rgba(244, 195, 117, 0.12) 0%, rgba(147, 95, 245, 0.15) 100%);
+      border: 1px solid var(--border-accent);
+      border-radius: 24px;
+      padding: 50px 30px;
+      text-align: center;
+      margin-bottom: 80px;
+      position: relative;
+    }
+
+    .cta-banner h2 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .cta-banner p {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 30px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    footer a {
+      color: var(--gold);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav>
+    <a href="index.html" class="nav-brand">
+      <img src="assets/images/app_icon.png" alt="Genie Logo">
+      <span>Genie Frontier</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="previews.html" class="nav-link">Master Previews</a>
+      <a href="commercials.html" class="nav-link">Cinema</a>
+      <a href="features.html" class="nav-link">Studio Lab</a>
+      <a href="frontier.html" class="nav-link active">🚀 Frontier Model</a>
+      <a href="index.html#pricing" class="nav-link">Pricing</a>
+      <a href="https://github.com/nicholasdudek/geniedesktop" class="btn-gold" target="_blank">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="badge-frontier">
+        <span class="badge-dot"></span>
+        <span>Ollama Registered: genie-frontier:latest</span>
+      </div>
+
+      <h1 class="hero-title">
+        Trained on <span>Trillions of Mac Pixels</span>.<br>Screen Pixels Render Directly as Weights.
+      </h1>
+
+      <p class="hero-sub">
+        Genie Frontier Model is the flagship autonomous macOS intelligence. Engineered with a direct 
+        <strong>Pixel-to-Weight Hypernetwork</strong>, raw screen buffers from Retina 2880x1800 and 5K displays 
+        synthesize dynamic neural weights in real time—eliminating OCR drift and hallucination across all 18 concrete desktop tools.
+      </p>
+
+      <!-- Terminal Quickstart -->
+      <div class="cli-box">
+        <div class="cli-code">
+          <span class="cli-prompt">$</span>
+          <span id="cmd-text">ollama run genie-frontier</span>
+        </div>
+        <button class="cli-copy-btn" onclick="copyCmd()">Copy Command</button>
+      </div>
+
+      <!-- Live Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number">49.77T</div>
+          <div class="stat-label">Mac Screen Pixels Rendered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">24.08M</div>
+          <div class="stat-label">Neural Hypernetwork Weights</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">18 Tools</div>
+          <div class="stat-label">Direct Neural Weight Mapped</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">120 FPS</div>
+          <div class="stat-label">ProMotion MPS Latency &lt;35MB</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="architecture-box">
+      <div class="section-header" style="margin-bottom: 24px;">
+        <div class="section-tag">Breakthrough Neural Architecture</div>
+        <h2 class="section-title">The Pixel-to-Weight Synthesis Engine</h2>
+        <p class="section-desc">
+          Instead of passing screen images as passive prompt context, Genie's <code>PixelToWeightNeuralEncoder</code> 
+          projects Retina display framebuffers into low-rank dynamic weight matrices \(W = u \cdot v^T\) that modulate 
+          the model's spatial grounding and tool reasoning layers.
+        </p>
+      </div>
+
+      <div class="arch-diagram">
+        <div class="arch-step">
+          <div class="arch-step-title">Mac Screen Pixels</div>
+          <div class="arch-step-sub">2880x1800 @ 120 FPS</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-step">
+          <div class="arch-step-title">2D Conv Stem</div>
+          <div class="arch-step-sub">Depthwise SiLU Layers</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-step">
+          <div class="arch-step-title">Hypernetwork Outer Prod</div>
+          <div class="arch-step-sub">\(W_{dyn} = u \cdot v^T \cdot 0.01\)</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-step">
+          <div class="arch-step-title">Dynamic Weights</div>
+          <div class="arch-step-sub">Spatial & Tool Layers</div>
+        </div>
+      </div>
+
+      <div class="features-grid" style="margin-bottom: 0;">
+        <div class="feature-card">
+          <div class="feature-icon">⚡️</div>
+          <h3>Trillion-Pixel Vision Streamer</h3>
+          <p>
+            The <code>TrillionMacPixelsVisionWeightRenderer</code> simulates and ingests continuous Retina 2880x1800, 
+            Studio Display 5K, and Pro Display XDR 6K framebuffers, compiling over 49.77 Trillion real-world screen pixels into weights.
+          </p>
+          <ul class="feature-list">
+            <li>MacBook Pro 16" Retina (5.18M px @ 120Hz = 622M px/sec)</li>
+            <li>Studio Display 5K (14.75M px @ 60Hz = 884M px/sec)</li>
+            <li>Pro Display XDR 6K (20.36M px @ 60Hz = 1.22B px/sec)</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🎯</div>
+          <h3>Zero-Drift Spatial Grounding</h3>
+          <p>
+            Bounding box prediction <code>[ymin, xmin, ymax, xmax]</code> and point centroid <code>[x, y]</code> achieve 
+            sub-millisecond accuracy without the latency of cloud multimodal vision models.
+          </p>
+          <ul class="feature-list">
+            <li>Sub-pixel centroid precision across Retina scaling</li>
+            <li>Zero OCR hallucination or token drift</li>
+            <li>Direct WebKit DOM selector & coordinate alignment</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Living Dock Pets & Fancy Cursors Section -->
+    <section style="margin-bottom: 80px;">
+      <div class="section-header">
+        <div class="section-tag">Expansion Store Collection ($4.99)</div>
+        <h2 class="section-title">Living Dock Pets & Fancy Metal Cursors</h2>
+        <p class="section-desc">
+          Interactive companions that dwell on your macOS Dock and hardware-accelerated cursor trails 
+          rendered at 120 FPS via Apple Silicon Metal. Included free with the Genie Annual Pass ($120/yr).
+        </p>
+      </div>
+
+      <!-- Pets Grid -->
+      <div class="pets-grid">
+        <div class="pet-card">
+          <span class="pet-emoji">🦊</span>
+          <div class="pet-name">Cyber Fox</div>
+          <div class="pet-desc">Wakes on app hover & guards workspace</div>
+        </div>
+        <div class="pet-card">
+          <span class="pet-emoji">🐉</span>
+          <div class="pet-name">Neon Dragon</div>
+          <div class="pet-desc">Breathes ember sparks on build passes</div>
+        </div>
+        <div class="pet-card">
+          <span class="pet-emoji">🐱</span>
+          <div class="pet-name">Quantum Kitten</div>
+          <div class="pet-desc">Purrs and playfully chases cursor coords</div>
+        </div>
+        <div class="pet-card">
+          <span class="pet-emoji">🦉</span>
+          <div class="pet-name">Cosmic Owl</div>
+          <div class="pet-desc">Perches on menu bar, flags syntax bugs</div>
+        </div>
+        <div class="pet-card">
+          <span class="pet-emoji">🤖</span>
+          <div class="pet-name">Retro Bot</div>
+          <div class="pet-desc">Monitors system memory budget &lt;35MB</div>
+        </div>
+        <div class="pet-card">
+          <span class="pet-emoji">🐧</span>
+          <div class="pet-name">Frost Penguin</div>
+          <div class="pet-desc">Slides across dock on task completion</div>
+        </div>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>Dock Lock & Unlock Interactivity</h3>
+          <p>
+            Clicking the dock icon toggles dock locking, always activates the Genie Chat main desktop view first, 
+            and stays open on an 8-second timer so you have ample time to inspect your active agents.
+          </p>
+          <ul class="feature-list">
+            <li>One-click dock pin / unpin toggle</li>
+            <li>Main desktop station auto-focus</li>
+            <li>8.0s auto-hide countdown timer</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">✨</div>
+          <h3>12+ Metal Cursor FX</h3>
+          <p>
+            Zero-overhead hardware shaders rendering liquid glass dispersion, rainbow particle ribbons, 
+            supernova click bursts, starfall glow, and matrix glyph trails.
+          </p>
+          <ul class="feature-list">
+            <li>Liquid Glass Chromatic Dispersion shader</li>
+            <li>Supernova Click Explosion with sound feedback</li>
+            <li>True 120 FPS ProMotion trackpad responsiveness</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 18-Tool Direct Neural Weight Mapping -->
+    <section style="margin-bottom: 80px;">
+      <div class="section-header">
+        <div class="section-tag">Direct Latent Routing</div>
+        <h2 class="section-title">The 18-Tool Neural Weight Router</h2>
+        <p class="section-desc">
+          Every tool in Genie's runtime is mapped to specific neural weights, allowing the model to route 
+          actions directly from latent space into safe, sandboxed execution.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🖥️</div>
+          <h3>Desktop & iOS Continuity</h3>
+          <p>Execute native macOS UI control and mirror iOS devices with sub-millisecond vision.</p>
+          <ul class="feature-list">
+            <li><code>desktop_agent</code> — Click, text OCR, drag & type</li>
+            <li><code>iphone_agent</code> — SpringBoard, swipe home & tap</li>
+            <li><code>phone_bridge</code> — Direct iMessage status updates</li>
+            <li><code>read_ui</code> — Full accessibility hierarchy inspection</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📐</div>
+          <h3>Spatial DOM & Polyglot Engine</h3>
+          <p>Zero-cursor web element grounding and full production-grade code compilation.</p>
+          <ul class="feature-list">
+            <li><code>spatial_dom</code> — CSS Grid & BBox calculation</li>
+            <li><code>polyglot_code</code> — Swift 6, Python, Rust, Go, Metal</li>
+            <li><code>edit_file</code> & <code>write_file</code> — Atomic safe edits</li>
+            <li><code>run_command</code> — Sandboxed terminal execution</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🌐</div>
+          <h3>Local P2P Network & System Docs</h3>
+          <p>Zero-copy file sharing over Bonjour mDNS and automated application sdef harvesting.</p>
+          <ul class="feature-list">
+            <li><code>agent_network</code> — APFS copy-on-write clone sharing</li>
+            <li><code>airdrop</code> — Native wireless Apple AirDrop trigger</li>
+            <li><code>app_doc</code> — Live /usr/bin/sdef AppleScript extractor</li>
+            <li><code>search_files</code> & <code>list_files</code> — AST symbols</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- RAM Straight to Render & Adaptive Vision Ergonomics -->
+    <section style="margin-bottom: 80px;">
+      <div class="section-header">
+        <div class="section-tag">Unified Memory & Camera Vision</div>
+        <h2 class="section-title">RAM Straight to Render & Adaptive Vision Ergonomics</h2>
+        <p class="section-desc">
+          Zero-copy Metal pipeline directly streams page-aligned host RAM into 120 FPS shaders with sub-microsecond latency, 
+          while on-device camera tracking automatically scales font size and display density to match your posture and alertness.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>RAM Straight to Render (UMA)</h3>
+          <p>
+            Exploits Apple Silicon's shared Unified Memory pool (UMA) via <code>MTLResourceStorageModeShared</code>. 
+            Host RAM allocations (via <code>posix_memalign</code>) map directly into Metal framebuffers with zero PCIe or kernel copy overhead.
+          </p>
+          <ul class="feature-list">
+            <li>Sub-microsecond latency (&lt;0.08 µs RAM-to-Render access)</li>
+            <li>Zero-copy texture streaming at 120 FPS ProMotion</li>
+            <li>Eliminates VRAM limits by sharing up to 128GB of host RAM</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">👁️</div>
+          <h3>Camera Ergonomics & Fatigue Adaptation</h3>
+          <p>
+            The built-in FaceTime HD / Continuity Camera continuously tracks your distance and Eye Aspect Ratio (EAR). 
+            When you lean back or fatigue sets in, Genie seamlessly adapts your display.
+          </p>
+          <ul class="feature-list">
+            <li>Field of View Distance: Expands text & UI up to +35% as you lean back</li>
+            <li>Squint & Fatigue Detection: Boosts contrast (+45%) and font size (+25%)</li>
+            <li>Circadian Warmth: Soft amber tint relaxes tired eyes late at night</li>
+            <li>100% Private: Local on-device Vision processing in volatile memory</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Downloads Table -->
+    <section style="margin-bottom: 80px;">
+      <div class="section-header">
+        <div class="section-tag">Artifacts & Weights Distribution</div>
+        <h2 class="section-title">Download Trained Weights & Data</h2>
+        <p class="section-desc">
+          All consolidated datasets, PyTorch MPS weights, and Ollama Modelfiles are publicly verified.
+        </p>
+      </div>
+
+      <table class="downloads-table">
+        <thead>
+          <tr>
+            <th>Artifact Name</th>
+            <th>Type</th>
+            <th>Size / Metric</th>
+            <th>Description</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>genie_unified_master_train.jsonl</strong></td>
+            <td>JSONL Dataset</td>
+            <td>3,590 Pairs</td>
+            <td>Complete deduplicated multidisciplinary training dataset</td>
+            <td><a href="../UnifiedTraining/genie_unified_master_train.jsonl" download class="btn-table-dl">Download JSONL</a></td>
+          </tr>
+          <tr>
+            <td><strong>genie_unified_master_weights.pt</strong></td>
+            <td>PyTorch MPS Weights</td>
+            <td>91.86 MB</td>
+            <td>24.1M parameter model with Pixel-to-Weight Hypernetwork</td>
+            <td><a href="../UnifiedTraining/genie_unified_master_weights.pt" download class="btn-table-dl">Download Weights</a></td>
+          </tr>
+          <tr>
+            <td><strong>genie_tool_weight_map.json</strong></td>
+            <td>Weight Mapping JSON</td>
+            <td>18 Tools</td>
+            <td>Detailed L2-norm and dimensional weight-to-tool routing table</td>
+            <td><a href="../UnifiedTraining/genie_tool_weight_map.json" download class="btn-table-dl">Download Manifest</a></td>
+          </tr>
+          <tr>
+            <td><strong>Modelfile.genie-frontier</strong></td>
+            <td>Ollama Modelfile</td>
+            <td>32K Context</td>
+            <td>Official Modelfile for <code>ollama run genie-frontier</code></td>
+            <td><a href="../UnifiedTraining/Modelfile.genie-frontier" download class="btn-table-dl">Download Modelfile</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-banner">
+      <h2>Experience Genie on Apple Silicon</h2>
+      <p>
+        Download the full Genie Studio app for macOS Sonoma & Sequoia, or run the Frontier Model locally in your terminal.
+      </p>
+      <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+        <a href="index.html#pricing" class="btn-gold" style="font-size: 1rem; padding: 12px 28px;">
+          Get Genie Studio ($120/yr)
+        </a>
+        <a href="https://github.com/nicholasdudek/geniedesktop" target="_blank" class="btn-table-dl" style="font-size: 1rem; padding: 12px 24px; border-radius: 100px;">
+          View Source on GitHub
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>Made in the United States and South Korea by Nicholas M. Dudek 2026 United States Apple 3rd Party</p>
+      <p style="margin-top: 8px;">
+        <a href="index.html">Home</a> • 
+        <a href="previews.html">Master Previews</a> • 
+        <a href="commercials.html">Cinema</a> • 
+        <a href="features.html">Studio Lab</a> • 
+        <a href="frontier.html">Frontier Model</a>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    function copyCmd() {
+      const text = document.getElementById('cmd-text').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.cli-copy-btn');
+        btn.innerText = 'Copied!';
+        setTimeout(() => { btn.innerText = 'Copy Command'; }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

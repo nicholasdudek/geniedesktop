@@ -1,0 +1,58 @@
+/**
+ * ✨ GENIE APPLE 2028 QUANTUM TITANIUM THEME
+ * Architected by Nicholas M. Dudek for Genie Spatial Studio.
+ *
+ * Implements futuristic titanium and quantum glass aesthetics:
+ * - Deep titanium obsidian gradient canvas
+ * - Holographic violet and cyan refraction
+ * - Subpixel code syntax highlighting & glowing accent pills
+ */
+
+[data-theme="apple-2028-quantum"], body.theme-apple-2028-quantum, :root[data-theme="apple-2028-quantum"] {
+  --genie-bg: #030712;
+  --genie-bg-gradient: radial-gradient(circle at 50% -10%, #1e1b4b 0%, #09090b 65%, #020204 100%);
+  --genie-glass-card: rgba(15, 17, 28, 0.82);
+  --genie-glass-blur: blur(30px) saturate(200%);
+  --genie-border-quantum: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(192, 132, 252, 0.5) 45%, rgba(56, 189, 248, 0.3) 80%, rgba(255, 255, 255, 0.2) 100%);
+  --genie-accent-purple: #c084fc;
+  --genie-accent-cyan: #38bdf8;
+  --genie-text-primary: #f8fafc;
+  --genie-text-secondary: #cbd5e1;
+  --genie-text-muted: #64748b;
+  --genie-code-bg: #02040a;
+  --genie-glow-spread: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 45px rgba(192, 132, 252, 0.18);
+}
+
+body.theme-apple-2028-quantum {
+  background: var(--genie-bg);
+  background-image: var(--genie-bg-gradient);
+  color: var(--genie-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.genie-quantum-card {
+  position: relative;
+  background: var(--genie-glass-card);
+  -webkit-backdrop-filter: var(--genie-glass-blur);
+  backdrop-filter: var(--genie-glass-blur);
+  border-radius: 22px;
+  border: 1px solid rgba(192, 132, 252, 0.22);
+  box-shadow: var(--genie-glow-spread);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.genie-quantum-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  padding: 1px;
+  background: var(--genie-border-quantum);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}

@@ -64,7 +64,7 @@ Genie combines **utilitarian desktop productivity** (instant app discovery, floa
   * **Right-Edge Cursor Push:** Gentle right screen edge bump triggers instant summon.
   * **Double-Tap ⌃ Control & Double-Tap ⌥ Option:** Rapid keyboard activation without interfering with standard modifier combinations.
 * **Smart App Shielding & Zero-Interference Scrolling:**
-  * Strict frontmost application verification drops all background scroll monitors whenever third-party apps (Xcode, Safari, Slack, VS Code) are focused.
+  * Strict frontmost application verification drops all background scroll monitors whenever third-party apps (Xcode, Safari, Slack, Terminal) are focused.
   * Native Finder folder double-clicks completely unhindered by removing left click interception.
 * **3-Way Adaptive Appearance System:**
   * Dynamic cycling between `Auto 💻` (system appearance synchronization), `Light ☀️`, and `Dark 🌙` across both the native macOS utility and the marketing portal.

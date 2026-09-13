@@ -207,10 +207,10 @@ echo "  SUCCESS! App Store Package Created at:"
 echo "  $PKG_OUTPUT"
 echo "=============================================="
 
-# 9. Install to /Applications
+# 9. Install to /Applications (optional local convenience)
 echo "==> Installing $APP_NAME.app to /Applications..."
-rm -rf "/Applications/$APP_NAME.app"
-cp -R "$BUILD_DIR/$APP_NAME.app" "/Applications/$APP_NAME.app"
+rm -rf "/Applications/$APP_NAME.app" 2>/dev/null || true
+cp -R "$BUILD_DIR/$APP_NAME.app" "/Applications/$APP_NAME.app" 2>/dev/null || true
 
 # 10. Create Desktop and Home Folder Installation Shortcuts & clean legacy
 echo "==> Creating Desktop & Home Folder Application Shortcuts..."

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Genie • Hollywood & Seoul 3D Elevator Neural Portal</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #030308;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* 3D Scene Wrapper */
+    .scene {
+      position: absolute;
+      inset: 0;
+      perspective: 1200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 50%, #0d1224 0%, #04050a 100%);
+      overflow: hidden;
+    }
+
+    /* Background Cyber Core (Inside the Elevator) */
+    .core-chamber {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      transform-style: preserve-3d;
+    }
+
+    .ambient-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(0, 240, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.07) 1px, transparent 1px);
+      background-size: 32px 32px;
+      transform: perspective(400px) rotateX(60deg) scale(2);
+      transform-origin: 50% 100%;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+
+    .core-hologram {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      z-index: 2;
+      animation: coreFloat 4s ease-in-out infinite;
+    }
+
+    @keyframes coreFloat {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-6px) scale(1.02); }
+    }
+
+    .hologram-ring {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 240, 255, 0.7);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.6), inset 0 0 20px rgba(0, 240, 255, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.2) 0%, transparent 70%);
+    }
+
+    .hologram-ring::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px dashed rgba(255, 0, 128, 0.6);
+      animation: spinRing 12s linear infinite;
+    }
+
+    @keyframes spinRing {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .hologram-logo {
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 16px #00f0ff, 0 0 30px #ff007f;
+      letter-spacing: 2px;
+    }
+
+    .core-title {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: #fff;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+    }
+
+    .core-sub {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      color: rgba(0, 240, 255, 0.85);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(0, 240, 255, 0.4);
+    }
+
+    /* Elevator Header Display (HUD) */
+    .elevator-hud {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: rgba(5, 7, 15, 0.88);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 240, 255, 0.2);
+      padding: 5px 16px;
+      border-radius: 8px;
+      backdrop-filter: blur(8px);
+    }
+
+    .hud-floor {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #00f0ff;
+      text-shadow: 0 0 8px #00f0ff;
+    }
+
+    .hud-city {
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* 3D Elevator Hydraulic Doors */
+    .elevator-frame {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: auto;
+      cursor: pointer;
+      display: flex;
+      transform-style: preserve-3d;
+    }
+
+    .door {
+      position: relative;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(135deg, #1c1e28 0%, #11131c 50%, #0b0d14 100%);
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9);
+      transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-style: preserve-3d;
+    }
+
+    /* Metallic Panel Grooves & Hazard Chevrons */
+    .door-texture {
+      position: absolute;
+      inset: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(255, 255, 255, 0.015) 0px,
+        rgba(255, 255, 255, 0.015) 2px,
+        transparent 2px,
+        transparent 8px
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .door-left {
+      border-right: 2px solid rgba(0, 240, 255, 0.9);
+      box-shadow: 4px 0 15px rgba(0, 240, 255, 0.4);
+      transform-origin: left center;
+    }
+
+    .door-right {
+      border-left: 2px solid rgba(0, 240, 255, 0.9);
+      box-shadow: -4px 0 15px rgba(0, 240, 255, 0.4);
+      transform-origin: right center;
+    }
+
+    .seam-light {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #00f0ff;
+      box-shadow: 0 0 14px #00f0ff;
+      opacity: 0.8;
+    }
+    .door-left .seam-light { right: -1px; }
+    .door-right .seam-light { left: -1px; }
+
+    .door-label {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: rgba(255, 255, 255, 0.35);
+      text-transform: uppercase;
+      writing-mode: vertical-lr;
+      transform: rotate(180deg);
+    }
+
+    /* Open State */
+    .scene.open .door-left {
+      transform: translateX(-102%) rotateY(-25deg);
+      opacity: 0.15;
+    }
+
+    .scene.open .door-right {
+      transform: translateX(102%) rotateY(25deg);
+      opacity: 0.15;
+    }
+
+    /* Steam & Flare Particles */
+    .steam-puff {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 60%, rgba(0, 240, 255, 0.25) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 15;
+    }
+    .scene.open .steam-puff {
+      opacity: 1;
+      animation: fadeOutSteam 2s forwards 0.3s;
+    }
+    @keyframes fadeOutSteam {
+      to { opacity: 0; }
+    }
+
+    /* Action Prompt / Click Helper */
+    .click-hint {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: rgba(255, 255, 255, 0.6);
+      text-transform: uppercase;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 3px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="scene open" id="scene" onclick="toggleDoors()">
+    <!-- Top Floor Indicator (Hollywood & Seoul Neon HUD) -->
+    <div class="elevator-hud">
+      <div class="hud-floor">
+        <span style="color:#ff0055;">▲</span> 88F // NEURAL HYPER-DRIVE
+      </div>
+      <div class="hud-city">SEOUL ✕ HOLLYWOOD • 지니 01</div>
+    </div>
+
+    <!-- Inside the Elevator: Glowing Hologram AI Core -->
+    <div class="core-chamber">
+      <div class="ambient-grid"></div>
+      <div class="core-hologram">
+        <div class="hologram-ring">
+          <div class="hologram-logo">✦</div>
+        </div>
+        <div class="core-title">GENIE STUDIO</div>
+        <div class="core-sub">ARM64 • ZERO LATENCY • METAL 3</div>
+      </div>
+    </div>
+
+    <!-- 3D Hydraulic Doors (Sliding Open) -->
+    <div class="elevator-frame">
+      <div class="door door-left">
+        <div class="door-texture">
+          <div class="door-label">SEOUL // 서울</div>
+        </div>
+        <div class="seam-light"></div>
+      </div>
+      <div class="door door-right">
+        <div class="door-texture">
+          <div class="door-label">HOLLYWOOD</div>
+        </div>
+        <div class="seam-light"></div>
+      </div>
+    </div>
+
+    <div class="steam-puff"></div>
+    <div class="click-hint" id="hint">Click to toggle doors ⏏</div>
+  </div>
+
+  <script>
+    const scene = document.getElementById('scene');
+    const hint = document.getElementById('hint');
+    let isOpen = true;
+
+    function toggleDoors() {
+      isOpen = !isOpen;
+      if (isOpen) {
+        scene.classList.add('open');
+        hint.textContent = 'Elevator Opened // Click to close';
+      } else {
+        scene.classList.remove('open');
+        hint.textContent = 'Elevator Closed // Click to open';
+      }
+    }
+
+    // Auto open doors dramatically after brief arrival delay
+    setTimeout(() => {
+      scene.classList.add('open');
+    }, 300);
+  </script>
+</body>
+</html>

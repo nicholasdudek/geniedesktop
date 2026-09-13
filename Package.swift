@@ -78,7 +78,8 @@ let package = Package(
                 "Views/README.md"
             ],
             resources: [
-                .process("Resources")
+                .process("Resources"),
+                .copy("Engine/apple_diffusion_mps.py")
             ],
             swiftSettings: [
                 .define(isMASBuild ? "GENIE_MAS" : "GENIE_DEVELOPER_ID")

@@ -1,0 +1,153 @@
+/**
+ * 💧 GENIE APPLE 2028 LIVING LIQUID WATER & CAUSTIC THEME
+ * Architected by Nicholas M. Dudek for Genie Quantum 2028.
+ *
+ * Implements futuristic Apple 2028 living water aesthetics:
+ * - Fluid refractive caustics & living wave undulations
+ * - Vitreous liquid glass cards with chromatic aberration borders
+ * - Dynamic water ripple pulses on hover & interaction
+ * - Subpixel SF Pro typography and P3 wide-color neon glints
+ */
+
+[data-theme="apple-2028-liquid"], body.theme-apple-2028-liquid, :root[data-theme="apple-2028-liquid"] {
+  --genie-bg: #050a14;
+  --genie-bg-gradient: radial-gradient(circle at 50% -10%, #0d2847 0%, #061122 45%, #02060d 100%);
+  --genie-glass-card: rgba(10, 20, 38, 0.72);
+  --genie-glass-blur: blur(32px) saturate(210%);
+  --genie-border-liquid: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(0, 240, 255, 0.55) 35%, rgba(0, 128, 255, 0.20) 70%, rgba(255, 255, 255, 0.35) 100%);
+  --genie-border-subtle: rgba(0, 240, 255, 0.18);
+  --genie-caustic-cyan: #00f0ff;
+  --genie-caustic-blue: #0080ff;
+  --genie-caustic-teal: #00e5a3;
+  --genie-caustic-purple: #9d4edd;
+  --genie-text-primary: #f0f9ff;
+  --genie-text-secondary: #93c5fd;
+  --genie-text-muted: #64748b;
+  --genie-code-bg: rgba(3, 7, 18, 0.85);
+  --genie-glow-spread: 0 20px 50px rgba(0, 240, 255, 0.12), 0 0 35px rgba(0, 128, 255, 0.10);
+}
+
+/* Base Body Application */
+body.theme-apple-2028-liquid {
+  background: var(--genie-bg);
+  background-image: var(--genie-bg-gradient);
+  color: var(--genie-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* 2028 Liquid Glass Card Container */
+.genie-2028-liquid-card {
+  position: relative;
+  background: var(--genie-glass-card);
+  -webkit-backdrop-filter: var(--genie-glass-blur);
+  backdrop-filter: var(--genie-glass-blur);
+  border-radius: 24px;
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), var(--genie-glow-spread);
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.genie-2028-liquid-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  padding: 1.2px;
+  background: var(--genie-border-liquid);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.genie-2028-liquid-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 240, 255, 0.45);
+  box-shadow: 0 35px 80px rgba(0, 0, 0, 0.75), 0 0 50px rgba(0, 240, 255, 0.22);
+}
+
+/* Animated Water Caustics Top Layer */
+.genie-water-caustic-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 140px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0, 240, 255, 0.18) 0%, rgba(0, 128, 255, 0.08) 50%, transparent 80%);
+  pointer-events: none;
+  animation: causticWave 6s ease-in-out infinite alternate;
+}
+
+@keyframes causticWave {
+  0% { transform: scaleX(1.0) translateY(0); opacity: 0.8; }
+  50% { transform: scaleX(1.08) translateY(4px); opacity: 1.0; }
+  100% { transform: scaleX(0.95) translateY(-2px); opacity: 0.75; }
+}
+
+/* Liquid Ripple Pill Badge */
+.genie-liquid-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.38);
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--genie-caustic-cyan);
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 10px rgba(0, 240, 255, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.genie-liquid-pill::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent 40%, rgba(255, 255, 255, 0.35) 50%, transparent 60%);
+  transform: rotate(25deg) translateY(-100%);
+  animation: liquidGlint 5s infinite;
+}
+
+@keyframes liquidGlint {
+  0%, 75% { transform: rotate(25deg) translateY(-120%); }
+  85%, 100% { transform: rotate(25deg) translateY(120%); }
+}
+
+/* Liquid Water Buttons */
+.genie-liquid-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 128, 255, 0.35) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 128, 255, 0.30);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.genie-liquid-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.40) 0%, rgba(0, 128, 255, 0.50) 100%);
+  border-color: rgba(255, 255, 255, 0.65);
+  transform: scale(1.03);
+  box-shadow: 0 12px 30px rgba(0, 240, 255, 0.45);
+}
+
+.genie-liquid-btn:active {
+  transform: scale(0.97);
+}
