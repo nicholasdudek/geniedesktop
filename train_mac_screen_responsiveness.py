@@ -248,7 +248,7 @@ class MacScreenResponsiveTrainer:
         
         # 1. Normalize viewport factor [0.0, 1.0]
         t = (vw - self.min_screen_w) / max(1.0, (self.max_screen_w - self.min_screen_w))
-        t = max(0.0, min(1.0, t))
+        t = max(0.0, min(1.0, (vw - 756.0) / (1600.0 - 756.0)))
         
         # 2. Fluid margins
         margin = params.viewport_margin_min + t * (params.viewport_margin_max - params.viewport_margin_min)
@@ -387,12 +387,12 @@ public struct GenieResponsiveTokens {{
     }}
     
     public static func titleFontSize(for viewportWidth: CGFloat) -> CGFloat {{
-        let t = max(0.0, min(1.0, (viewportWidth - 756.0) / (3440.0 - 756.0)))
+        let t = max(0.0, min(1.0, (viewportWidth - 756.0) / (1600.0 - 756.0)))
         return {params.font_title_base:.1f} + t * ({params.font_title_max:.1f} - {params.font_title_base:.1f})
     }}
     
     public static func bodyFontSize(for viewportWidth: CGFloat) -> CGFloat {{
-        let t = max(0.0, min(1.0, (viewportWidth - 756.0) / (3440.0 - 756.0)))
+        let t = max(0.0, min(1.0, (viewportWidth - 756.0) / (1600.0 - 756.0)))
         return {params.font_body_base:.1f} + t * ({params.font_body_max:.1f} - {params.font_body_base:.1f})
     }}
 }}

@@ -136,7 +136,8 @@ class iOSResponsiveTrainer:
             avail_w = sw - p.sidebar_rail_width - (p.horizontal_margin_ipad * 2.0)
             cols = max(1, int(math.floor(avail_w / p.card_min_w_ipad)))
             gap = 16.0
-            card_w = (avail_w - (cols - 1) * gap) / cols
+            raw_card_w = (avail_w - (cols - 1) * gap) / cols
+            card_w = min(raw_card_w, p.card_max_w_ipad)
             title_font = p.title_font_ipad
             body_font = p.body_font_ipad
             overflow_w = max(0.0, (p.sidebar_rail_width + (p.horizontal_margin_ipad * 2.0) + (cols * card_w) + (cols - 1) * gap) - sw)
@@ -167,11 +168,55 @@ class iOSResponsiveTrainer:
             is_valid=is_valid
         )
 
-    def train(self) -> Tuple[iOSResponsiveParams, Dict[str, ComputedLayoutResult]]:
+    def train(self, iterations: int = 2500) -> Tuple[iOSResponsiveParams, Dict[str, ComputedLayoutResult]]:
         best_p = iOSResponsiveParams()
+        best_loss = float('inf')
         best_evals = {}
-        for s in self.screens:
-            best_evals[s.name] = self.evaluate(best_p, s)
+        
+        random.seed(42)
+        
+        for i in range(iterations):
+            candidate = iOSResponsiveParams(
+                sidebar_rail_threshold_w=random.uniform(680.0, 720.0),
+                sidebar_rail_width=random.uniform(220.0, 260.0),
+                card_min_w_ipad=random.uniform(280.0, 340.0),
+                card_max_w_ipad=random.uniform(460.0, 520.0),
+                horizontal_margin_iphone=random.uniform(14.0, 18.0),
+                horizontal_margin_ipad=random.uniform(20.0, 32.0),
+                title_font_iphone=random.uniform(18.0, 22.0),
+                title_font_ipad=random.uniform(24.0, 28.0),
+                body_font_iphone=random.uniform(14.0, 16.0),
+                body_font_ipad=random.uniform(15.0, 18.0)
+            )
+            
+            # Use base defaults on first iteration just in case they're perfect
+            if i == 0:
+                candidate = iOSResponsiveParams()
+                
+            loss = 0.0
+            evals = {}
+            for s in self.screens:
+                ev = self.evaluate(candidate, s)
+                evals[s.name] = ev
+                
+                # Penalties
+                loss += ev.overflow_w * 50.0  # Massive penalty for overflow
+                
+                # Penalty for wasting too much horizontal space if we could fit more columns
+                if ev.nav_style == "SidebarRail" and ev.columns == 1 and s.safe_w > 900.0:
+                    loss += 10.0
+                
+                # Small penalty for tiny cards
+                if ev.card_width < 300.0:
+                    loss += (300.0 - ev.card_width)
+                    
+            if loss < best_loss:
+                best_loss = loss
+                best_p = candidate
+                best_evals = evals
+                if loss == 0.0 and i > 100:
+                    break
+                    
         return best_p, best_evals
 
 

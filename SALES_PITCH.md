@@ -1,4 +1,4 @@
-# GENIE 4.0 FOR MAC: THE SOVEREIGN SPATIAL WORKSPACE
+# THE GENIE DUO: THE SOVEREIGN SPATIAL WORKSPACE FOR MAC
 ### *Architected & Engineered by Nicholas M. Dudek*
 **Official App Identifier:** `com.nicholasdudek.genie` • **Mac App Store ID:** `6808165534`  
 **GitHub:** [https://github.com/nicholasdudek/geniedesktop](https://github.com/nicholasdudek/geniedesktop) • **Web:** [https://nicholasdudek.github.io/geniedesktop/](https://nicholasdudek.github.io/geniedesktop/)
@@ -15,7 +15,7 @@ Every day, developers, designers, and power users are trapped in an obsolete des
 - Virtual machines that consume 16 GB of RAM, take two minutes to boot, and choke system resources.
 - Bloated Electron apps that idle at 1.5 GB of RAM just to display a chat box.
 
-**Genie 4.0 solves this completely.** Engineered purely in Swift 6.4 and Metal with a sub-35MB memory footprint, Genie transforms your Mac into an 81-screen continuous spatial workspace powered by an autonomous, vision-guided local AI agent and an instant Apple Silicon Linux hypervisor.
+**The Genie Duo solves this completely.** Engineered purely in Swift 6.4 and Metal with a sub-35MB memory footprint, The Genie Duo transforms your Mac into an 81-screen continuous spatial workspace powered by an autonomous, vision-guided local AI agent and an instant Apple Silicon Linux hypervisor.
 
 ---
 
@@ -61,7 +61,7 @@ Total mastery over hardware telemetry.
 
 ## 3. The Unbeatable Metrics
 
-| Metric | Traditional Workflow | **Genie 4.0** | Improvement |
+| Metric | Traditional Workflow | **The Genie Duo** | Improvement |
 | :--- | :--- | :--- | :--- |
 | **Idle RAM Footprint** | 1,450 MB (Electron + Docker) | **< 35 MB** | **41x Lighter** |
 | **Animation Frame Rate** | 60 FPS (choppy webviews) | **120 FPS Metal** | **2x Smoother** |
@@ -82,10 +82,11 @@ Total mastery over hardware telemetry.
 ## 5. Pricing & Packaging Strategy
 
 - **Mac App Store (Genie Lite & Studio)**: 
-  - **Category**: Productivity / Utilities
-  - **Genie Pro Monthly**: **$2.99 / month** (Flexible, cancel anytime, 30-day free trial included)
-  - **Genie Annual Pass**: **$29.00 / year** ($2.42/mo effective, Save 19% / $6.88 off vs. monthly, 30-day free trial included)
-  - **Founder's 2-Year Pass**: **$49.00 / 2 years** ($2.04/mo effective, Save 32%, 30-day free trial included)
+  - **Category**: Developer Tools / Productivity
+  - **Founder Lifetime Pass**: **$59.00 one-time forever** (Full access, all expansion packs, zero recurring bills)
+  - **Genie Annual Pass**: **$29.00 / year** ($2.42/mo effective, Save 19% vs. monthly, 30-day free trial)
+  - **Founder's 2-Year Pass**: **$49.00 / 2 years** ($2.04/mo effective, Save 32%, 30-day free trial)
+  - **Genie Pro Monthly**: **$2.99 / month** (Flexible, cancel anytime, 30-day free trial)
   - **Compliance**: 100% Apple Sandbox compliant (`GENIE_MAS=1`, Hardened Runtime, Zero Privileged Helpers).
 - **Direct Distribution (Genie Sovereign Pro)**:
   - Notarized Developer ID DMG with full Hypervisor daemon, local model runner, and CLI tool integrations.

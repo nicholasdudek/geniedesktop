@@ -2,7 +2,13 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PKG_PATH="$PROJECT_DIR/Genie.pkg"
+PKG_PATH="${PKG_PATH:-$PROJECT_DIR/GENIE DUO.pkg}"
+if [ ! -f "$PKG_PATH" ]; then
+    PKG_PATH="$PROJECT_DIR/The Genie Duo.pkg"
+fi
+if [ ! -f "$PKG_PATH" ]; then
+    PKG_PATH="$PROJECT_DIR/Genie.pkg"
+fi
 APPLE_ID="nicholas.dudek@icloud.com"
 APP_SPECIFIC_PASSWORD="${APP_SPECIFIC_PASSWORD:-@keychain:GENIE_ASC_PASSWORD}"  # stored via: xcrun altool --store-password-in-keychain-item GENIE_ASC_PASSWORD -u <apple-id> -p <app-specific-password>
 

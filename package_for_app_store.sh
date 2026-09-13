@@ -3,9 +3,9 @@ set -e
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$PROJECT_DIR/build/AppStore"
-APP_NAME="Genie"
+APP_NAME="GENIE DUO"
 BUNDLE_ID="com.nicholasdudek.genie"
-PKG_OUTPUT="$PROJECT_DIR/Genie.pkg"
+PKG_OUTPUT="$PROJECT_DIR/GENIE DUO.pkg"
 
 echo "=============================================="
 echo "  Packaging & Code Signing: $APP_NAME for Mac App Store"
@@ -175,12 +175,12 @@ xattr -cr "$BUILD_DIR/$APP_NAME.app"
 # 7. Sign the App Bundle
 if [ -n "$APP_IDENTITY" ]; then
     echo "==> Code signing inner executable..."
-    codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign "$APP_IDENTITY" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+    codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign "$APP_IDENTITY" "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/Genie"
     echo "==> Code signing App Bundle with Hardened Runtime & Sandbox entitlements..."
     codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign "$APP_IDENTITY" "$BUILD_DIR/$APP_NAME.app"
 else
     echo "==> Ad-Hoc code signing App Bundle..."
-    codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign - "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+    codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign - "$BUILD_DIR/$APP_NAME.app/Contents/MacOS/Genie"
     codesign --force --options runtime --entitlements "$PROJECT_DIR/Sources/GoldGate/Genie.AppStore.entitlements" --sign - "$BUILD_DIR/$APP_NAME.app"
 fi
 
@@ -201,6 +201,7 @@ if [ -n "$INSTALLER_IDENTITY" ]; then
 else
     productbuild --component "$BUILD_DIR/$APP_NAME.app" /Applications "$PKG_OUTPUT"
 fi
+cp -f "$PKG_OUTPUT" "$PROJECT_DIR/Genie.pkg" 2>/dev/null || true
 
 echo "=============================================="
 echo "  SUCCESS! App Store Package Created at:"
